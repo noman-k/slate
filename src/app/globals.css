@@ -4410,6 +4410,20 @@ section.is-folded .section-toggle svg {
   background: var(--hover-strong);
   color: var(--text);
 }
+/* Link from Settings › AI agents to the public setup guide (/docs/mcp). */
+.agent-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.agent-guide:hover {
+  text-decoration: underline;
+}
 .agent-dismiss {
   align-self: flex-end;
   height: 28px;

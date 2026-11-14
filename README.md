@@ -50,6 +50,7 @@ Open http://localhost:3000 and register; the workspace is at http://localhost:30
 | `src/app/app`, `src/app/p/[id]` | The workspace (`/app`, `/p/<page id>`) |
 | `src/app/auth/*` | Register, log in, forgot/reset password, auth callback |
 | `src/app/api/mcp` | MCP endpoint for AI agents |
+| `src/app/docs/mcp` | Public MCP setup guide (`/docs/mcp`) |
 | `src/app/api/run-request` | Server-side sender for playbook API steps |
 | `src/app/api/attachments/[id]` | Signed redirects to private uploads |
 | `src/middleware.ts` | Session refresh and sign-in redirect |
@@ -79,7 +80,7 @@ Session cookies use `@supabase/ssr`. Middleware refreshes the session and sends 
 
 **Playbook API steps** are sent by `/api/run-request`, never from the browser. It requires a signed-in user, drops cookies and forwarding headers, doesn't follow redirects, blocks private and local addresses in production, and caps requests (200 KB), responses (1 MB) and time (15 s). Secret headers are masked in run history and links.
 
-**AI agents (MCP).** Keys are random `slate_…` secrets made in the browser; only a SHA-256 hash is stored, so a key is shown once. `/api/mcp` skips the session middleware: the route checks the key itself through `agent_workspace_state`, which returns the key owner's workspace read-only. It speaks stateless MCP over Streamable HTTP (one JSON-RPC message per POST; protocol versions 2025-06-18, 2025-03-26 and 2024-11-05) and offers five read-only tools: `search_workspace`, `read_page`, `list_databases`, `query_database` and `list_playbooks`. Page content is returned as clearly marked workspace data, not instructions. To connect Claude Code:
+**AI agents (MCP).** Keys are random `slate_…` secrets made in the browser; only a SHA-256 hash is stored, so a key is shown once. `/api/mcp` skips the session middleware: the route checks the key itself through `agent_workspace_state`, which returns the key owner's workspace read-only. It speaks stateless MCP over Streamable HTTP (one JSON-RPC message per POST; protocol versions 2025-06-18, 2025-03-26 and 2024-11-05) and offers five read-only tools: `search_workspace`, `read_page`, `list_databases`, `query_database` and `list_playbooks`. Page content is returned as clearly marked workspace data, not instructions. The public guide at [`/docs/mcp`](https://slate.noman.io/docs/mcp) (`src/app/docs/mcp`) has setup steps for Claude Code, Claude Desktop, Cursor, VS Code, Codex and other clients, and a tools reference generated from `AGENT_TOOLS`, so it always matches the server. To connect Claude Code:
 
 ```sh
 claude mcp add --transport http slate https://slate.noman.io/api/mcp --header "Authorization: Bearer slate_YOUR_KEY"

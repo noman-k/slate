@@ -5,7 +5,7 @@
  * revoked at any time.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Check, Copy, KeyRound } from "lucide-react";
+import { ArrowUpRight, Bot, Check, Copy, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { agentKeyPrefix, generateAgentKey, hashAgentKey } from "@/lib/agent-keys";
@@ -103,6 +103,10 @@ export function AgentKeysSection() {
             Agents like Claude can search your pages, read them, query your databases and look up playbooks. They
             can&apos;t change anything. Each agent uses its own key, which you can revoke at any time.
           </p>
+          <a className="agent-guide" href="/docs/mcp" target="_blank" rel="noreferrer">
+            Setup guide for Claude, Cursor, VS Code and more
+            <ArrowUpRight size={13} />
+          </a>
         </div>
       </div>
       <>
@@ -117,6 +121,10 @@ export function AgentKeysSection() {
                 label="Add to Claude Code"
                 value={`claude mcp add --transport http slate ${endpoint} --header "Authorization: Bearer ${created.key}"`}
               />
+              <a className="agent-guide" href="/docs/mcp#setup" target="_blank" rel="noreferrer">
+                Using another app? See the setup guide
+                <ArrowUpRight size={13} />
+              </a>
               <button type="button" className="agent-dismiss" onClick={() => setCreated(null)}>
                 I&apos;ve copied it
               </button>

@@ -1152,6 +1152,7 @@ test("settings explain AI agent access and offer agent keys", async ({ page }) =
   await expect(agents).toContainText("can't change anything");
   await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
   await expect(agents).toContainText("No agent keys yet.");
+  await expect(agents.getByRole("link", { name: /Setup guide/ })).toHaveAttribute("href", "/docs/mcp");
 });
 test("an agent key reads the workspace over MCP without a session", async ({ page, playwright, baseURL }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();

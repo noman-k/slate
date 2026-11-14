@@ -1496,3 +1496,11 @@ html:has(.landing) {
 .nowrap {
   white-space: nowrap;
 }
+
+.agents-guide {
+  font-weight: 500;
+  color: var(--accent-text) !important;
+}
+.agents-guide:hover {
+  text-decoration: underline;
+}

@@ -228,6 +228,7 @@ export default async function Home() {
             <a href="#run">Playbooks</a>
             <a href="#connect">AI agents</a>
             <a href="#faq">FAQ</a>
+            <Link href="/docs/mcp">Docs</Link>
           </nav>
           <div className="landing-account">
             {who === 'visitor' && (
@@ -430,7 +431,7 @@ export default async function Home() {
               <ul className="agents-points">
                 <li><span><KeyRound size={16} /></span><div><strong>One key per agent.</strong> Revoke any of them, any time.</div></li>
                 <li><span><Lock size={16} /></span><div><strong>Read-only.</strong> Agents can search and read — they can’t change a thing.</div></li>
-                <li><span><Zap size={16} /></span><div><strong>Works with any MCP client.</strong> Claude, Claude Code, or your own.</div></li>
+                <li><span><Zap size={16} /></span><div><strong>Works with any MCP client.</strong> Claude, Cursor, VS Code, Codex or your own. <Link href="/docs/mcp" className="agents-guide">See the setup guide</Link></div></li>
               </ul>
               <div className="agent-chat" aria-hidden>
                 <div className="chat-row user">Which units are late on rent this month?</div>
@@ -541,6 +542,7 @@ export default async function Home() {
           <a href="#run">Playbooks</a>
           <a href="#connect">AI agents</a>
           <a href="#faq">FAQ</a>
+          <Link href="/docs/mcp">MCP setup guide</Link>
         </nav>
         <nav aria-label="Account">
           <h2>{who === 'member' ? 'Workspace' : 'Get started'}</h2>
