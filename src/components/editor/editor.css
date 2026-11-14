@@ -1881,8 +1881,15 @@
     opacity: 1;
   }
 }
+/* Touch: the tools of the step being edited (always showing them on every step is
+   clutter); the step's menu stays reachable on every step. */
 @media (hover: none) {
   .proc-step-tools {
+    display: none;
+  }
+  .proc-step:focus-within .proc-step-tools,
+  .proc-step-tools:has([data-state="open"]) {
+    display: inline-flex;
     opacity: 1;
   }
 }

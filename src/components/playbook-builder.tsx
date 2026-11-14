@@ -742,7 +742,7 @@ export function PlaybookBuilder({
                       <input
                         className="pb-section-description"
                         aria-label="Section description"
-                        placeholder="Add a short description (optional)"
+                        placeholder="Add a description"
                         value={section.description}
                         onChange={(event) => editSection(section.id, (s) => ({ ...s, description: event.target.value }))}
                       />

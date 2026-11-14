@@ -112,14 +112,15 @@ export function PlaybooksView({
                     className="run-bar-link is-resume"
                     onClick={() => onResume(row.page.id, row.running!.record.id)}
                     title={`Resume ${recordTitle(row.running.record, state)}`}
+                    aria-label={`Resume ${recordTitle(row.running.record, state)}`}
                   >
                     <RotateCcw size={13} />
-                    Resume
+                    <span className="run-label">Resume</span>
                   </button>
                 )}
                 <button className="run-button" onClick={() => onRun(row.page.id)} aria-label={`Run ${row.page.title || "Untitled"}`}>
                   <Play size={13} />
-                  Run
+                  <span className="run-label">Run</span>
                 </button>
               </span>
             </li>

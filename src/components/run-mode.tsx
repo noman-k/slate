@@ -153,7 +153,7 @@ function ApiCall({
           </button>
         ) : response.ok ? (
           <button ref={actionRef} className="primary-button" onClick={() => onAdvance({ kind: "response", response })}>
-            Next <CornerDownLeft size={14} />
+            Next <CornerDownLeft size={14} className="key-hint" aria-hidden />
           </button>
         ) : (
           <>
@@ -385,7 +385,7 @@ function StepCard({
   let body: ReactNode = null;
   let primary: ReactNode = (
     <button className="primary-button" autoFocus onClick={() => onAdvance({ kind: "next" })}>
-      Next <CornerDownLeft size={14} />
+      Next <CornerDownLeft size={14} className="key-hint" aria-hidden />
     </button>
   );
   if (step.step === "send") {
@@ -450,7 +450,7 @@ function StepCard({
       );
       primary = (
         <button className="primary-button" type="submit" form={formId}>
-          Next <CornerDownLeft size={14} />
+          Next <CornerDownLeft size={14} className="key-hint" aria-hidden />
         </button>
       );
     }
@@ -493,7 +493,7 @@ function StepCard({
     );
     primary = (
       <button className="primary-button" autoFocus onClick={() => onAdvance({ kind: "next" })}>
-        Continue <CornerDownLeft size={14} />
+        Continue <CornerDownLeft size={14} className="key-hint" aria-hidden />
       </button>
     );
   }

@@ -301,3 +301,46 @@ test("the sidebar slides in and out as a drawer, with a backdrop that fades both
   await expect.poll(() => scrim.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
   await expect(sidebar).toBeHidden();
 });
+
+test("playbooks on a phone: a roomy list, fields that fit, and run buttons within a thumb's reach", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
+  await page.getByRole("button", { name: "New page", exact: true }).first().tap();
+  await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).tap();
+  const gallery = page.locator(".procedure-gallery");
+  if (!(await gallery.getByRole("option", { name: /Refund request/ }).count())) await gallery.getByRole("button", { name: /^More templates/ }).tap();
+  // On a phone, tapping a template uses it (the gallery closes).
+  await gallery.getByRole("option", { name: /Refund request/ }).tap();
+  await expect(gallery).toBeHidden();
+
+  // The builder: a decision's settings stack, each a full-width field inside the screen.
+  const decide = page.locator(".pb-step.is-if").first();
+  const fields = await decide.locator(".proc-step-config select").all();
+  expect(fields.length).toBeGreaterThan(1);
+  for (const field of fields) {
+    const box = (await field.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(box.width).toBeGreaterThan(250);
+  }
+
+  // Running: the step's main button sits at the bottom of the screen, full width.
+  await page.getByRole("button", { name: /^Run/ }).first().tap();
+  const form = page.getByRole("dialog");
+  for (const field of await form.locator('input:not([type="checkbox"])').all()) await field.fill("12");
+  await page.getByRole("button", { name: /Start run/ }).tap();
+  const next = page.locator(".run-card-actions").getByRole("button").last();
+  await expect(next).toBeVisible();
+  const button = (await next.boundingBox())!;
+  expect(button.y).toBeGreaterThan(844 - 160);
+  await expect(page.locator(".run-card-actions .key-hint").first()).toBeHidden();
+  await page.getByRole("button", { name: /Pause/ }).tap();
+
+  // The list: the Run button is a round target beside the title, and doesn't squeeze the text.
+  await page.goto("/p/playbooks");
+  const row = page.locator(".playbook-row", { hasText: "Refund request" });
+  const run = (await row.getByRole("button", { name: "Run Refund request" }).boundingBox())!;
+  expect(run.width).toBeGreaterThanOrEqual(44);
+  expect(run.height).toBeGreaterThanOrEqual(44);
+  expect((await row.locator(".playbook-text").boundingBox())!.width).toBeGreaterThan(220);
+});
