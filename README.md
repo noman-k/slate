@@ -89,6 +89,17 @@ npm run deploy
 
 The Supabase URL and publishable key must exist at build time because Next.js embeds `NEXT_PUBLIC_` values into browser assets. The deployment script explicitly binds the same values to the Worker runtime so authentication middleware receives them; do not deploy a production build without them. `NEXT_PUBLIC_APP_URL` documents the canonical origin; auth redirects use the current origin to support previews. Add each permitted preview origin explicitly to Supabase Auth redirect URLs.
 
+### Production domain: slate.noman.io
+
+Production runs at **https://slate.noman.io**. `wrangler.jsonc` attaches the Worker to that hostname as a [Workers Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/), so the first deploy creates the DNS record and certificate. One-time setup:
+
+1. **Cloudflare:** `noman.io` must be a zone in the same Cloudflare account as the Worker, with no existing DNS record for `slate`. The `CLOUDFLARE_API_TOKEN` needs Workers Scripts edit, plus Workers Routes and DNS edit on the `noman.io` zone.
+2. **GitHub:** in the `production` environment, set `NEXT_PUBLIC_APP_URL` to `https://slate.noman.io`.
+3. **Supabase Auth → URL Configuration:** set the Site URL to `https://slate.noman.io` and add these redirect URLs:
+   - `https://slate.noman.io/auth/callback`
+   - `https://slate.noman.io/auth/callback?next=/auth/reset`
+4. **Deploy:** run the *Deploy production* workflow (or `npm run deploy`), then open https://slate.noman.io and register to confirm sign-in works.
+
 ### GitHub deployment
 
 The production workflow is manually dispatched and uses the GitHub `production` environment. It runs checks, applies Supabase migrations, builds the Worker, and deploys it. Configure:
@@ -97,7 +108,7 @@ The production workflow is manually dispatched and uses the GitHub `production` 
 | --- | --- | --- |
 | Variable | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL, build and runtime |
 | Variable | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public publishable key, build and runtime |
-| Variable | `NEXT_PUBLIC_APP_URL` | Production origin |
+| Variable | `NEXT_PUBLIC_APP_URL` | Production origin: `https://slate.noman.io` |
 | Secret | `SUPABASE_DB_URL` | Supabase PostgreSQL connection URI for migration application |
 | Secret | `CLOUDFLARE_API_TOKEN` | Deploy the Worker |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account |
