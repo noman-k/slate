@@ -698,17 +698,37 @@ section.is-folded .section-toggle svg {
 .tree-expand svg.rotated {
   transform: rotate(90deg);
 }
-/* Touch screens have no hover: parents keep a chevron of their own before the icon. */
+/* Touch screens have no hover, so the chevron can't hide over the icon. Every row gets a
+   chevron column instead (empty for pages without subpages), which keeps icons and titles in
+   one column per level, each level clearly inside its parent. Rows and buttons are sized for
+   fingers. */
 @media (hover: none) {
+  .tree-row {
+    height: 38px;
+  }
   .tree-expand {
     position: static;
     flex-shrink: 0;
-    width: 18px;
+    width: 24px;
+    height: 100%;
+    border-radius: 6px;
     opacity: 1;
     background: none;
   }
+  .tree-row:not(:has(.tree-expand)) .tree-indent {
+    /* The chevron's width, plus the row's gap that it would have added. */
+    margin-right: 25px;
+  }
   .tree-row:has(.tree-expand) .tree-page .page-icon {
     visibility: visible;
+  }
+  .tree-actions .icon-button {
+    width: 30px;
+    height: 32px;
+  }
+  /* The current page's row shows its "…" and "+": its count gives them the room. */
+  .tree-row.selected .tree-count {
+    display: none;
   }
 }
 .tree-page {

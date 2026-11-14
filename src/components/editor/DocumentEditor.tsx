@@ -80,6 +80,7 @@ import {
   EmbedContext,
   type EmbedOptions,
 } from "./extensions";
+import { OPEN_PAGE_EVENT, touchTaps } from "./touch-taps";
 import { setRunFrom } from "./procedure-nodes";
 import { EditorUrlPopover } from "./EditorUrlPopover";
 import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
@@ -365,6 +366,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
   const sourceRef = useRef(markdown);
   const changeRef = useRef(onChange);
   const uploadRef = useRef(onUploadImage);
+  const touchHandlers = useMemo(() => touchTaps(), []);
   const slashHandlerRef = useRef<(event: KeyboardEvent) => boolean>(
     () => false,
   );
@@ -451,6 +453,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
           }
           return false;
         },
+        // Touch: to-dos, links and images respond to a tap without raising the keyboard.
+        handleDOMEvents: touchHandlers,
         handleClick: (_view, _pos, event) => {
           const link = (event.target as HTMLElement).closest?.("a[href]");
           if (!link || !(event.metaKey || event.ctrlKey)) return false;
@@ -1340,6 +1344,19 @@ export function DocumentEditor(props: DocumentEditorProps) {
     window.addEventListener("mouseup", finish);
     return () => window.removeEventListener("mouseup", finish);
   }, [editor]);
+  // A tapped link to a Slate page opens here, without reloading (see touch-taps.ts).
+  useEffect(() => {
+    const host = wrapperRef.current;
+    if (!host || !onOpenPage) return;
+    const open = (event: Event) => {
+      const id = (event as CustomEvent<{ id: string }>).detail?.id;
+      if (!id) return;
+      event.preventDefault();
+      onOpenPage(id);
+    };
+    host.addEventListener(OPEN_PAGE_EVENT, open);
+    return () => host.removeEventListener(OPEN_PAGE_EVENT, open);
+  }, [onOpenPage]);
   // Keyboard focus starts inside the block menu so arrows and Enter work at once.
   useEffect(() => {
     if (blockMenu)

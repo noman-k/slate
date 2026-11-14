@@ -137,6 +137,41 @@ function PageReferenceButton({
     </button>
   );
 }
+/**
+ * A to-do item whose checkbox toggles without moving focus into the text. Tiptap's own
+ * focuses the editor on every toggle, which on a phone places the cursor and raises the
+ * keyboard. Ticking something off isn't editing it.
+ */
+const TaskItemQuiet = TaskItem.extend({
+  addNodeView() {
+    const render = this.parent?.();
+    if (!render) return null;
+    return (props) => {
+      const view = render(props);
+      const item = view.dom as HTMLElement;
+      const box = item.querySelector<HTMLInputElement>(':scope > label > input[type="checkbox"]');
+      // Capture runs before Tiptap's listener on the checkbox, which this one replaces.
+      item.addEventListener(
+        "change",
+        (event) => {
+          if (!box || event.target !== box) return; // a nested item's checkbox
+          event.stopPropagation();
+          const { editor, getPos } = props;
+          if (!editor.isEditable) {
+            box.checked = !box.checked;
+            return;
+          }
+          const position = typeof getPos === "function" ? getPos() : undefined;
+          const node = typeof position === "number" ? editor.state.doc.nodeAt(position) : null;
+          if (typeof position !== "number" || !node) return;
+          editor.view.dispatch(editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, checked: box.checked }));
+        },
+        true,
+      );
+      return view;
+    };
+  },
+});
 const WorkspaceEmbed = Node.create<EmbedOptions>({
   name: "workspaceEmbed",
   group: "block",
@@ -398,7 +433,7 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
             : "",
     }),
     TaskList,
-    TaskItem.configure({ nested: true }),
+    TaskItemQuiet.configure({ nested: true }),
     Image.configure({ allowBase64: false }),
     Table.configure({ resizable: true }),
     TableRow,

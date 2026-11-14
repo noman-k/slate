@@ -1308,3 +1308,17 @@ test("collapse all pages in the sidebar at once", async ({ page }) => {
   await tree.locator(".section-heading").hover();
   await expect(tree.getByRole("button", { name: "Collapse all pages" })).toBeVisible();
 });
+test("ticking a to-do doesn't move focus into the page", async ({ page }) => {
+  await createPage(page, "To-dos");
+  const editor = page.getByLabel("Page content", { exact: true });
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("[] Water the plants");
+  await page.getByLabel("Page title", { exact: true }).click();
+  const box = editor.locator('ul[data-type="taskList"] > li input[type="checkbox"]');
+  await box.click();
+  await expect(box).toBeChecked();
+  // Focus stays where it was (the title), so nothing starts editing the to-do's text.
+  await expect(page.getByLabel("Page title", { exact: true })).toBeFocused();
+  await page.reload();
+  await expect(page.locator('ul[data-type="taskList"] > li input[type="checkbox"]')).toBeChecked();
+});
