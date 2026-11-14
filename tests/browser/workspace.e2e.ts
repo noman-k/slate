@@ -666,7 +666,10 @@ test("/playbook and /runbook insert a template into a page that has content", as
   await expect(editor.getByRole("heading", { name: "Roll back" })).toBeVisible();
   await expect(editor.getByRole("heading", { name: "Make yourself at home" })).toBeVisible();
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
-  const order = await editor.locator("h2").allTextContents();
+  // Heading text only (section headings also hold a step-count chip).
+  const order = await editor.locator("h2").evaluateAll((hs) =>
+    hs.map((h) => [...h.childNodes].filter((n) => !(n as HTMLElement).classList?.contains("proc-section-tools")).map((n) => n.textContent).join("").trim()),
+  );
   expect(order.indexOf("Bring a little structure")).toBeLessThan(order.indexOf("Before you start"));
   await expect(editor.locator(".slate-prose > p", { hasText: "/runbook" })).toHaveCount(0);
   // ⌘Z takes it out again.
@@ -785,4 +788,94 @@ test("step blocks and parameters can be added with slash commands", async ({ pag
   await page.reload();
   await expect(page.locator(".proc-step.is-ask")).toContainText("How did {{tenant_name}} pay?");
   await expect(page.getByLabel("Save answer as")).toHaveValue("method");
+});
+test("an API step calls an endpoint, saves the response and branches on it", async ({ page }) => {
+  let calls = 0;
+  let lastAuth = "";
+  await page.route("https://api.example.test/**", async (route) => {
+    calls++;
+    lastAuth = route.request().headers()["authorization"] || "";
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+    if (route.request().url().endsWith("/orders/BAD")) return route.fulfill({ status: 404, headers: cors, body: '{"error":"not found"}' });
+    await route.fulfill({ status: 200, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify({ id: "A-7", status: "shipped", carrier: { name: "UPS" } }) });
+  });
+  const node = (value: object) => `:::slate-node ${JSON.stringify(value)}`;
+  const source = [
+    node({ type: "procedureParams", attrs: { params: [{ name: "order_number", type: "text", required: true }] } }),
+    "## Look up",
+    node({ type: "procedureStep", attrs: { step: "api", method: "GET", url: "https://api.example.test/orders/{{order_number}}", headers: "Authorization: Bearer sk_test_abcdef123456", variable: "order", else: "Not found" }, content: [{ type: "text", text: "Look up the order" }] }),
+    node({ type: "procedureStep", attrs: { step: "if", variable: "order.status", op: "is", value: "shipped", then: "Shipped", else: "@end" } }),
+    "## Shipped",
+    node({ type: "procedureStep", attrs: { step: "end" }, content: [{ type: "text", text: "Shipped by {{order.carrier.name}}" }] }),
+    "## Not found",
+    node({ type: "procedureStep", attrs: { step: "end" }, content: [{ type: "text", text: "No order {{order_number}}" }] }),
+  ].join("\n\n");
+  await createPage(page, "Order lookup");
+  await page.getByRole("button", { name: "Markdown", exact: true }).click();
+  await page.locator(".markdown-source-editor .cm-content").click();
+  await page.keyboard.insertText(source);
+  await page.getByRole("button", { name: "Interactive", exact: true }).click();
+  // The step's settings show in the editor.
+  await expect(page.getByLabel("URL", { exact: true })).toHaveValue("https://api.example.test/orders/{{order_number}}");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  const form = page.getByRole("dialog", { name: "Run Order lookup" });
+  await form.getByLabel("Order number").fill("A-7");
+  await form.getByRole("button", { name: "Start run" }).click();
+  const run = page.locator(".run-surface");
+  // The request is shown before anything is sent, with the secret masked.
+  await expect(run.locator(".run-request-line")).toContainText("GET");
+  await expect(run.locator(".run-request-line")).toContainText("https://api.example.test/orders/A-7");
+  await expect(run.locator(".run-request-headers")).toContainText("Bearer ••••3456");
+  await expect(run.locator(".run-request-headers")).not.toContainText("sk_test");
+  expect(calls).toBe(0);
+  await page.keyboard.press("Enter");
+  await expect(run.locator(".run-response")).toContainText("200 OK");
+  await expect(run.locator(".run-response")).toContainText('"carrier"');
+  expect(lastAuth).toBe("Bearer sk_test_abcdef123456");
+  await page.keyboard.press("Enter");
+  await expect(run.locator(".run-decision")).toContainText("order.status is “shipped”");
+  await page.keyboard.press("Enter");
+  await expect(run.locator(".run-card-text")).toHaveText("Shipped by UPS");
+  await page.keyboard.press("Enter");
+  await expect(run.getByRole("heading", { name: "Run complete" })).toBeVisible();
+  // A failing request offers Retry, or continues down the failure path.
+  await run.getByRole("button", { name: "Run again" }).click();
+  await form.getByLabel("Order number").fill("BAD");
+  await form.getByRole("button", { name: "Start run" }).click();
+  await page.keyboard.press("Enter");
+  await expect(run.locator(".run-response.is-failed")).toContainText("404");
+  await run.getByRole("button", { name: "Retry" }).click();
+  await expect(run.locator(".run-response.is-failed")).toContainText("404");
+  await run.getByRole("button", { name: "Continue to Not found" }).click();
+  await expect(run.locator(".run-card-text")).toHaveText("No order BAD");
+});
+test("sections show their steps, fold, follow renames and can be run from", async ({ page }) => {
+  await startFromTemplate(page, "Runbook", /Restore from backup/);
+  const heading = (name: string) => page.locator(".slate-prose h2", { hasText: name });
+  await expect(heading("Restore").locator(".proc-section-count")).toHaveText("4 steps");
+  await expect(heading("Roll back").locator(".proc-section-count")).toHaveText("2 steps");
+  // Fold a section's steps away and back.
+  await heading("Restore").locator(".proc-section-count").click();
+  await expect(heading("Restore").locator(".proc-section-count")).toHaveText("4 steps hidden");
+  await expect(page.locator(".proc-step", { hasText: "Spot-check the copy" })).toBeHidden();
+  await heading("Restore").locator(".proc-section-count").click();
+  await expect(page.locator(".proc-step", { hasText: "Spot-check the copy" })).toBeVisible();
+  // Renaming a section heading updates the steps that go to it.
+  const failTarget = page.locator(".proc-step", { hasText: "Spot-check the copy" }).getByLabel("If it fails");
+  await expect(failTarget).toHaveValue("Roll back");
+  await heading("Roll back").click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" the restore");
+  await expect(failTarget).toHaveValue("Roll back the restore");
+  await expect(failTarget.locator("option:checked")).toHaveText("Go to Roll back the restore");
+  // Run from here starts the run at that section.
+  await heading("Roll back the restore").hover();
+  await heading("Roll back the restore").getByRole("button", { name: "Run from Roll back the restore" }).click();
+  const form = page.getByRole("dialog", { name: /^Run / });
+  await expect(form).toContainText("Starts at “Roll back the restore”");
+  await form.getByLabel("Database").fill("orders");
+  await form.getByLabel("Restore point").fill("2026-11-01");
+  await form.getByRole("button", { name: "Start run" }).click();
+  await expect(page.locator(".run-card-text")).toHaveText("Point the app back at the original orders and tell the team.");
 });

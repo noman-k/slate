@@ -62,6 +62,7 @@ import {
   Code2,
   Compass,
   Flag,
+  Globe,
   ListChecks,
   MessageSquare,
   SlidersHorizontal,
@@ -79,6 +80,7 @@ import {
   EmbedContext,
   type EmbedOptions,
 } from "./extensions";
+import { setRunFrom } from "./procedure-nodes";
 import { EditorUrlPopover } from "./EditorUrlPopover";
 import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
@@ -105,6 +107,8 @@ export interface DocumentEditorProps {
    * through `insert`, which puts it where the slash command was typed.
    */
   onInsertProcedure?: (kind: "playbook" | "runbook", insert: (markdown: string) => void) => void;
+  /** Starts a run of this page at a section (from the section heading). */
+  onRunFrom?: (section: string) => void;
 }
 
 interface SlashState {
@@ -315,6 +319,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
     onLinkDatabase,
     resolvePage,
     onInsertProcedure,
+    onRunFrom,
   } = props;
   const [mode, setMode] = useState<"interactive" | "markdown">("interactive");
   const [slash, setSlash] = useState<SlashState | null>(null);
@@ -918,6 +923,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
           ["ask", "Ask step", CircleHelp, "Ask a question and save the answer", "question collect input prompt"],
           ["check", "Check step", ListChecks, "Do something and confirm the expected result", "verify expected test runbook"],
           ["if", "If / Else", Split, "Branch on a value: go to a section or continue", "condition branch decide when else"],
+          ["api", "API request", Globe, "Call an API and save the response", "http request webhook fetch call endpoint get post rest json"],
           ["end", "End step", Flag, "Finish the run here", "stop finish done exit"],
         ] as const
       ).map(
@@ -937,6 +943,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
                     step,
                     ...(step === "ask" ? { answer: "text" } : {}),
                     ...(step === "if" ? { op: "is" } : {}),
+                    ...(step === "api" ? { method: "GET" } : {}),
                   },
                 })
                 .run();
@@ -1096,6 +1103,15 @@ export function DocumentEditor(props: DocumentEditorProps) {
     onHistoryApi?.(pageId, { undo: () => historyRef.current("undo") });
     return () => onHistoryApi?.(pageId, null);
   }, [onHistoryApi, pageId]);
+  // Section headings offer "Run from here" when the page can run.
+  const runFromRef = useRef(onRunFrom);
+  useEffect(() => {
+    runFromRef.current = onRunFrom;
+  });
+  const canRunFrom = !!onRunFrom;
+  useEffect(() => {
+    if (editor) setRunFrom(editor, canRunFrom ? (section) => runFromRef.current?.(section) : null);
+  }, [editor, canRunFrom]);
   const switchMode = (next: typeof mode) => {
     if (next === mode || !editor) return;
     if (next === "interactive") {

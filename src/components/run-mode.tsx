@@ -9,12 +9,15 @@ import {
   Copy,
   CornerDownLeft,
   Flag,
+  Globe,
   Link2,
+  Loader2,
   ListChecks,
   MessageSquare,
   Pause,
   Play,
   RotateCcw,
+  Send,
   Split,
   Square,
   X,
@@ -35,7 +38,16 @@ import {
   type Step,
   type StepOutcome,
   type StepType,
+  type ApiResponse,
 } from "@/lib/runner";
+import {
+  buildRequest,
+  isSecretHeader,
+  maskSecret,
+  prettyBody,
+  urlProblem,
+  type ApiRequest,
+} from "@/lib/api-request";
 import type { Page } from "@/lib/types";
 
 /** "amount_due" → "Amount due". */
@@ -49,8 +61,115 @@ const STEP_ICONS: Record<StepType, typeof Check> = {
   ask: CircleHelp,
   check: ListChecks,
   if: Split,
+  api: Globe,
   end: Flag,
 };
+
+/**
+ * An API step: shows exactly what will be sent (secrets masked), sends it only when
+ * asked, then shows the answer and what was saved for later steps.
+ */
+function ApiCall({
+  step,
+  procedure,
+  run,
+  lookup,
+  send,
+  onAdvance,
+}: {
+  step: Step;
+  procedure: Procedure;
+  run: RunState;
+  lookup?: Lookup;
+  send: (request: ApiRequest) => Promise<ApiResponse>;
+  onAdvance: (outcome: StepOutcome) => void;
+}) {
+  const request = buildRequest(step, procedure, run.vars, lookup);
+  const problem = urlProblem(request.url, { allowPrivate: true });
+  const [state, setState] = useState<{ sending: boolean; response?: ApiResponse }>({ sending: false });
+  const sending = useRef(false);
+  const fire = async () => {
+    if (sending.current) return;
+    sending.current = true;
+    setState({ sending: true });
+    const response = await send(request);
+    sending.current = false;
+    setState({ sending: false, response });
+  };
+  const response = state.response;
+  // Keep the keyboard on the next thing to do (Send → Next, or Continue after a failure).
+  const actionRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    actionRef.current?.focus();
+  }, [response]);
+  return (
+    <>
+      <div className="run-request" aria-label="Request">
+        <div className="run-request-line">
+          <span className={`run-method is-${request.method.toLowerCase()}`}>{request.method}</span>
+          <code>{request.url || "No URL yet"}</code>
+        </div>
+        {request.headers.length > 0 && (
+          <dl className="run-request-headers">
+            {request.headers.map(([name, value]) => (
+              <div key={name}>
+                <dt>{name}</dt>
+                <dd>{isSecretHeader(name) ? maskSecret(value) : value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {request.body && <pre className="run-request-body">{prettyBody(request.body)}</pre>}
+      </div>
+      {problem && !response && <p className="run-api-problem">{problem}</p>}
+      {response && (
+        <div className={`run-response ${response.ok ? "is-ok" : "is-failed"}`} role="status">
+          <div className="run-response-head">
+            <span className="run-status">
+              {response.status ? response.status : "No response"}
+              {response.ok ? " OK" : ""}
+            </span>
+            {response.ms !== undefined && <small>{response.ms} ms</small>}
+            {response.ok && step.variable && (
+              <small className="run-saved-as">
+                Saved as <code>{`{{${step.variable}}}`}</code> and <code>{`{{${step.variable}_status}}`}</code>
+              </small>
+            )}
+          </div>
+          {response.error && <p>{response.error}</p>}
+          {response.body && <pre>{prettyBody(response.body).slice(0, 4000)}</pre>}
+        </div>
+      )}
+      <div className="run-card-actions">
+        {!response ? (
+          <button
+            ref={actionRef}
+            className="primary-button"
+            aria-busy={state.sending}
+            disabled={!!problem}
+            onClick={fire}
+          >
+            {state.sending ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
+            {state.sending ? "Sending…" : "Send request"}
+          </button>
+        ) : response.ok ? (
+          <button ref={actionRef} className="primary-button" onClick={() => onAdvance({ kind: "response", response })}>
+            Next <CornerDownLeft size={14} />
+          </button>
+        ) : (
+          <>
+            <button className="secondary-button" onClick={fire}>
+              <RotateCcw size={14} /> Retry
+            </button>
+            <button ref={actionRef} className="primary-button" onClick={() => onAdvance({ kind: "response", response })}>
+              Continue to {targetLabel(step.else)}
+            </button>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
 
 export type RecordOption = { id: string; label: string };
 
@@ -67,8 +186,11 @@ export function RunStartDialog({
   onStart,
   onCopyLink,
   onClose,
+  from,
 }: {
   open: boolean;
+  /** The section the run starts at, if not the beginning. */
+  from?: string;
   title: string;
   procedure: Procedure;
   initial: Record<string, string>;
@@ -92,9 +214,10 @@ export function RunStartDialog({
       onOpenChange={(next) => !next && onClose()}
       title={`Run ${title || "Untitled"}`}
       description={
-        procedure.params.length
+        (from ? `Starts at “${from}”. ` : "") +
+        (procedure.params.length
           ? "Fill in the inputs this run needs. They're saved with the run."
-          : "This run has no inputs."
+          : "This run has no inputs.")
       }
       className="run-start"
     >
@@ -233,11 +356,13 @@ function StepCard({
   run,
   lookup,
   onAdvance,
+  send,
 }: {
   procedure: Procedure;
   run: RunState;
   lookup?: Lookup;
   onAdvance: (outcome: StepOutcome) => void;
+  send: (request: ApiRequest) => Promise<ApiResponse>;
 }) {
   const step = procedure.steps[run.step];
   const fill = (text: string) => interpolate(text, procedure, run.vars, lookup);
@@ -361,6 +486,10 @@ function StepCard({
       </button>
     );
   }
+  if (step.step === "api") {
+    body = <ApiCall step={step} procedure={procedure} run={run} lookup={lookup} send={send} onAdvance={onAdvance} />;
+    primary = null;
+  }
   if (step.step === "end")
     primary = (
       <button className="primary-button" autoFocus onClick={() => onAdvance({ kind: "next" })}>
@@ -377,10 +506,15 @@ function StepCard({
         </span>
       </div>
       <p className="run-card-text">
-        {text || (step.step === "end" ? "That's the end of this run." : STEP_LABELS[step.step])}
+        {text ||
+          (step.step === "end"
+            ? "That's the end of this run."
+            : step.step === "api"
+              ? "Call the API"
+              : STEP_LABELS[step.step])}
       </p>
       {body}
-      <div className="run-card-actions">{primary}</div>
+      {primary && <div className="run-card-actions">{primary}</div>}
     </div>
   );
 }
@@ -398,6 +532,7 @@ export function RunView({
   onStop,
   onRunAgain,
   onOpenLog,
+  sendRequest,
 }: {
   open: boolean;
   page: Pick<Page, "title" | "icon" | "kind">;
@@ -410,6 +545,7 @@ export function RunView({
   onStop: () => void;
   onRunAgain: () => void;
   onOpenLog: () => void;
+  sendRequest: (request: ApiRequest) => Promise<ApiResponse>;
 }) {
   const finished = run.status !== "running";
   const started = useRef(new Date());
@@ -511,6 +647,7 @@ export function RunView({
                   run={run}
                   lookup={lookup}
                   onAdvance={onAdvance}
+                  send={sendRequest}
                 />
               )}
               {!finished && (

@@ -20,7 +20,8 @@ export interface Param {
   databaseId?: string;
 }
 
-export type StepType = "send" | "ask" | "check" | "if" | "end";
+export type StepType = "send" | "ask" | "check" | "if" | "api" | "end";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type AnswerType = "text" | "number" | "yesno" | "choice";
 export type ConditionOp = "is" | "is_not" | "contains" | "gt" | "lt" | "set" | "not_set";
 
@@ -42,8 +43,14 @@ export interface StepAttrs {
   value?: string;
   /** If: where to go when the condition holds. */
   then?: Target;
-  /** If: where to go otherwise. Check: where to go when it fails. */
+  /** If: where to go otherwise. Check and API: where to go when it fails. */
   else?: Target;
+  /** API: the request. URL, headers and body can use {{values}}. */
+  method?: HttpMethod;
+  url?: string;
+  /** API: one "Name: value" per line. */
+  headers?: string;
+  body?: string;
 }
 
 export interface Step extends StepAttrs {
@@ -63,6 +70,7 @@ export const STEP_LABELS: Record<StepType, string> = {
   ask: "Ask",
   check: "Check",
   if: "If",
+  api: "API",
   end: "End",
 };
 export const OP_LABELS: Record<ConditionOp, string> = {
@@ -114,9 +122,13 @@ export const isRunnable = (p: Procedure) => p.steps.length > 0;
 /** Every variable a run can have: parameters, then answers to Ask steps. */
 export function variablesOf(p: Procedure) {
   const names = p.params.map((param) => param.name);
-  for (const step of p.steps)
+  for (const step of p.steps) {
     if (step.step === "ask" && step.variable && !names.includes(step.variable))
       names.push(step.variable);
+    if (step.step === "api" && step.variable)
+      for (const name of [step.variable, `${step.variable}_status`])
+        if (!names.includes(name)) names.push(name);
+  }
   return names;
 }
 
@@ -139,8 +151,34 @@ export function displayValue(
   const value = vars[name] ?? "";
   const param = p.params.find((item) => item.name === name);
   if (param?.type === "record" && value && lookup) return lookup(param, value, property);
+  if (property) return readPath(value, property);
   return value;
 }
+
+/**
+ * A field inside a JSON value, e.g. "customer.email" or "items.0.name" (an API
+ * response). Objects and lists read as compact JSON; anything missing reads as "".
+ */
+export function readPath(json: string, path: string) {
+  let current: unknown;
+  try {
+    current = JSON.parse(json);
+  } catch {
+    return "";
+  }
+  for (const key of path.split(".").filter(Boolean)) {
+    if (current === null || typeof current !== "object") return "";
+    current = (current as Record<string, unknown>)[key];
+  }
+  if (current === undefined || current === null) return "";
+  return typeof current === "object" ? JSON.stringify(current) : String(current);
+}
+
+/** "order.total" → the "order" variable's "total" field. */
+const splitName = (name: string): [string, string | undefined] => {
+  const dot = name.indexOf(".");
+  return dot < 0 ? [name, undefined] : [name.slice(0, dot), name.slice(dot + 1)];
+};
 
 /** Fills in `{{…}}` references; unknown or empty ones stay visible as "{{name}}". */
 export function interpolate(
@@ -148,10 +186,14 @@ export function interpolate(
   p: Procedure,
   vars: Record<string, string>,
   lookup?: Lookup,
+  /** How a value is written into the text: as-is, URL-encoded, or escaped for JSON. */
+  escape: "none" | "url" | "json" = "none",
 ) {
   return text.replace(VARIABLE_PATTERN, (match, name: string, property?: string) => {
     const value = displayValue(p, vars, name, lookup, property?.trim());
-    return value === "" ? match : value;
+    if (escape === "none") return value === "" ? match : value;
+    if (escape === "url") return encodeURIComponent(value);
+    return JSON.stringify(value).slice(1, -1);
   });
 }
 
@@ -163,7 +205,8 @@ export function evaluate(
   lookup?: Lookup,
 ): { holds: boolean; reason: string } {
   const name = step.variable || "";
-  const actual = displayValue(p, vars, name, lookup);
+  const [base, path] = splitName(name);
+  const actual = displayValue(p, vars, base, lookup, path);
   const expected = interpolate(step.value || "", p, vars, lookup);
   const op = step.op || "is";
   const a = actual.trim().toLowerCase();
@@ -219,11 +262,13 @@ export function targetLabel(target: Target | undefined) {
   return target;
 }
 
-export function startRun(p: Procedure, values: Record<string, string>): RunState {
+/** Starts a run at the first step, or at the first step of section `from`. */
+export function startRun(p: Procedure, values: Record<string, string>, from?: string): RunState {
   const vars: Record<string, string> = {};
   for (const param of p.params) vars[param.name] = values[param.name] ?? param.default ?? "";
+  const first = from ? firstStepIn(p, from) : 0;
   return {
-    step: p.steps.length ? 0 : -1,
+    step: p.steps.length ? Math.max(0, first) : -1,
     vars,
     trail: [],
     log: [],
@@ -234,7 +279,20 @@ export function startRun(p: Procedure, values: Record<string, string>): RunState
 export type StepOutcome =
   | { kind: "next" }
   | { kind: "answer"; value: string }
-  | { kind: "check"; result: "passed" | "failed" | "skipped" };
+  | { kind: "check"; result: "passed" | "failed" | "skipped" }
+  | { kind: "response"; response: ApiResponse };
+
+export interface ApiResponse {
+  /** 0 when the request never got an answer (network error, blocked, timed out). */
+  status: number;
+  ok: boolean;
+  body: string;
+  /** Why it failed, in words, when there's no useful status. */
+  error?: string;
+  ms?: number;
+}
+/** Responses are kept with the run; very large ones are cut down. */
+export const MAX_SAVED_BODY = 20_000;
 
 /** Completes the current step and moves to whichever step comes next. */
 export function advance(
@@ -260,6 +318,18 @@ export function advance(
     const target = holds ? step.then : step.else;
     next = resolveTarget(p, step.index, target);
     result = `${holds ? "Yes" : "No"} → ${targetLabel(target)}`;
+  } else if (step.step === "api" && outcome.kind === "response") {
+    const { response } = outcome;
+    if (step.variable) {
+      vars[step.variable] = response.body.slice(0, MAX_SAVED_BODY);
+      vars[`${step.variable}_status`] = String(response.status || "");
+    }
+    result = response.ok
+      ? `${response.status} OK`
+      : response.status
+        ? `Failed: ${response.status}`
+        : `Failed: ${response.error || "no response"}`;
+    if (!response.ok) next = resolveTarget(p, step.index, step.else);
   } else if (step.step === "end") {
     next = -1;
   }

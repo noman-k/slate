@@ -1429,20 +1429,34 @@
 .proc-step-badge select:hover {
   background: color-mix(in srgb, var(--step-color) 26%, transparent);
 }
-.proc-step-text {
+.proc-step-body {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+.proc-step-text {
   line-height: 1.6;
 }
 .proc-step-text > div {
   outline: none;
 }
-.slate-prose .proc-step .is-empty::before {
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
+.proc-step-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  line-height: 1.6;
   color: var(--text-tertiary);
   pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The editor's generic empty-block placeholder never applies to a step. */
+.slate-prose .proc-step.is-empty::before,
+.slate-prose .proc-step::before {
+  content: none !important;
 }
 .proc-step-config {
   display: flex;
@@ -1606,4 +1620,126 @@
   .proc-params-row.is-head {
     display: none;
   }
+}
+.proc-step.is-api { --step-color: var(--icon-pink); }
+.proc-step-config .proc-method {
+  width: 92px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.proc-step-config .proc-url {
+  flex: 1;
+  min-width: 240px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.proc-request-more {
+  width: 100%;
+}
+.proc-request-more summary {
+  width: fit-content;
+  padding: 2px 4px;
+  margin-left: -4px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.proc-request-more summary:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.proc-request-more[open] summary {
+  margin-bottom: 6px;
+}
+.proc-block-field {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 4px !important;
+  margin-bottom: 8px;
+}
+.proc-block-field > span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.proc-block-field textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--divider);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.proc-block-field textarea:focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--accent-border),
+    0 0 0 2px var(--accent-soft);
+}
+.proc-warning {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Sections: a heading and the steps under it */
+.proc-section-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  vertical-align: middle;
+  position: relative;
+  top: -2px;
+  user-select: none;
+  white-space: nowrap;
+}
+.proc-section-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px 0 5px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.proc-section-tools button:hover {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+.proc-section-count {
+  background: var(--hover);
+}
+.proc-section-run {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.proc-section-heading:hover .proc-section-run,
+.proc-section-run:focus-visible {
+  opacity: 1;
+}
+.proc-section-run:hover {
+  color: var(--accent-text) !important;
+}
+@media (hover: none) {
+  .proc-section-run {
+    opacity: 1;
+  }
+}
+.slate-prose .proc-collapsed {
+  display: none;
 }

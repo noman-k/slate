@@ -39,7 +39,7 @@ import { encodeDirective, fencedCode, splitMarkdown } from "../../lib/markdown";
 import { PageIcon } from "../page-icon";
 
 import { EmbedContext, type EmbedOptions } from "./embed-context";
-import { ProcedureParams, ProcedureStep, VariableChips, stepPlaceholder } from "./procedure-nodes";
+import { ProcedureParams, ProcedureSections, ProcedureStep, VariableChips } from "./procedure-nodes";
 export { EmbedContext, type EmbedOptions };
 function EmbedView({ node, extension }: NodeViewProps) {
   const context = useContext(EmbedContext);
@@ -395,9 +395,7 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
           ? `Heading ${node.attrs.level}`
           : node.type.name === "paragraph"
             ? "Press '/' for commands…"
-            : node.type.name === "procedureStep"
-              ? stepPlaceholder(node)
-              : "",
+            : "",
     }),
     TaskList,
     TaskItem.configure({ nested: true }),
@@ -414,6 +412,7 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
     ProcedureParams,
     ProcedureStep,
     VariableChips,
+    ProcedureSections,
   ];
 }
 

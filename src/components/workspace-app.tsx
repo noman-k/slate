@@ -43,6 +43,7 @@ import {
   type StepOutcome,
 } from "@/lib/runner";
 import { createRun, readRun, recordLookup, runsOf, saveRun } from "@/lib/runs";
+import { sendRequest } from "@/lib/api-request";
 import { recordTitle } from "@/lib/database";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
@@ -171,6 +172,8 @@ export function WorkspaceApp() {
   const [runStart, setRunStart] = useState<{
     pageId: string;
     initial: Record<string, string>;
+    /** Start at this section instead of the first step. */
+    from?: string;
   } | null>(null);
   const [activeRun, setActiveRun] = useState<{ pageId: string; recordId: string } | null>(null);
   /** Set when the gallery was opened from "/playbook" or "/runbook" in the editor. */
@@ -532,11 +535,11 @@ export function WorkspaceApp() {
   const procedureOf = (pageId: string) =>
     parseProcedure(state.documents.find((d) => d.page_id === pageId)?.markdown || "");
   /** Starts a run right away: a record in the page's Runs database, played back. */
-  const beginRun = (pageId: string, values: Record<string, string>) => {
+  const beginRun = (pageId: string, values: Record<string, string>, from?: string) => {
     const playbook = state.pages.find((p) => p.id === pageId);
     if (!playbook) return;
     const procedure = procedureOf(pageId);
-    const run = startRun(procedure, values);
+    const run = startRun(procedure, values, from);
     let recordId = "";
     change((s) => {
       const made = createRun(s, playbook, procedure, run);
@@ -547,14 +550,14 @@ export function WorkspaceApp() {
     if (recordId) setActiveRun({ pageId, recordId });
   };
   /** The Run button and run links: ask for the inputs first (if there are any). */
-  const openRunStart = (pageId: string, values: Record<string, string> = {}) => {
+  const openRunStart = (pageId: string, values: Record<string, string> = {}, from?: string) => {
     const procedure = procedureOf(pageId);
     const initial = {
       ...Object.fromEntries(procedure.params.map((p) => [p.name, p.default ?? ""])),
       ...values,
     };
-    if (!procedure.params.length) beginRun(pageId, initial);
-    else setRunStart({ pageId, initial });
+    if (!procedure.params.length) beginRun(pageId, initial, from);
+    else setRunStart({ pageId, initial, from });
   };
   const copyRunLink = (pageId: string, values: Record<string, string>) => {
     const query = new URLSearchParams({ run: "1" });
@@ -791,6 +794,7 @@ export function WorkspaceApp() {
       listDatabases={() => databaseChoices(p.id)}
       onLinkDatabase={linkDatabase}
       onInsertProcedure={insertProcedure}
+      onRunFrom={(section) => openRunStart(p.id, {}, section)}
       onHistoryApi={registerHistory}
       onOpenPage={open}
       resolvePage={(pageId) =>
@@ -1383,7 +1387,8 @@ export function WorkspaceApp() {
       )}
       {runStart && (
         <RunStartDialog
-          key={`${runStart.pageId}:${JSON.stringify(runStart.initial)}`}
+          key={`${runStart.pageId}:${runStart.from ?? ""}:${JSON.stringify(runStart.initial)}`}
+          from={runStart.from}
           open
           title={state.pages.find((p) => p.id === runStart.pageId)?.title || ""}
           procedure={procedureOf(runStart.pageId)}
@@ -1397,7 +1402,7 @@ export function WorkspaceApp() {
               )
               .map((r) => ({ id: r.id, label: recordTitle(r, state) }))
           }
-          onStart={(values) => beginRun(runStart.pageId, values)}
+          onStart={(values) => beginRun(runStart.pageId, values, runStart.from)}
           onCopyLink={(values) => copyRunLink(runStart.pageId, values)}
           onClose={() => setRunStart(null)}
         />
@@ -1433,6 +1438,7 @@ export function WorkspaceApp() {
             setActiveRun(null);
             openRunStart(pageId, inputs);
           }}
+          sendRequest={(request) => sendRequest(request, { viaServer: !isDemo })}
           onOpenLog={() => {
             const pageId = activeRecord?.page_id;
             setActiveRun(null);

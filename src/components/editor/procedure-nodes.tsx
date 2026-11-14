@@ -26,16 +26,16 @@ import {
   type StepType,
 } from "../../lib/runner";
 import { EmbedContext } from "./embed-context";
+import { HTTP_METHODS } from "../../lib/api-request";
 
 const STEP_HINTS: Record<StepType, string> = {
   send: "What to say or do — use {{name}} to fill in a value",
   ask: "The question to ask",
   check: "What to do and check",
   if: "Optional note on this decision",
+  api: "What this request does, e.g. Look up the order",
   end: "Closing note (optional)",
 };
-export const stepPlaceholder = (node: PMNode) =>
-  STEP_HINTS[(node.attrs.step as StepType) || "send"];
 
 /** Section titles (headings) and variable names in the document, kept up to date. */
 function useDocumentInfo(editor: Editor) {
@@ -50,6 +50,9 @@ function useDocumentInfo(editor: Editor) {
           if (param.name && !variables.includes(param.name)) variables.push(param.name);
       if (node.type.name === "procedureStep" && node.attrs.step === "ask" && node.attrs.variable)
         if (!variables.includes(node.attrs.variable)) variables.push(node.attrs.variable);
+      if (node.type.name === "procedureStep" && node.attrs.step === "api" && node.attrs.variable)
+        for (const name of [node.attrs.variable, `${node.attrs.variable}_status`])
+          if (!variables.includes(name)) variables.push(name);
       return node.type.name !== "procedureStep";
     });
     return { sections, variables };
@@ -68,6 +71,8 @@ function useDocumentInfo(editor: Editor) {
 
 /** A variable name people can type into {{…}}: letters, digits and underscores. */
 const cleanName = (value: string) => value.replace(/\s+/g, "_").replace(/[^\w]/g, "");
+/** A variable to check, which may read a field of a response: "order.status". */
+const cleanPath = (value: string) => value.replace(/\s+/g, "_").replace(/[^\w.]/g, "");
 
 function TargetSelect({
   label,
@@ -123,7 +128,16 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
             ))}
           </select>
         </span>
-        <NodeViewContent className="proc-step-text" />
+        {/* The hint lives inside the text area (the editor's own placeholder would be
+            drawn on the whole block, over the badge). */}
+        <div className="proc-step-body">
+          {node.content.size === 0 && (
+            <span className="proc-step-placeholder" contentEditable={false} aria-hidden>
+              {STEP_HINTS[step]}
+            </span>
+          )}
+          <NodeViewContent className="proc-step-text" />
+        </div>
       </div>
       {step !== "send" && step !== "end" && (
         <div className="proc-step-config" contentEditable={false}>
@@ -186,6 +200,83 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
               </label>
             </>
           )}
+          {step === "api" && (
+            <>
+              <span className="proc-config-line">
+                <select
+                  className="proc-method"
+                  aria-label="Method"
+                  value={String(node.attrs.method || "GET")}
+                  onChange={(event) => set({ method: event.target.value })}
+                >
+                  {HTTP_METHODS.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="proc-url"
+                  aria-label="URL"
+                  placeholder="https://api.example.com/orders/{{order_number}}"
+                  spellCheck={false}
+                  value={String(node.attrs.url || "")}
+                  onChange={(event) => set({ url: event.target.value })}
+                />
+              </span>
+              <span className="proc-config-line">
+                <label>
+                  Save response as
+                  <input
+                    className="proc-var-input"
+                    aria-label="Save response as"
+                    placeholder="response"
+                    value={String(node.attrs.variable || "")}
+                    onChange={(event) => set({ variable: cleanName(event.target.value) })}
+                  />
+                </label>
+                <label>
+                  If it fails
+                  <TargetSelect
+                    label="If the request fails"
+                    value={String(node.attrs.else || "")}
+                    sections={sections}
+                    onChange={(value) => set({ else: value })}
+                  />
+                </label>
+              </span>
+              <details className="proc-request-more" open={!!(node.attrs.headers || node.attrs.body) || undefined}>
+                <summary>Headers and body</summary>
+                <label className="proc-block-field">
+                  <span>Headers — one per line</span>
+                  <textarea
+                    aria-label="Headers"
+                    rows={2}
+                    spellCheck={false}
+                    placeholder={"Authorization: Bearer your-token\nAccept: application/json"}
+                    value={String(node.attrs.headers || "")}
+                    onChange={(event) => set({ headers: event.target.value })}
+                  />
+                </label>
+                {node.attrs.method && node.attrs.method !== "GET" && (
+                  <label className="proc-block-field">
+                    <span>Body — JSON or text, with {"{{values}}"}</span>
+                    <textarea
+                      aria-label="Body"
+                      rows={3}
+                      spellCheck={false}
+                      placeholder={'{ "order": "{{order_number}}" }'}
+                      value={String(node.attrs.body || "")}
+                      onChange={(event) => set({ body: event.target.value })}
+                    />
+                  </label>
+                )}
+                <small className="proc-warning">
+                  Headers are saved in this page: anyone who can open it can see them.
+                </small>
+              </details>
+            </>
+          )}
           {step === "if" && (
             <>
               <span className="proc-config-line">
@@ -196,7 +287,7 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
                   placeholder="variable"
                   list={listId}
                   value={String(node.attrs.variable || "")}
-                  onChange={(event) => set({ variable: cleanName(event.target.value) })}
+                  onChange={(event) => set({ variable: cleanPath(event.target.value) })}
                 />
                 <select
                   aria-label="Condition"
@@ -274,6 +365,10 @@ export const ProcedureStep = Node.create({
       value: { default: null },
       then: { default: null },
       else: { default: null },
+      method: { default: null },
+      url: { default: null },
+      headers: { default: null },
+      body: { default: null },
     };
   },
   parseHTML() {
@@ -460,6 +555,169 @@ export const VariableChips = Extension.create({
           decorations(state) {
             return this.getState(state);
           },
+        },
+      }),
+    ];
+  },
+});
+
+export interface SectionStorage {
+  /** Starts a run at this section (set by the page editor). */
+  onRunFrom: ((section: string) => void) | null;
+  /** Sections whose steps are folded away (for this session). */
+  collapsed: Set<string>;
+}
+const sectionsKey = new PluginKey<DecorationSet>("procedureSections");
+/** Turns "Run from here" on section headings on or off, and redraws them. */
+export function setRunFrom(editor: Editor, run: ((section: string) => void) | null) {
+  const storage = (editor.storage as unknown as Record<string, SectionStorage>).procedureSections;
+  if (!storage) return;
+  storage.onRunFrom = run;
+  editor.view.dispatch(editor.state.tr.setMeta(sectionsKey, "refresh"));
+}
+
+/** Top-level headings (H1/H2) and the step blocks that follow each one. */
+function sectionsIn(doc: PMNode) {
+  const sections: { pos: number; node: PMNode; title: string; steps: { pos: number; node: PMNode }[] }[] = [];
+  let current: (typeof sections)[number] | null = null;
+  doc.forEach((node, pos) => {
+    if (node.type.name === "heading" && node.attrs.level <= 2) {
+      current = { pos, node, title: node.textContent.trim(), steps: [] };
+      sections.push(current);
+    } else if (node.type.name === "procedureStep" && current) current.steps.push({ pos, node });
+  });
+  return sections;
+}
+
+const icon = (path: string) =>
+  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+
+/** The chip after a section heading: "3 steps" (click to fold) and Run from here. */
+function sectionTools(title: string, count: number, collapsed: boolean, storage: SectionStorage) {
+  return (view: import("@tiptap/pm/view").EditorView) => {
+    const tools = document.createElement("span");
+    tools.className = "proc-section-tools";
+    tools.contentEditable = "false";
+    const fold = document.createElement("button");
+    fold.type = "button";
+    fold.className = "proc-section-count";
+    fold.setAttribute("aria-expanded", String(!collapsed));
+    fold.setAttribute("aria-label", `${collapsed ? "Show" : "Hide"} the ${count} steps in ${title}`);
+    fold.title = collapsed ? "Show these steps" : "Hide these steps";
+    fold.innerHTML = `${icon(collapsed ? '<path d="m9 18 6-6-6-6"/>' : '<path d="m6 9 6 6 6-6"/>')}<span>${count} ${count === 1 ? "step" : "steps"}${collapsed ? " hidden" : ""}</span>`;
+    fold.addEventListener("mousedown", (event) => event.preventDefault());
+    fold.addEventListener("click", () => {
+      if (storage.collapsed.has(title)) storage.collapsed.delete(title);
+      else storage.collapsed.add(title);
+      view.dispatch(view.state.tr.setMeta(sectionsKey, "refresh"));
+    });
+    tools.append(fold);
+    if (storage.onRunFrom) {
+      const run = document.createElement("button");
+      run.type = "button";
+      run.className = "proc-section-run";
+      run.setAttribute("aria-label", `Run from ${title}`);
+      run.title = "Start a run at this section";
+      run.innerHTML = `${icon('<path d="M6 4v16l14-8z"/>')}<span>Run from here</span>`;
+      run.addEventListener("mousedown", (event) => event.preventDefault());
+      run.addEventListener("click", () => storage.onRunFrom?.(title));
+      tools.append(run);
+    }
+    return tools;
+  };
+}
+
+/**
+ * Sections of a runnable page: a heading and the steps under it read as one group (a
+ * step count on the heading, a rail beside its steps), can be folded or run from, and
+ * steps that "go to" a section follow it when the heading is renamed.
+ */
+export const ProcedureSections = Extension.create<object, SectionStorage>({
+  name: "procedureSections",
+  addStorage() {
+    return { onRunFrom: null, collapsed: new Set<string>() };
+  },
+  addProseMirrorPlugins() {
+    const storage = this.storage;
+    const build = (doc: PMNode) => {
+      const decorations: Decoration[] = [];
+      for (const section of sectionsIn(doc)) {
+        if (!section.steps.length || !section.title) continue;
+        const collapsed = storage.collapsed.has(section.title);
+        const end = section.pos + section.node.nodeSize;
+        decorations.push(Decoration.node(section.pos, end, { class: "proc-section-heading" }));
+        decorations.push(
+          Decoration.widget(end - 1, sectionTools(section.title, section.steps.length, collapsed, storage), {
+            side: 1,
+            ignoreSelection: true,
+            stopEvent: () => true,
+            key: `section:${section.title}:${section.steps.length}:${collapsed}:${!!storage.onRunFrom}`,
+          }),
+        );
+        section.steps.forEach(({ pos, node }, index) =>
+          decorations.push(
+            Decoration.node(pos, pos + node.nodeSize, {
+              class: [
+                "proc-in-section",
+                index === section.steps.length - 1 ? "is-last" : "",
+                collapsed ? "proc-collapsed" : "",
+              ]
+                .filter(Boolean)
+                .join(" "),
+            }),
+          ),
+        );
+      }
+      return DecorationSet.create(doc, decorations);
+    };
+    return [
+      new Plugin<DecorationSet>({
+        key: sectionsKey,
+        state: {
+          init: (_, state) => build(state.doc),
+          apply: (tr, old) => (tr.docChanged || tr.getMeta(sectionsKey) ? build(tr.doc) : old),
+        },
+        props: {
+          decorations(state) {
+            return sectionsKey.getState(state);
+          },
+        },
+        // A renamed section heading takes the steps that go to it along.
+        appendTransaction(transactions, oldState, newState) {
+          if (!transactions.some((tr) => tr.docChanged)) return null;
+          const renames = new Map<string, string>();
+          for (const section of sectionsIn(oldState.doc)) {
+            if (!section.title) continue;
+            let pos: number | null = section.pos;
+            for (const tr of transactions) {
+              if (pos === null) break;
+              const mapped = tr.mapping.mapResult(pos, 1);
+              pos = mapped.deleted ? null : mapped.pos;
+            }
+            const now = pos === null ? null : newState.doc.nodeAt(pos);
+            const title = now?.type.name === "heading" ? now.textContent.trim() : "";
+            if (title && title !== section.title) renames.set(section.title, title);
+          }
+          if (!renames.size) return null;
+          // Only when the old name is gone (two headings could share it).
+          const titles = new Set(sectionsIn(newState.doc).map((s) => s.title));
+          let tr = newState.tr;
+          newState.doc.forEach((node, pos) => {
+            if (node.type.name !== "procedureStep") return;
+            const attrs = { ...node.attrs };
+            let changed = false;
+            for (const key of ["then", "else"] as const) {
+              const to = renames.get(attrs[key]);
+              if (to && !titles.has(attrs[key])) {
+                attrs[key] = to;
+                changed = true;
+              }
+            }
+            if (changed) tr = tr.setNodeMarkup(pos, undefined, attrs);
+          });
+          for (const [from, to] of renames)
+            if (storage.collapsed.delete(from)) storage.collapsed.add(to);
+          return tr.docChanged ? tr : null;
         },
       }),
     ];
