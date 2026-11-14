@@ -627,35 +627,6 @@ export function PlaybookBuilder({
               onChange={(event) => update((m) => ({ ...m, guidelines: event.target.value.split("\n") }))}
             />
           </Panel>
-          <Panel
-            title="Outline"
-            action={
-              checks.warnings > 0 ? (
-                <button className="pb-issue-summary" onClick={showFirstIssue}>
-                  <AlertTriangle size={12} />
-                  {checks.warnings} to fix
-                </button>
-              ) : checks.total === 0 && model.sections.length > 0 ? (
-                <span className="pb-all-good">Ready to run</span>
-              ) : null
-            }
-          >
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onOutlineDragEnd}>
-              <SortableContext items={model.sections.map((s) => `outline:${s.id}`)} strategy={verticalListSortingStrategy}>
-                <ol className="pb-outline">
-                  {model.sections.map((section, index) => (
-                    <OutlineItem
-                      key={section.id}
-                      section={section}
-                      index={index}
-                      issues={warningsIn(section)}
-                      onJump={() => jumpTo(section.id)}
-                    />
-                  ))}
-                </ol>
-              </SortableContext>
-            </DndContext>
-          </Panel>
           {model.details === null && (
             <button
               className="pb-link"
@@ -677,6 +648,37 @@ export function PlaybookBuilder({
               />
             </Panel>
           ) : null}
+          <div className="pb-sticky">
+            <Panel
+              title="Outline"
+              action={
+                checks.warnings > 0 ? (
+                  <button className="pb-issue-summary" onClick={showFirstIssue}>
+                    <AlertTriangle size={12} />
+                    {checks.warnings} to fix
+                  </button>
+                ) : checks.total === 0 && model.sections.length > 0 ? (
+                  <span className="pb-all-good">Ready to run</span>
+                ) : null
+              }
+            >
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onOutlineDragEnd}>
+                <SortableContext items={model.sections.map((s) => `outline:${s.id}`)} strategy={verticalListSortingStrategy}>
+                  <ol className="pb-outline">
+                    {model.sections.map((section, index) => (
+                      <OutlineItem
+                        key={section.id}
+                        section={section}
+                        index={index}
+                        issues={warningsIn(section)}
+                        onJump={() => jumpTo(section.id)}
+                      />
+                    ))}
+                  </ol>
+                </SortableContext>
+              </DndContext>
+            </Panel>
+          </div>
         </aside>
         <div className="pb-main">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={onStepDragOver} onDragEnd={onStepDragEnd}>

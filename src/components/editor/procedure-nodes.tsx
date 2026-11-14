@@ -653,6 +653,8 @@ export function InputsEditor({
   const { listDatabases } = useContext(EmbedContext);
   const databases = listDatabases?.() ?? [];
   const save = onChange;
+  /** The input being edited, in the compact panel (the rest are one-line summaries). */
+  const [open, setOpen] = useState<number | null>(null);
   const edit = (index: number, patch: Partial<Param>) =>
     save(params.map((param, i) => (i === index ? { ...param, ...patch } : param)));
   /** The label is what people see; its key follows it, and steps using it are updated. */
@@ -686,7 +688,22 @@ export function InputsEditor({
             <span role="columnheader">Required</span>
             <span aria-hidden />
           </div>
-          {params.map((param, index) => (
+          {params.map((param, index) =>
+            compact && open !== index ? (
+              // In the narrow panel an input is one line until you open it.
+              <button
+                key={index}
+                className="proc-input-summary"
+                aria-label={`Edit ${labelOf(param) || "untitled input"}`}
+                onClick={() => setOpen(index)}
+              >
+                <strong className={param.name ? "" : "is-untitled"}>{labelOf(param) || "Untitled input"}</strong>
+                <small>
+                  {PARAM_TYPES.find((t) => t.value === param.type)?.label}
+                  {param.required ? " · Required" : " · Optional"}
+                </small>
+              </button>
+            ) : (
             <div className="proc-params-row" role="row" key={index}>
               <input
                 className="proc-name-input"
@@ -756,13 +773,22 @@ export function InputsEditor({
               >
                 <X size={14} />
               </button>
+              {compact && (
+                <button className="proc-input-done" onClick={() => setOpen(null)}>
+                  Done
+                </button>
+              )}
             </div>
-          ))}
+            ),
+          )}
         </div>
       )}
       <button
         className="proc-add"
-        onClick={() => save([...params, { name: "", type: "text", required: true }])}
+        onClick={() => {
+          save([...params, { name: "", type: "text", required: true }]);
+          setOpen(params.length);
+        }}
       >
         <Plus size={14} />
         Add an input

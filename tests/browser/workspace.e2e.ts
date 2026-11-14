@@ -1031,3 +1031,23 @@ test("the builder checks the playbook and says what to fix", async ({ page }) =>
   await expect(decide.locator(".pb-issues")).toContainText("Both answers go the same way");
   await expect(decide.locator(".pb-issues .is-warning")).toHaveCount(0);
 });
+test("the builder scrolls as one page, with inputs as one-line summaries", async ({ page }) => {
+  await startFromTemplate(page, "Playbook", /Refund request/);
+  const inputs = page.getByRole("region", { name: "Inputs" });
+  // Inputs read as summaries; clicking one opens it, Done closes it.
+  await expect(inputs.getByRole("button", { name: "Edit Order total" })).toContainText("Text · Required");
+  await inputs.getByRole("button", { name: "Edit Order total" }).click();
+  await expect(inputs.getByLabel("Input name")).toHaveValue("Order total");
+  await inputs.getByRole("button", { name: "Done" }).click();
+  await expect(inputs.getByLabel("Input name")).toHaveCount(0);
+  // No box inside the builder scrolls on its own; the outline stays in view.
+  const scrollers = await page.evaluate(() =>
+    [...document.querySelectorAll(".pb *")].filter((el) => {
+      const style = getComputedStyle(el);
+      return /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1;
+    }).length,
+  );
+  expect(scrollers).toBe(0);
+  await page.evaluate(() => (document.querySelector(".page-scroll")!.scrollTop = 1500));
+  await expect(page.getByRole("region", { name: "Outline" })).toBeInViewport();
+});
