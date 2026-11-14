@@ -1,66 +1,89 @@
 # Slate
 
-A dark, desktop-oriented notes and database workspace inspired by the supplied Notion reference. Built with Next.js App Router, React, TypeScript, Tiptap, CodeMirror, TanStack Table/Virtual, Radix, Supabase, and the OpenNext adapter for Cloudflare Workers.
+A private workspace where notes, databases and runnable playbooks live together, and AI agents can read it all. Live at **https://slate.noman.io**.
+
+Built with Next.js 16 (App Router), React 19, TypeScript, Tiptap, CodeMirror, TanStack Table/Virtual, dnd-kit, Radix, Supabase (Auth, Postgres, Storage) and the OpenNext adapter for Cloudflare Workers.
 
 ![Slate Rent Ledger preview](docs/preview.jpg)
 
+## What's in it
+
+- **Accounts, no demo.** Everyone registers or logs in with Supabase Auth; each account gets an empty private workspace. Supabase is the only store.
+- **Pages.** A Notion-style editor: `/` commands, Markdown shortcuts, to-dos, tables, code blocks, callouts, images (private uploads) and nested subpages that appear as blocks in their parent. Every page can switch to a Markdown source view; Markdown is the stored format.
+- **Databases.** Table, board and list views with filters, sorts, hidden and reordered properties. Property types include status, select, date, currency, relation, rollup and formula. Records open as a side peek or a full page. Databases can live inside pages, and linked views of a database keep views of their own. Export to CSV.
+- **Playbooks.** Checklists you can run. Steps are Check, Ask, Say, Decide (branch on an answer), Call (an HTTP API) and Finish, grouped into sections, with typed inputs filled in when a run starts. About 15 templates cover home & property, support, operations and automations. Runs can pause and resume, and every run is saved as a record in the playbook's own Runs database. The builder points out mistakes (a jump to a missing section, a value that doesn't exist, a run that never finishes).
+- **AI agents over MCP.** Settings › AI agents creates `slate_…` keys; an agent uses one to search and read pages, databases and playbooks. Read-only; keys can be revoked.
+- **Light and dark.** System, Light or Dark, chosen in Settings or the landing page footer. The landing page uses the app's own design tokens, so both look the same.
+
 ## Run locally
 
-Use Node.js 22.12 or later (22 LTS recommended) and npm.
+Use Node.js 22.12 or later (22 LTS recommended) and npm. If you use nvm, `nvm install && nvm use` picks the version in `.nvmrc`. Check `node --version` in the same terminal: installing a newer Node doesn't change terminals that still have an older one first on `PATH`.
 
-If you use nvm, select the version in `.nvmrc` first:
-
-```sh
-nvm install
-nvm use
-```
-
-Check `node --version` in the same terminal before starting the app. Installing a newer Node version does not change terminals that still have an older version first on `PATH`.
+Slate needs Supabase to sign in, so start the local stack first. Install the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), start Docker, then:
 
 ```sh
-node --version
 npm ci
+supabase start
+supabase status
 test -f .env.local || cp .env.example .env.local
 ```
 
-Slate has no demo mode: everyone signs in, and Supabase is the only store. Set both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` (for local development, from [Local Supabase](#local-supabase) below), then run:
+Copy the API URL and publishable key from `supabase status` into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local`. **Never put a service-role (secret) key in a `NEXT_PUBLIC_` variable.** Then:
 
 ```sh
 npm run dev
 ```
 
-Open http://localhost:3000 for the front page, then register or log in to reach the workspace at http://localhost:3000/app. Registration creates an empty private workspace. These are the project URL and public publishable key from Supabase. **Never use a service-role key in a `NEXT_PUBLIC_` variable.** Without the two variables, the front page still loads, but the workspace redirects to the login page, which explains that Supabase isn't connected.
+Open http://localhost:3000 and register; the workspace is at http://localhost:3000/app. Without the two Supabase variables the front page still loads, but the workspace redirects to the login page, which explains that Supabase isn't connected.
+
+`supabase db reset` re-applies the migrations to an empty database. Local email confirmations are off (`supabase/config.toml`); hosted projects should turn them on. The local config also raises the sign-in rate limit, because the browser tests sign in a fresh account for every test.
 
 ### Tailwind / magic-string ESM error
 
-An error saying `require() of ES Module .../magic-string/dist/index.mjs not supported` can occur when the shell uses an older Node runtime, including Node 20.17. The installed Tailwind dependency needs the ESM `require()` support enabled by default in [Node 22.12](https://nodejs.org/en/blog/release/v22.12.0). Switch to Node 22.12 or newer, stop the failed dev server with Ctrl+C, and run `npm run dev` again. The dev and build scripts check the runtime version before launching the tooling.
+`require() of ES Module .../magic-string/dist/index.mjs not supported` means the shell is on an older Node (for example 20.17). Tailwind needs the ESM `require()` support that is on by default from [Node 22.12](https://nodejs.org/en/blog/release/v22.12.0). Switch Node, stop the failed server with Ctrl+C, and run `npm run dev` again. The dev and build scripts check the Node version first.
 
-### Local Supabase
+## Project layout
 
-Install the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) and start Docker:
+| Path | What's there |
+| --- | --- |
+| `src/app/page.tsx`, `landing.css` | Landing page (adapts to signed-in visitors) |
+| `src/app/app`, `src/app/p/[id]` | The workspace (`/app`, `/p/<page id>`) |
+| `src/app/auth/*` | Register, log in, forgot/reset password, auth callback |
+| `src/app/api/mcp` | MCP endpoint for AI agents |
+| `src/app/api/run-request` | Server-side sender for playbook API steps |
+| `src/app/api/attachments/[id]` | Signed redirects to private uploads |
+| `src/middleware.ts` | Session refresh and sign-in redirect |
+| `src/components/workspace-app.tsx` | Workspace shell: sidebar, pages, runs, dialogs |
+| `src/components/editor/*` | Tiptap editor, Markdown source pane, playbook step blocks |
+| `src/components/database/*` | Database views |
+| `src/lib/use-workspace.ts`, `persistence.ts` | Client state, saving and sync with Supabase |
+| `src/lib/markdown.ts` | Markdown ↔ blocks (`:::slate` / `:::slate-node` lines) |
+| `src/lib/runner.ts`, `runs.ts`, `playbook-*.ts`, `procedures.ts` | Running playbooks, run history, builder model and checks, templates |
+| `src/lib/agent-tools.ts`, `mcp.ts`, `agent-keys.ts` | Agent tools, MCP protocol, agent keys |
+| `supabase/migrations`, `supabase/tests` | Schema, policies, functions; pgTAP tests |
+| `tests/*.test.ts`, `tests/browser`, `tests/fixtures/seed.ts` | Unit tests, Playwright suite, example rental workspace |
 
-```sh
-supabase start
-supabase db reset
-supabase status
-```
-
-Copy the local API URL and publishable key from `supabase status` into `.env.local`, restart the app, and register. Local email confirmations are disabled by `supabase/config.toml`; hosted projects should enable them. Migrations create the schema, indexes, authorization policies, private Storage bucket, account bootstrap trigger, and transactional persistence functions. No shared account is seeded. `supabase/config.toml` also raises the local sign-in rate limit, because the browser tests sign in a fresh account for every test.
+The `slate` names inside saved data (`:::slate` blocks, `slate_` key prefix, `slate-*` browser storage keys) are part of the stored format; renaming them would break existing pages, keys or drafts.
 
 ## Data and security
 
-Workspaces, pages, documents, databases, properties, records, cell values, views, relations, and attachments are separate PostgreSQL tables. Record values are independently queryable rows; flexible document content and view configuration use JSONB. The application never stores its entire state in one database JSON column.
+Workspaces, pages, documents, databases, properties, records, cell values, views, relations, attachments and agent keys are separate PostgreSQL tables. Record values are queryable rows; document content and view configuration use JSONB. The whole state is never stored in one JSON column.
 
-Every application table has owner-scoped Row Level Security. Composite foreign keys prevent a page, value, or relation from crossing workspace boundaries. A deferred trigger rejects page cycles; relation targets must belong to their configured database. Database record deletion cascades relation links. Workspace operations are owner-only; there are no invitations, public pages, or shared workspace roles.
+Every application table has owner-scoped Row Level Security. Composite foreign keys keep a page, value or relation from crossing workspace boundaries. A deferred trigger rejects page cycles; relation targets must belong to their configured database; deleting a record removes its relation links. Workspaces are owner-only: there are no invitations, public pages or shared roles.
 
-`load_workspace_state` assembles a consistent snapshot from normalized tables. `save_workspace_state` applies a transaction and increments a revision under a row lock. A stale tab receives a conflict instead of overwriting another tab’s changes. The client journals unsynced changes in a per-account local outbox and warns before closing a tab with pending remote edits. On reload it replays a draft only when its base revision still matches the authoritative server revision. A conflicting draft is offered as a recovery download instead of overwriting newer remote data. Synchronization errors retain the local edits; resolve the conflict before continuing. This snapshot transport is intentionally simple; cursor-based incremental synchronization is a future improvement for very large workspaces.
+`load_workspace_state` assembles a consistent snapshot from the normalized tables. `save_workspace_state` applies a whole snapshot in one transaction and bumps a revision under a row lock, so a stale tab gets a conflict instead of overwriting another tab's changes. The client keeps unsynced changes in a per-account local outbox and warns before closing a tab with unsaved edits. On reload it replays that draft only if its base revision still matches the server; otherwise the draft is offered as a download rather than overwriting newer data. Snapshot sync is deliberately simple; incremental sync is future work for very large workspaces.
 
-Session cookies use `@supabase/ssr`; middleware validates/refreshes the session, while Supabase RLS remains the data authorization boundary. Registration, login, logout, password recovery, and recovery callback routes use Supabase Auth. In the hosted Supabase dashboard, set the Site URL to the deployed origin and allow:
+Session cookies use `@supabase/ssr`. Middleware refreshes the session and sends signed-out visitors to the login page (or answers `401` for `/api/*`); RLS stays the real authorization boundary. Registration, login, logout and password recovery use Supabase Auth.
 
-- `https://YOUR-ORIGIN/auth/callback`
-- `https://YOUR-ORIGIN/auth/callback?next=/auth/reset`
+**Attachments.** The private `attachments` bucket takes images, PDFs and text files up to 20 MB, under keys that start with the owning workspace id. Documents keep stable `/api/attachments/:id` URLs; that endpoint checks ownership, the parent page and the object path, then redirects to a short-lived signed URL with private, no-store headers. A failed metadata insert rolls the upload back.
 
-The private `attachments` bucket accepts images, PDFs, and text files up to 20 MB. Object keys must begin with the owning workspace UUID. The editor uploads private images into workspace/page-scoped object keys with attachment metadata. Documents keep stable `/api/attachments/:id` URLs; that authenticated endpoint checks owner RLS, parent page existence, and the scoped object path, then creates a short-lived signed redirect with private no-store headers. Uploads roll back the object if metadata insertion fails. Private files do not become public.
+**Playbook API steps** are sent by `/api/run-request`, never from the browser. It requires a signed-in user, drops cookies and forwarding headers, doesn't follow redirects, blocks private and local addresses in production, and caps requests (200 KB), responses (1 MB) and time (15 s). Secret headers are masked in run history and links.
+
+**AI agents (MCP).** Keys are random `slate_…` secrets made in the browser; only a SHA-256 hash is stored, so a key is shown once. `/api/mcp` skips the session middleware: the route checks the key itself through `agent_workspace_state`, which returns the key owner's workspace read-only. It speaks stateless MCP over Streamable HTTP (one JSON-RPC message per POST; protocol versions 2025-06-18, 2025-03-26 and 2024-11-05) and offers five read-only tools: `search_workspace`, `read_page`, `list_databases`, `query_database` and `list_playbooks`. Page content is returned as clearly marked workspace data, not instructions. To connect Claude Code:
+
+```sh
+claude mcp add --transport http slate https://slate.noman.io/api/mcp --header "Authorization: Bearer slate_YOUR_KEY"
+```
 
 ## Development checks
 
@@ -76,11 +99,16 @@ npm run test:e2e
 npm run test:auth
 ```
 
-Unit tests cover document serialization and database computation. The SQL tests cover registration bootstrap, RLS isolation, unauthorized inserts, normalized snapshot ownership, and stale-save rejection. Running database and authentication tests requires the local Supabase Docker stack. The HTTP auth test refuses non-loopback URLs, creates unique temporary accounts, checks registration/login/session refresh, workspace bootstrap, nested-page and relational persistence, per-view column order, cross-account read/write isolation, stale revisions, password changes, reauthentication, and logout, then removes its accounts. `.github/workflows/ci.yml` runs application, database, and HTTP auth checks in CI. The Playwright suite also needs the local stack: for each test it creates a throwaway account holding the example rental workspace (`tests/fixtures/seed.ts`), signs in through the login form, and deletes the account afterwards. It starts its own dev server on port 3100 wired to `supabase status`; set `PLAYWRIGHT_BASE_URL` to use a server you run yourself. `.github/workflows/browser.yml` starts Supabase before running it. Set `SUPABASE_TEST_WORKDIR` to use an isolated Supabase CLI checkout.
+- **Unit tests** (`npm test`, Vitest): Markdown and editor round trips, page blocks, databases and formulas, page duplication and the page tree, playbook model, checks and runner, API request rules, agent tools, attachments, and the deploy configuration check.
+- **Database tests** (`supabase test db`, pgTAP): registration bootstrap, RLS isolation, unauthorized inserts, snapshot ownership, stale-save rejection and relation rules.
+- **HTTP auth test** (`npm run test:auth`): against local Supabase only. Creates temporary accounts and checks registration, login, session refresh, workspace bootstrap, nested-page and relational persistence, per-view column order, cross-account isolation, stale revisions, password changes, reauthentication and logout, then removes the accounts.
+- **Browser tests** (`npm run test:e2e`, Playwright): need `supabase start`. Each test creates a throwaway account holding the example rental workspace (`tests/fixtures/seed.ts`), signs in through the login form, and deletes the account afterwards. The suite starts its own dev server on port 3100 wired to `supabase status`, so stop any other `next dev` in this folder first (Next allows one per project). Set `PLAYWRIGHT_BASE_URL` to test a server you run yourself. API steps are stubbed at `/api/run-request`.
+
+Database, auth and browser tests need Docker. Set `SUPABASE_TEST_WORKDIR` to use an isolated Supabase CLI checkout. In CI, `.github/workflows/ci.yml` runs typecheck, lint, unit tests, the Worker build, database tests and the HTTP auth test; `.github/workflows/browser.yml` starts Supabase and runs the Playwright suite.
 
 ## Cloudflare Workers
 
-The repository follows the official [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/) and [OpenNext adapter setup](https://opennext.js.org/cloudflare/get-started). This is a Workers target with `nodejs_compat`, not a Cloudflare Pages static export.
+The repository follows the [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/) and the [OpenNext adapter setup](https://opennext.js.org/cloudflare/get-started). It is a Workers target with `nodejs_compat`, not a Pages static export.
 
 ```sh
 npm run build:worker
@@ -88,15 +116,15 @@ npm run preview
 npm run deploy
 ```
 
-`preview` builds and serves the Worker through Wrangler. `deploy` builds and publishes the Worker through `scripts/deploy-worker.mjs`. That script loads production environment files, validates that the supplied Supabase key is public, and generates an ignored temporary Wrangler configuration with explicit runtime bindings. The generated configuration is removed after the command. `npm run deploy:check` validates configuration without deploying. Authenticate Wrangler locally or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The API token needs Worker deployment permissions for the intended account. Change the Worker name in `wrangler.jsonc` as needed.
+`preview` builds and serves the Worker through Wrangler. `deploy` builds and publishes it through `scripts/deploy-worker.mjs`, which loads production environment files, checks that the Supabase key is a public one, and writes a temporary Wrangler config with explicit runtime bindings (removed afterwards). `npm run deploy:check` validates without deploying. Authenticate Wrangler locally or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
-The Supabase URL and publishable key must exist at build time because Next.js embeds `NEXT_PUBLIC_` values into browser assets. The deployment script explicitly binds the same values to the Worker runtime so authentication middleware receives them; do not deploy a production build without them. `NEXT_PUBLIC_APP_URL` documents the canonical origin; auth redirects use the current origin to support previews. Add each permitted preview origin explicitly to Supabase Auth redirect URLs.
+The Supabase URL and publishable key must be present at build time, because Next.js embeds `NEXT_PUBLIC_` values in browser assets; the deploy script also binds them to the Worker runtime for the middleware. `NEXT_PUBLIC_APP_URL` records the canonical origin. Auth redirects use the current origin, so add any preview origin to Supabase's redirect URLs explicitly.
 
 ### Production domain: slate.noman.io
 
-Production runs at **https://slate.noman.io**. `wrangler.jsonc` attaches the Worker to that hostname as a [Workers Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/), so the first deploy creates the DNS record and certificate. One-time setup:
+`wrangler.jsonc` attaches the Worker (`slate-workspace`) to **slate.noman.io** as a [Workers Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/), so the first deploy creates the DNS record and certificate. One-time setup:
 
-1. **Cloudflare:** `noman.io` must be a zone in the same Cloudflare account as the Worker, with no existing DNS record for `slate`. The `CLOUDFLARE_API_TOKEN` needs Workers Scripts edit, plus Workers Routes and DNS edit on the `noman.io` zone.
+1. **Cloudflare:** `noman.io` must be a zone in the same Cloudflare account as the Worker, with no existing DNS record for `slate`. `CLOUDFLARE_API_TOKEN` needs Workers Scripts edit, plus Workers Routes and DNS edit on the `noman.io` zone.
 2. **GitHub:** in the `production` environment, set `NEXT_PUBLIC_APP_URL` to `https://slate.noman.io`.
 3. **Supabase Auth → URL Configuration:** set the Site URL to `https://slate.noman.io` and add these redirect URLs:
    - `https://slate.noman.io/auth/callback`
@@ -105,25 +133,27 @@ Production runs at **https://slate.noman.io**. `wrangler.jsonc` attaches the Wor
 
 ### GitHub deployment
 
-The production workflow is manually dispatched and uses the GitHub `production` environment. It runs checks, applies Supabase migrations, builds the Worker, and deploys it. Configure:
+The *Deploy production* workflow is started by hand and uses the GitHub `production` environment. It runs the checks, applies Supabase migrations, builds the Worker and deploys it. Configure:
 
 | Kind | Name | Purpose |
 | --- | --- | --- |
 | Variable | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL, build and runtime |
 | Variable | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public publishable key, build and runtime |
 | Variable | `NEXT_PUBLIC_APP_URL` | Production origin: `https://slate.noman.io` |
-| Secret | `SUPABASE_DB_URL` | Supabase PostgreSQL connection URI for migration application |
+| Secret | `SUPABASE_DB_URL` | Supabase Postgres connection URI, for applying migrations |
 | Secret | `CLOUDFLARE_API_TOKEN` | Deploy the Worker |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account |
 
-Apply migrations to a staging Supabase project before production. No remote project is created, no migrations are applied remotely, and no production deployment occurs merely by running the app locally.
+Try migrations on a staging Supabase project before production. Running the app locally never creates a remote project, applies remote migrations or deploys.
 
-## Scope and operational limits
+## Scope and known limits
 
-This repository implements an initial single-owner product, not multi-user live collaboration. Remote sync is serialized snapshot transport with optimistic revision checking; realtime merging and cursor-based data loading are not implemented. Documents accept external image URLs and private image uploads. Removing an image block does not delete the object. Recoverable source-page Trash retains owner image access for copied documents. Permanent page/workspace deletion cascades attachment metadata, but object garbage collection is not implemented. Production authentication and cross-user isolation must be verified against your configured Supabase project, and production deployment requires your own Cloudflare/Supabase configuration.
+- Single owner per workspace; no sharing or live collaboration. Sync sends whole snapshots with optimistic revision checks; no realtime merging or incremental loading.
+- Reloading or leaving within about a second of an edit, while that save is still in flight, can turn the latest edit into an "unsynced draft" download instead of showing it after reload.
+- Removing an image block doesn't delete the stored file. Deleting pages or workspaces removes attachment metadata, but stored objects aren't garbage-collected.
+- Next.js 16 warns that the `middleware` file convention is deprecated in favour of `proxy`; it still works.
+- Production sign-in and cross-account isolation should be checked against your own Supabase project after deploying.
 
-## Verification performed
+## Last verified
 
-The application migration has been applied to an isolated local Supabase stack, and the 14 pgTAP authorization/relation checks passed. HTTP authentication and normalized persistence smoke tests run against that stack, including cross-account denial and reauthentication, plus private image upload, owner signing, foreign object/read-sign denial, and attachment path constraints. An isolated configured Next.js browser session also verified login, creating and editing a page, the saved state after refresh, and uploading a PNG through the editor; its stable authenticated image URL loaded successfully before and after refresh. Disposable test accounts, image objects, and the isolated preview services were removed afterward. Production credentials and a production deployment are not part of these local checks.
-
-The final local checks passed TypeScript, ESLint, 49 unit tests, and the Cloudflare Worker build/runtime smoke check. Browser checks covered 1440px, 1280px, and mobile layouts; Markdown shortcuts and mode switching; inline databases; record editing; refresh persistence; saved filters and board views; and Trash restoration. Against the isolated Supabase stack, browser login, authenticated page saving, refresh persistence, and private image upload/restoration also passed. The Playwright regression suite is configured for CI; these local browser checks used the live preview.
+On 14 November 2026, locally: TypeScript, ESLint, 100 unit tests, and the 42-test Playwright suite against a local Supabase stack, including signing in, the example workspace, and an agent key reading the workspace over MCP with no session. The pgTAP suite (14 checks), the HTTP auth test and the Worker build weren't rerun in that pass.
