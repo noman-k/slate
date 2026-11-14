@@ -980,6 +980,7 @@ export function WorkspaceApp() {
         onRunPlaybook={(pageId) => openRunStart(pageId)}
         onPlaybooks={() => open(PLAYBOOKS_VIEW)}
         playbooksOpen={activeId === PLAYBOOKS_VIEW}
+        onCollapseAll={() => setExpanded(new Set())}
       />
       {!collapsed && (
         <button

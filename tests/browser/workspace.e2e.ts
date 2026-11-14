@@ -1232,3 +1232,20 @@ test("playbooks: one place to find and run them all, and Run from the sidebar", 
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Playbooks", level: 1 })).toBeVisible();
 });
+test("collapse all pages in the sidebar at once", async ({ page }) => {
+  const tree = page.locator('section[aria-label="Private"]');
+  // The hub is open (its pages show); Collapse all folds everything.
+  await expect(tree.locator(".tree-title", { hasText: /^Tenant Rent Log$/ })).toBeVisible();
+  await tree.locator(".section-heading").hover();
+  await tree.getByRole("button", { name: "Collapse all pages" }).click();
+  await expect(tree.locator(".tree-title", { hasText: /^Tenant Rent Log$/ })).toHaveCount(0);
+  await expect(tree.locator(".tree-title", { hasText: /^Rental Property Finance Hub$/ })).toBeVisible();
+  // With nothing open, there's nothing to collapse: the button goes away.
+  await expect(tree.getByRole("button", { name: "Collapse all pages" })).toHaveCount(0);
+  // Expanding again brings it back.
+  await tree.locator(".tree-row", { hasText: "Rental Property Finance Hub" }).hover();
+  await tree.getByRole("button", { name: "Expand Rental Property Finance Hub" }).click();
+  await expect(tree.locator(".tree-title", { hasText: /^Tenant Rent Log$/ })).toBeVisible();
+  await tree.locator(".section-heading").hover();
+  await expect(tree.getByRole("button", { name: "Collapse all pages" })).toBeVisible();
+});

@@ -4601,3 +4601,9 @@ section.is-folded .section-toggle svg {
     flex-wrap: wrap;
   }
 }
+
+.section-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

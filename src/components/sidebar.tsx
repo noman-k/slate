@@ -25,6 +25,7 @@ import {
   X,
   Compass,
   Play,
+  ChevronsDownUp,
 } from "lucide-react";
 import {
   DndContext,
@@ -81,6 +82,8 @@ interface Props {
   onPlaybooks?: () => void;
   /** The Playbooks view is open. */
   playbooksOpen?: boolean;
+  /** Folds every page in the tree. */
+  onCollapseAll?: () => void;
 }
 export function PageActions({
   page,
@@ -609,14 +612,28 @@ export function Sidebar(p: Props) {
             folded={folded.has("private")}
             onFold={fold}
             action={
-              <button
-                className="icon-button"
-                aria-label="Add a private page"
-                title="Add a page"
-                onClick={() => p.onNew(null)}
-              >
-                <Plus size={14} />
-              </button>
+              <span className="section-actions">
+                {/* Only when something is open: collapsing an already-flat tree does nothing. */}
+                {p.onCollapseAll &&
+                  [...p.expanded].some((id) => pages.some((x) => x.parent_id === id)) && (
+                    <button
+                      className="icon-button"
+                      aria-label="Collapse all pages"
+                      title="Collapse all"
+                      onClick={p.onCollapseAll}
+                    >
+                      <ChevronsDownUp size={14} />
+                    </button>
+                  )}
+                <button
+                  className="icon-button"
+                  aria-label="Add a private page"
+                  title="Add a page"
+                  onClick={() => p.onNew(null)}
+                >
+                  <Plus size={14} />
+                </button>
+              </span>
             }
           >
             <DndContext
