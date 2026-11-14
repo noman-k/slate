@@ -8,7 +8,20 @@ A private workspace where notes, databases and runnable playbooks live together,
 
 Built with Next.js 16 (App Router), React 19, TypeScript, Tiptap, CodeMirror, TanStack Table/Virtual, dnd-kit, Radix, Supabase (Auth, Postgres, Storage) and the OpenNext adapter for Cloudflare Workers.
 
-![Slate Rent Ledger preview](docs/preview.jpg)
+![A Slate playbook: inputs on the left, and steps that decide, check and say, grouped into sections](docs/screenshots/playbook.jpg)
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/page.jpg" alt="A Slate page with headings, a list and a quote, beside the page tree"></td>
+    <td width="33%"><img src="docs/screenshots/database.jpg" alt="The Rent Ledger database as a table, in the light theme"></td>
+    <td width="33%"><img src="docs/screenshots/run.jpg" alt="A playbook run at a decision step, explaining which way it goes and why"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Pages with a calm editor</sub></td>
+    <td align="center"><sub>Databases, in light or dark</sub></td>
+    <td align="center"><sub>Playbooks that walk you through</sub></td>
+  </tr>
+</table>
 
 ## What's in it
 
