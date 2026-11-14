@@ -39,6 +39,9 @@ export default defineConfig({
           NEXT_PUBLIC_SUPABASE_URL: supabase.url,
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabase.key,
           NEXT_PUBLIC_APP_URL: baseURL,
+          // Low limits so the rate-limit tests reach them quickly; each test uses its own
+          // account and key, so other tests stay well under them.
+          SLATE_DEV_RATE_LIMITS: "RUN_REQUEST_LIMITER=5,MCP_KEY_LIMITER=5",
         },
       }
     : undefined,

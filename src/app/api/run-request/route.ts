@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { HTTP_METHODS, MAX_RESPONSE_BYTES, REQUEST_TIMEOUT_MS, parseHeaders, urlProblem, type ApiRequest } from '@/lib/api-request';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 const privateHeaders = { 'Cache-Control': 'private, no-store, max-age=0', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
@@ -44,13 +45,22 @@ export async function POST(request: Request) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) return failure('Sending requests through Slate is not configured.', 503);
   const raw = await request.text();
   if (raw.length > MAX_REQUEST_BYTES) return failure('That request is too large to send.', 413);
+  let userId: string;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return failure('Sign in to send requests.', 401);
+    userId = user.id;
   } catch {
     return failure('Unable to check your session. Try again.', 503);
   }
+  // Each person can send a limited number of requests a minute, so Slate can't be used to flood other sites.
+  const limited = await rateLimit('RUN_REQUEST_LIMITER', userId);
+  if (!limited.ok)
+    return NextResponse.json(
+      { status: 0, ok: false, body: '', error: `Slate sends at most ${limited.limit} requests a minute for you. Wait ${limited.retryAfter} seconds, then try again.` },
+      { status: 429, headers: { ...privateHeaders, 'Retry-After': String(limited.retryAfter) } },
+    );
   let input: ApiRequest;
   try {
     input = JSON.parse(raw) as ApiRequest;

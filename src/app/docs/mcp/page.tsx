@@ -7,6 +7,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { AGENT_TOOLS, type ToolDefinition } from "@/lib/agent-tools";
 import { SUPPORTED_PROTOCOLS } from "@/lib/mcp";
 import { REPOSITORY_URL } from "@/lib/project";
+import { LIMITS } from "@/lib/rate-limit";
 import { ClientSetup, CodeBlock, CopyButton, Inline, TableOfContents, type ClientGuide } from "./client-setup";
 import "../../landing.css";
 import "../docs.css";
@@ -331,6 +332,7 @@ export default async function McpDocs() {
                 ["My client wants me to sign in", "Slate uses keys rather than a sign-in flow. Add it through the client's config file with the key in a header, or through `mcp-remote` as shown above."],
                 ["The agent can't find a page", "Agents see what's in your workspace now, apart from pages in Trash. Ask it to search by a word from the page's title, or give it the page's link."],
                 ["“Unable to read the workspace right now” (503)", "Slate couldn't reach its database for a moment. Try again shortly."],
+                ["“Too many requests” (429)", `Each key can make ${LIMITS.MCP_KEY_LIMITER} requests a minute, and each address ${LIMITS.MCP_IP_LIMITER}. Wait the number of seconds in the \`Retry-After\` header (the message says it too), then carry on. Normal use never gets near this.`],
               ].map(([q, a]) => (
                 <details key={q}>
                   <summary>{q}</summary>
@@ -348,6 +350,7 @@ export default async function McpDocs() {
               <div><dt>Authentication</dt><dd><code>Authorization: Bearer slate_…</code>. Keys are 43 random characters after the <code>slate_</code> prefix.</dd></div>
               <div><dt>Protocol versions</dt><dd>{SUPPORTED_PROTOCOLS.map((v, i) => <span key={v}>{i ? ", " : ""}<code>{v}</code></span>)}</dd></div>
               <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. All tools are marked <code>readOnlyHint</code>.</dd></div>
+              <div><dt>Rate limits</dt><dd>{LIMITS.MCP_KEY_LIMITER} requests a minute per key and {LIMITS.MCP_IP_LIMITER} per IP address. Over a limit: <code>429</code> with <code>Retry-After</code>.</dd></div>
               <div><dt>Server name</dt><dd><code>slate</code></dd></div>
               <div><dt>Source</dt><dd>The server is <code>src/app/api/mcp</code> and <code>src/lib/mcp.ts</code>; the tools are <code>src/lib/agent-tools.ts</code> in the <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub repository</a>.</dd></div>
             </dl>

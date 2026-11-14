@@ -1154,6 +1154,31 @@ test("settings explain AI agent access and offer agent keys", async ({ page }) =
   await expect(agents).toContainText("No agent keys yet.");
   await expect(agents.getByRole("link", { name: /Setup guide/ })).toHaveAttribute("href", "/docs/mcp");
 });
+test("run-request and MCP turn away callers over their limit", async ({ page, playwright, baseURL }) => {
+  // The test server allows 5 a minute for each (see playwright.config.ts); production
+  // uses Cloudflare's limits from wrangler.jsonc. Empty bodies are counted, then refused
+  // with 400, so nothing is sent anywhere.
+  const statuses: number[] = [];
+  for (let i = 0; i < 6; i++) statuses.push((await page.request.post("/api/run-request", { data: {} })).status());
+  expect(statuses.slice(0, 5)).toEqual([400, 400, 400, 400, 400]);
+  expect(statuses[5]).toBe(429);
+  const refused = await page.request.post("/api/run-request", { data: {} });
+  expect(refused.status()).toBe(429);
+  expect(Number(refused.headers()["retry-after"])).toBeGreaterThan(0);
+  expect((await refused.json()).error).toContain("at most 5 requests a minute");
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("region", { name: "AI agents" }).getByRole("button", { name: "Create key" }).click();
+  const key = (await page.locator(".agent-created code").first().textContent())!.trim();
+  const agent = await playwright.request.newContext({ baseURL });
+  const ping = () => agent.post("/api/mcp", { headers: { Authorization: `Bearer ${key}` }, data: { jsonrpc: "2.0", id: 1, method: "ping" } });
+  for (let i = 0; i < 5; i++) expect((await ping()).status()).toBe(200);
+  const tooMany = await ping();
+  expect(tooMany.status()).toBe(429);
+  expect(tooMany.headers()["retry-after"]).toBeTruthy();
+  expect((await tooMany.json()).error.message).toContain("Too many requests for this key");
+  await agent.dispose();
+});
 test("an agent key reads the workspace over MCP without a session", async ({ page, playwright, baseURL }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const agents = page.getByRole("region", { name: "AI agents" });

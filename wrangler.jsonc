@@ -9,5 +9,12 @@
   // zone in the same Cloudflare account), or remove "routes" to use workers.dev.
   // Cloudflare creates the DNS record and certificate on deploy.
   "routes": [{"pattern": "slate.noman.io", "custom_domain": true}],
+  // Requests per minute, counted by Cloudflare per location (see src/lib/rate-limit.ts, and
+  // keep LIMITS there in step). namespace_id only has to be unique within your account.
+  "ratelimits": [
+    {"name": "RUN_REQUEST_LIMITER", "namespace_id": "1001", "simple": {"limit": 30, "period": 60}},
+    {"name": "MCP_KEY_LIMITER", "namespace_id": "1002", "simple": {"limit": 120, "period": 60}},
+    {"name": "MCP_IP_LIMITER", "namespace_id": "1003", "simple": {"limit": 300, "period": 60}}
+  ],
   "observability": {"enabled": true}
 }
