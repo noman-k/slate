@@ -115,7 +115,7 @@ export async function signIn(page: Page, account: TestAccount) {
   await page.getByLabel("Email address").fill(account.email);
   await page.locator('input[autocomplete="current-password"]').fill(account.password);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/(app|p\/[0-9a-f-]+)$/);
 }
 
 type MockAnswer = { status: number; body?: string };

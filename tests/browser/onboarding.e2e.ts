@@ -21,7 +21,7 @@ test("signing up takes an email and a password and opens a Getting started page"
   await page.locator('input[autocomplete="new-password"]').fill(visitor.password);
   await page.getByRole("button", { name: "Create account" }).click();
   // Straight into the workspace (local Supabase doesn't ask to confirm the email).
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/(app|p\/[0-9a-f-]+)$/);
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
   await expect(page.getByLabel("Page content", { exact: true })).toContainText("Try these first");
   await expect(page.getByRole("checkbox").first()).toBeVisible();
@@ -94,7 +94,7 @@ test("an email confirmation link survives being opened by a mail scanner, and wo
     await page.goto(link);
     await expect(page.getByRole("heading", { name: "One click to go." })).toBeVisible();
     await page.getByRole("button", { name: "Confirm and open Slate" }).click();
-    await expect(page).toHaveURL(/\/app$/);
+    await expect(page).toHaveURL(/\/(app|p\/[0-9a-f-]+)$/);
     await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
     // A link that has been used already says so, and offers a new one.
     await page.context().clearCookies();

@@ -170,7 +170,7 @@ test("front page links into the app", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   // Signed in, the front page offers the way back into the workspace.
   await page.getByRole("link", { name: "Open Slate" }).first().click();
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/(app|p\/[0-9a-f-]+)$/);
   await page.getByRole("link", { name: "Slate home" }).click();
   await expect(page).toHaveURL(/\/$/);
 });
@@ -1540,4 +1540,40 @@ test("an agent allowed to edit changes pages and rows, without losing what you'r
   const trashed = await call("trash_page", { page_id: account!.ids.guide });
   expect(trashed.content[0].text).toContain("can be restored");
   await agent.dispose();
+});
+test("going to the front page and back returns to the page you were on, in each workspace", async ({ page }) => {
+  const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+  const title = page.getByLabel("Page title", { exact: true });
+  await sidebar.locator(".tree-page", { hasText: "Workspace notes" }).first().click();
+  await expect(title).toHaveValue("Workspace notes");
+  const notes = page.url();
+  // Out to the front page and back in through "Open Slate".
+  await sidebar.getByRole("link", { name: "Slate home" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.getByRole("link", { name: "Open Slate" }).first().click();
+  await expect(title).toHaveValue("Workspace notes");
+  // The address names the page, so reloading keeps it; Back goes to the front page.
+  await expect(page).toHaveURL(notes);
+  await page.reload();
+  await expect(title).toHaveValue("Workspace notes");
+  await page.goto("/app");
+  await expect(title).toHaveValue("Workspace notes");
+  await expect(page).toHaveURL(notes);
+
+  // Each workspace remembers its own page.
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: "Create workspace" }).click();
+  await page.getByLabel("Workspace name").fill("Side project");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await sidebar.getByRole("button", { name: "New page", exact: true }).first().click();
+  const start = page.getByLabel("Start this page");
+  if (await start.count()) await start.getByRole("button", { name: /^(Empty|Blank|Page)/ }).first().click().catch(() => {});
+  await title.fill("Side notes");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: "Home" }).click();
+  await expect(title).toHaveValue("Workspace notes");
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: "Side project" }).click();
+  await expect(title).toHaveValue("Side notes");
 });

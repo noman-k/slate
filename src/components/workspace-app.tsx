@@ -171,6 +171,10 @@ export function WorkspaceApp() {
   const [recordId, setRecordId] = useState<string | null>(null);
   const [describing, setDescribing] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
+  /** The page last open in each workspace: /app and switching workspaces return to it. */
+  const lastPages = useRef<Record<string, string>>({});
+  /** The same, as saved when this tab opened: what /app shows before anything is chosen. */
+  const [savedLast, setSavedLast] = useState<Record<string, string>>({});
   /** A record opens in a side peek; "Open as full page" switches to this. */
   const [recordAsPage, setRecordAsPage] = useState(false);
   /**
@@ -230,6 +234,13 @@ export function WorkspaceApp() {
             !p.deleted_at &&
             p.workspace_id === state.active_workspace_id,
         )) ||
+    // Nothing chosen (at /app): the page last open here, then the first page.
+    state.pages.find(
+      (p) =>
+        p.id === savedLast[state.active_workspace_id] &&
+        p.workspace_id === state.active_workspace_id &&
+        !p.deleted_at,
+    ) ||
     state.pages.find(
       (p) =>
         p.workspace_id === state.active_workspace_id &&
@@ -300,6 +311,52 @@ export function WorkspaceApp() {
     },
     [state.records, remember],
   );
+  /**
+   * Where to return to in a workspace: the page last open there, if it's still around,
+   * else its first page.
+   */
+  const returnPage = useCallback(
+    (workspaceId: string) => {
+      const last = lastPages.current[workspaceId];
+      if (last === PLAYBOOKS_VIEW) return last;
+      const usable = (p: Page) => p.workspace_id === workspaceId && !p.deleted_at;
+      const remembered = state.pages.find((p) => p.id === last && usable(p));
+      return (
+        remembered?.id ??
+        state.pages.find((p) => usable(p) && !p.parent_id && !state.records.some((r) => r.page_id === p.id))?.id ??
+        ""
+      );
+    },
+    [state.pages, state.records],
+  );
+  // Remember what's open in this workspace (a record open as a page counts as itself).
+  const shownId = activeId === PLAYBOOKS_VIEW ? PLAYBOOKS_VIEW : record && recordAsPage ? record.page_id : page?.id;
+  useEffect(() => {
+    if (!ready || !shownId || !state.active_workspace_id) return;
+    if (lastPages.current[state.active_workspace_id] === shownId) return;
+    lastPages.current = { ...lastPages.current, [state.active_workspace_id]: shownId };
+    try {
+      const prefs = JSON.parse(localStorage.getItem("slate-preferences") || "{}");
+      localStorage.setItem("slate-preferences", JSON.stringify({ ...prefs, last: lastPages.current }));
+    } catch {}
+  }, [ready, shownId, state.active_workspace_id]);
+  // Coming in at /app (from the front page, a bookmark, signing in): back to where you were,
+  // with the address showing that page, so reloading or sharing it keeps it.
+  const entryResolved = useRef(false);
+  useEffect(() => {
+    if (!ready || entryResolved.current) return;
+    entryResolved.current = true;
+    if (window.location.pathname !== "/app" || new URLSearchParams(window.location.search).has("page")) return;
+    const target = returnPage(stateRef.current.active_workspace_id);
+    if (!target) return;
+    const key = id();
+    entryKey.current = key;
+    window.history.replaceState({ pageId: target, key }, "", `/p/${target}`);
+    queueMicrotask(() => {
+      setActiveId(target);
+      setRecordAsPage(opensAsPage(stateRef.current, target));
+    });
+  }, [ready, returnPage]);
   useEffect(() => {
     const route = () => {
       // Back/Forward (and the first load): pick up this entry's scroll position.
@@ -332,6 +389,10 @@ export function WorkspaceApp() {
           setRecent((ids) =>
             [...new Set([...ids, ...prefs.recent])].slice(0, 12),
           );
+        if (prefs.last && typeof prefs.last === "object") {
+          lastPages.current = { ...prefs.last, ...lastPages.current };
+          setSavedLast(prefs.last);
+        }
       } catch {}
     });
     return () => window.removeEventListener("popstate", route);
@@ -345,6 +406,7 @@ export function WorkspaceApp() {
           expanded: [...expanded],
           collapsed,
           recent,
+          last: lastPages.current,
         }),
       );
     } catch {}
@@ -925,10 +987,8 @@ export function WorkspaceApp() {
   };
   const workspaceSwitch = (workspaceId: string) => {
     change((s) => ({ ...s, active_workspace_id: workspaceId }));
-    const first = state.pages.find(
-      (p) => p.workspace_id === workspaceId && !p.deleted_at,
-    );
-    if (first) open(first.id);
+    const target = returnPage(workspaceId);
+    if (target) open(target);
   };
   return (
     <div className="workspace-app">
