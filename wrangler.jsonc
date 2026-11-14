@@ -5,8 +5,9 @@
   "compatibility_date": "2026-11-11",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {"directory": ".open-next/assets", "binding": "ASSETS"},
-  // Production origin. Cloudflare creates the DNS record and certificate on deploy;
-  // noman.io must be a zone in the same Cloudflare account.
+  // The hosted version's address. Self-hosting? Use your own domain here (it must be a
+  // zone in the same Cloudflare account), or remove "routes" to use workers.dev.
+  // Cloudflare creates the DNS record and certificate on deploy.
   "routes": [{"pattern": "slate.noman.io", "custom_domain": true}],
   "observability": {"enabled": true}
 }

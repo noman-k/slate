@@ -2,6 +2,16 @@
   "name": "slate-workspace",
   "version": "1.0.0",
   "private": true,
+  "description": "A private workspace for notes, databases and runnable playbooks, readable by AI agents over MCP.",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://slate.noman.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noman-k/slate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/noman-k/slate/issues"
+  },
   "scripts": {
     "predev": "node scripts/check-node.mjs",
     "dev": "next dev --hostname 0.0.0.0",

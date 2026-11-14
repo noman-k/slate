@@ -8,6 +8,7 @@ import {
 import { Brand, BrandMark } from '@/components/brand';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { createClient } from '@/lib/supabase/server';
+import { LICENSE_NAME, REPOSITORY_URL } from '@/lib/project';
 import './landing.css';
 
 const TITLE = 'Slate — write it down, organize it, run it';
@@ -104,6 +105,10 @@ const FAQ = [
   {
     q: 'Can I get my data out?',
     a: 'Yes. Every page has a Markdown view you can copy, and you can export any page as a Markdown file. Databases export to CSV.',
+  },
+  {
+    q: 'Is Slate open source?',
+    a: 'Yes. The code is on GitHub under the AGPL-3.0 license. You can read it, suggest changes, or run your own copy with your own Supabase project and Cloudflare account. If you offer a modified copy to others as a service, the license asks you to share your changes too.',
   },
   {
     q: 'Do I need to install anything?',
@@ -229,6 +234,7 @@ export default async function Home() {
             <a href="#connect">AI agents</a>
             <a href="#faq">FAQ</a>
             <Link href="/docs/mcp">Docs</Link>
+            <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub</a>
           </nav>
           <div className="landing-account">
             {who === 'visitor' && (
@@ -534,6 +540,7 @@ export default async function Home() {
         <div className="footer-brand">
           <Brand size={20} />
           <p>Write it down. Organize it. Run it.</p>
+          <p className="footer-license">Open source under {LICENSE_NAME}.</p>
           <ThemeSwitcher compact />
         </div>
         <nav aria-label="Product">
@@ -543,6 +550,7 @@ export default async function Home() {
           <a href="#connect">AI agents</a>
           <a href="#faq">FAQ</a>
           <Link href="/docs/mcp">MCP setup guide</Link>
+          <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">Source code (GitHub)</a>
         </nav>
         <nav aria-label="Account">
           <h2>{who === 'member' ? 'Workspace' : 'Get started'}</h2>

@@ -25,6 +25,7 @@ import { RecordProperties } from "./database/DatabaseView";
 import { breadcrumbs, canMovePage, purgePage, trashPage } from "@/lib/tree";
 import { id, timeAgo } from "@/lib/utils";
 import type { DbRecord, Page, WorkspaceState } from "@/lib/types";
+import { LICENSE_NAME, REPOSITORY_URL } from "@/lib/project";
 
 type ChangeState = (update: (state: WorkspaceState) => WorkspaceState) => void;
 type DialogState =
@@ -692,6 +693,19 @@ function SettingsDialog({
                 </button>
               </div>
             </>
+        </section>
+        <section className="settings-section">
+          <h3>About</h3>
+          <div className="settings-row">
+            <div>
+              <strong>Slate is open source</strong>
+              <p>Free software under the {LICENSE_NAME} license. Read the code, report issues or run your own copy.</p>
+            </div>
+            <a className="secondary-button" href={REPOSITORY_URL} target="_blank" rel="noreferrer">
+              Source code
+              <ArrowUpRight size={14} />
+            </a>
+          </div>
         </section>
         <section className="settings-section danger-zone">
           <h3>Danger zone</h3>

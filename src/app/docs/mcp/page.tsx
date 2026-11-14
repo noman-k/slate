@@ -6,6 +6,7 @@ import { Brand } from "@/components/brand";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { AGENT_TOOLS, type ToolDefinition } from "@/lib/agent-tools";
 import { SUPPORTED_PROTOCOLS } from "@/lib/mcp";
+import { REPOSITORY_URL } from "@/lib/project";
 import { ClientSetup, CodeBlock, CopyButton, Inline, TableOfContents, type ClientGuide } from "./client-setup";
 import "../../landing.css";
 import "../docs.css";
@@ -348,6 +349,7 @@ export default async function McpDocs() {
               <div><dt>Protocol versions</dt><dd>{SUPPORTED_PROTOCOLS.map((v, i) => <span key={v}>{i ? ", " : ""}<code>{v}</code></span>)}</dd></div>
               <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. All tools are marked <code>readOnlyHint</code>.</dd></div>
               <div><dt>Server name</dt><dd><code>slate</code></dd></div>
+              <div><dt>Source</dt><dd>The server is <code>src/app/api/mcp</code> and <code>src/lib/mcp.ts</code>; the tools are <code>src/lib/agent-tools.ts</code> in the <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub repository</a>.</dd></div>
             </dl>
             <CodeBlock
               caption="Example: initialize"
@@ -367,6 +369,7 @@ export default async function McpDocs() {
           <h2>Product</h2>
           <Link href="/">Home</Link>
           <Link href="/docs/mcp">AI agents (MCP)</Link>
+          <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">Source code (GitHub)</a>
         </nav>
         <nav aria-label="Account">
           <h2>Workspace</h2>

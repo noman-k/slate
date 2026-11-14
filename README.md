@@ -1,6 +1,10 @@
 # Slate
 
-A private workspace where notes, databases and runnable playbooks live together, and AI agents can read it all. Live at **https://slate.noman.io**.
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Validate](https://github.com/noman-k/slate/actions/workflows/ci.yml/badge.svg)](https://github.com/noman-k/slate/actions/workflows/ci.yml)
+[![Browser workflows](https://github.com/noman-k/slate/actions/workflows/browser.yml/badge.svg)](https://github.com/noman-k/slate/actions/workflows/browser.yml)
+
+A private workspace where notes, databases and runnable playbooks live together, and AI agents can read it all. Open source under the AGPL-3.0: use the hosted version at **https://slate.noman.io**, or run your own copy with your own Supabase project and Cloudflare account.
 
 Built with Next.js 16 (App Router), React 19, TypeScript, Tiptap, CodeMirror, TanStack Table/Virtual, dnd-kit, Radix, Supabase (Auth, Postgres, Storage) and the OpenNext adapter for Cloudflare Workers.
 
@@ -51,6 +55,7 @@ Open http://localhost:3000 and register; the workspace is at http://localhost:30
 | `src/app/auth/*` | Register, log in, forgot/reset password, auth callback |
 | `src/app/api/mcp` | MCP endpoint for AI agents |
 | `src/app/docs/mcp` | Public MCP setup guide (`/docs/mcp`) |
+| `src/lib/project.ts` | Repository URL and license name, used for the source-code links |
 | `src/app/api/run-request` | Server-side sender for playbook API steps |
 | `src/app/api/attachments/[id]` | Signed redirects to private uploads |
 | `src/middleware.ts` | Session refresh and sign-in redirect |
@@ -109,10 +114,10 @@ Database, auth and browser tests need Docker. Set `SUPABASE_TEST_WORKDIR` to use
 
 ## Deployment
 
-Pushing to `main` deploys both halves, each by its own service:
+This is how the hosted version at slate.noman.io is deployed, and the same setup works for your own copy (see [Self-hosting](#self-hosting) for what to change). Pushing to `main` deploys both halves, each by its own service:
 
 - **App → Cloudflare Workers Builds.** Cloudflare builds the repo and deploys the Worker to **https://slate.noman.io**.
-- **Database → Supabase GitHub integration.** Supabase applies new files in `supabase/migrations` to `slate-production`.
+- **Database → Supabase GitHub integration.** Supabase applies new files in `supabase/migrations` to the production project.
 
 Neither needs GitHub secrets. The two run side by side, so for a moment the new app can meet the old schema: keep migrations additive (add tables and columns; don't rename or drop what the running app still uses).
 
@@ -170,6 +175,25 @@ npm run deploy         # build and deploy
 ```
 
 `npm run deploy` reads `.env.production.local` ahead of `.env.local`, so put the production values there, and sign in with `npx wrangler login`. To apply migrations by hand: `supabase link --project-ref <project ref>`, then `supabase db push`. Running the app locally never touches a remote project.
+
+### Self-hosting
+
+To run your own copy, fork the repository and follow the deployment steps above with your own accounts, changing:
+
+- **`wrangler.jsonc`:** the Worker `name`, and the `routes` pattern to your own domain (or remove `routes` to use the Worker's `workers.dev` address).
+- **Cloudflare build variables:** your Supabase project's URL and publishable key, and `NEXT_PUBLIC_APP_URL` set to your address.
+- **Supabase Authentication:** your address in the Site URL and redirect URLs.
+- **`src/lib/project.ts`:** `REPOSITORY_URL`, if you change the code. The AGPL asks that people using your hosted copy can get its source; the app links to this address from Settings, the front page and the docs.
+
+Other mentions of slate.noman.io (this README, `package.json`'s `homepage`, `SECURITY.md`, the issue templates and the MCP guide's fallback address) describe the hosted version; update them if you publish your own fork.
+
+## Contributing
+
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the checks to run, and the rules for database migrations. Please report security problems privately as described in [SECURITY.md](SECURITY.md), and follow the [code of conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Slate is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License, version 3](LICENSE). In short, you may use, change and self-host it; if you run a modified version as a service for others, you must offer them its source code under the same license.
 
 ## Scope and known limits
 

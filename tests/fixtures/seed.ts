@@ -284,7 +284,7 @@ export function createSeedState(): WorkspaceState {
     values: { [uid(207)]: unit.title, [uid(307)]: "1 bedroom · Residential" },
   });
   return {
-    workspaces: [{ id: uid(1), name: "Noman’s Space 02" }],
+    workspaces: [{ id: uid(1), name: "Home" }],
     pages,
     documents: [
       {

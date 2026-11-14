@@ -1504,3 +1504,8 @@ html:has(.landing) {
 .agents-guide:hover {
   text-decoration: underline;
 }
+
+.footer-license {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
