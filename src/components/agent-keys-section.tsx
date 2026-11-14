@@ -10,7 +10,14 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { agentKeyPrefix, generateAgentKey, hashAgentKey } from "@/lib/agent-keys";
 
-type AgentKey = { id: string; name: string; key_prefix: string; created_at: string; last_used_at: string | null };
+type Scope = "read" | "write";
+type AgentKey = { id: string; name: string; key_prefix: string; created_at: string; last_used_at: string | null; scope?: Scope };
+
+/** What a key lets its agent do, in the words used in the form and the list. */
+const SCOPES: { value: Scope; label: string; hint: string }[] = [
+  { value: "read", label: "Read only", hint: "Search and read pages, databases and playbooks." },
+  { value: "write", label: "Read and create", hint: "Also add new pages, databases and playbooks. Never edits or deletes." },
+];
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "never";
@@ -45,6 +52,7 @@ function CopyField({ label, value, mono = true }: { label: string; value: string
 export function AgentKeysSection() {
   const [keys, setKeys] = useState<AgentKey[] | null>(null);
   const [name, setName] = useState("Claude");
+  const [scope, setScope] = useState<Scope>("read");
   const [created, setCreated] = useState<{ name: string; key: string } | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,7 +62,7 @@ export function AgentKeysSection() {
   const refresh = useCallback(async () => {
     const { data, error } = await (await client())
       .from("agent_keys")
-      .select("id,name,key_prefix,created_at,last_used_at")
+      .select("id,name,key_prefix,created_at,last_used_at,scope")
       .is("revoked_at", null)
       .order("created_at", { ascending: false });
     if (error) {
@@ -72,7 +80,7 @@ export function AgentKeysSection() {
     const key = generateAgentKey();
     const { error } = await (await client())
       .from("agent_keys")
-      .insert({ name: name.trim(), key_hash: await hashAgentKey(key), key_prefix: agentKeyPrefix(key) });
+      .insert({ name: name.trim(), key_hash: await hashAgentKey(key), key_prefix: agentKeyPrefix(key), scope });
     setBusy(false);
     if (error) {
       toast.error("Couldn't create the key. Try again.");
@@ -80,6 +88,7 @@ export function AgentKeysSection() {
     }
     setCreated({ name: name.trim(), key });
     setName("Claude");
+    setScope("read");
     void refresh();
   };
   const revoke = async (id: string) => {
@@ -98,10 +107,11 @@ export function AgentKeysSection() {
       <div className="settings-note">
         <Bot size={16} />
         <div>
-          <strong>Let an AI agent read this workspace</strong>
+          <strong>Let an AI agent use this workspace</strong>
           <p>
-            Agents like Claude can search your pages, read them, query your databases and look up playbooks. They
-            can&apos;t change anything. Each agent uses its own key, which you can revoke at any time.
+            Agents like Claude can search your pages, read them, query your databases and look up playbooks. A key can
+            also let them create new pages, databases and playbooks; agents never edit or delete what&apos;s there. Each
+            agent uses its own key, which you can revoke at any time.
           </p>
           <a className="agent-guide" href="/docs/mcp" target="_blank" rel="noreferrer">
             Setup guide for Claude, Cursor, VS Code and more
@@ -149,13 +159,30 @@ export function AgentKeysSection() {
                 <Button disabled={!name.trim() || busy}>Create key</Button>
               </span>
             </label>
+            <fieldset className="agent-scope">
+              <legend>What it can do</legend>
+              {SCOPES.map((option) => (
+                <label key={option.value} className={scope === option.value ? "is-on" : undefined}>
+                  <input type="radio" name="agent-scope" value={option.value} checked={scope === option.value} onChange={() => setScope(option.value)} />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>{option.hint}</small>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
           </form>
           {keys && keys.length > 0 && (
             <ul className="agent-keys" aria-label="Agent keys">
               {keys.map((key) => (
                 <li key={key.id}>
                   <div>
-                    <strong>{key.name}</strong>
+                    <strong>
+                      {key.name}
+                      <span className={`agent-scope-badge ${key.scope === "write" ? "is-write" : ""}`}>
+                        {key.scope === "write" ? "Read and create" : "Read only"}
+                      </span>
+                    </strong>
                     <small>
                       <code>{key.key_prefix}…</code> · created {when(key.created_at)} · last used {when(key.last_used_at)}
                     </small>

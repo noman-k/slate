@@ -75,7 +75,7 @@ export default function Privacy() {
           <h2 id="sends-title">When data leaves Slate</h2>
           <ul className="docs-bullets">
             <li><strong>Playbook API steps</strong> send requests to the addresses you set in them, with the values you fill in, and keep the response in the run&apos;s history. Header values marked as secret are hidden in run history and links.</li>
-            <li><strong>AI agents</strong> can read your workspace only with a key you create, and only read. What an agent does with what it reads is up to that agent&apos;s provider (for example Anthropic or OpenAI) and their policies. Revoke a key in Settings › AI agents to stop access.</li>
+            <li><strong>AI agents</strong> can read your workspace only with a key you create. A key you create with “Read and create” also lets an agent add new pages, databases and playbooks; agents never edit or delete what&apos;s there. What an agent does with what it reads is up to that agent&apos;s provider (for example Anthropic or OpenAI) and their policies. Revoke a key in Settings › AI agents to stop access.</li>
           </ul>
         </section>
 

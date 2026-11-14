@@ -9,13 +9,15 @@
  */
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-export type LimiterName = "RUN_REQUEST_LIMITER" | "MCP_KEY_LIMITER" | "MCP_IP_LIMITER" | "CONTACT_LIMITER";
+export type LimiterName = "RUN_REQUEST_LIMITER" | "MCP_KEY_LIMITER" | "MCP_IP_LIMITER" | "MCP_WRITE_LIMITER" | "CONTACT_LIMITER";
 
 /** Requests per minute. Keep in step with "ratelimits" in wrangler.jsonc. */
 export const LIMITS: Record<LimiterName, number> = {
   RUN_REQUEST_LIMITER: 30,
   MCP_KEY_LIMITER: 120,
   MCP_IP_LIMITER: 300,
+  // What agents create (pages, databases, playbooks), per key.
+  MCP_WRITE_LIMITER: 20,
   // The contact form, per IP address.
   CONTACT_LIMITER: 5,
 };

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { handleMcpMessage } from '@/lib/mcp';
+import { ToolError } from '@/lib/agent-tools';
 import { hashAgentKey, looksLikeAgentKey } from '@/lib/agent-keys';
 import { clientAddress, rateLimit } from '@/lib/rate-limit';
 import type { WorkspaceState } from '@/lib/types';
@@ -9,7 +10,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Slate's MCP endpoint: an AI agent connects here with an agent key (made in Settings ›
- * AI agents) and gets read-only tools over that person's workspace. Stateless JSON over
+ * AI agents) and gets tools over that person's workspace: reading for every key, and creating
+ * pages, databases and playbooks for keys allowed to. Stateless JSON over
  * Streamable HTTP: one JSON-RPC message per POST.
  */
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -53,10 +55,30 @@ export async function POST(request: Request) {
       return rpcError(401, 'This agent key is not valid, or was revoked.', { 'WWW-Authenticate': 'Bearer error="invalid_token"' });
     return rpcError(503, 'Unable to read the workspace right now. Try again.');
   }
-  const state = data as WorkspaceState;
+  const { agent, ...snapshot } = data as WorkspaceState & { agent?: { scope?: string }; revision?: number };
+  const state = snapshot as WorkspaceState;
   if (!state.active_workspace_id) state.active_workspace_id = state.workspaces?.[0]?.id ?? '';
+  // Links to what an agent creates use the address it called (slate.noman.io, a preview, localhost).
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const origin = host ? `${request.headers.get('x-forwarded-proto') || new URL(request.url).protocol.replace(':', '')}://${host}` : new URL(request.url).origin;
   try {
-    const reply = await handleMcpMessage(message, async () => state);
+    const reply = await handleMcpMessage(message, {
+      load: async () => state,
+      scope: agent?.scope === 'write' ? 'write' : 'read',
+      create: async (planned) => {
+        const limited = await rateLimit('MCP_WRITE_LIMITER', keyHash);
+        if (!limited.ok)
+          throw new ToolError(`This key has created a lot in the last minute (at most ${limited.limit}). Nothing was created; wait ${limited.retryAfter} seconds, then try again.`);
+        const { error: failed } = await supabase.rpc('agent_create', { p_key_hash: keyHash, p_creation: planned.creation });
+        if (failed) {
+          if (/can only read/i.test(failed.message)) throw new ToolError('This agent key can only read.');
+          if (/invalid agent key/i.test(failed.message)) throw new ToolError('This agent key is not valid, or was revoked.');
+          if (/workspace|page|databases can be filled/i.test(failed.message)) throw new ToolError(`That can't be created here: ${failed.message}.`);
+          throw new ToolError('Slate couldn’t save that just now. Nothing was created; try again in a moment.');
+        }
+        return `${origin}/p/${planned.pageId}`;
+      },
+    });
     return reply.body ? NextResponse.json(reply.body, { status: reply.status, headers }) : new Response(null, { status: reply.status, headers });
   } catch {
     return rpcError(500, 'Something went wrong reading the workspace.');

@@ -1148,8 +1148,10 @@ test("a playbook opened directly (hard reload) has its styles", async ({ page })
 test("settings explain AI agent access and offer agent keys", async ({ page }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const agents = page.getByRole("region", { name: "AI agents" });
-  await expect(agents).toContainText("Let an AI agent read this workspace");
-  await expect(agents).toContainText("can't change anything");
+  await expect(agents).toContainText("Let an AI agent use this workspace");
+  // New keys are read-only unless you choose otherwise.
+  await expect(agents.getByRole("radio", { name: /Read only/ })).toBeChecked();
+  await expect(agents).toContainText("never edit or delete");
   await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
   await expect(agents).toContainText("No agent keys yet.");
   await expect(agents.getByRole("link", { name: /Setup guide/ })).toHaveAttribute("href", "/docs/mcp");
@@ -1343,4 +1345,73 @@ test("shortcuts are shown the way each computer names them", async ({ page }) =>
     await expect(help.locator("div", { hasText: "Back / forward" }).locator("kbd")).toHaveText(back.split(" · "));
     await page.keyboard.press("Escape");
   }
+});
+test("an agent with a 'Read and create' key adds a page, a database and a playbook", async ({ page, playwright, baseURL }) => {
+  // Two keys: one read-only (the default), one that may create.
+  const makeKey = async (name: string, scope?: "Read and create") => {
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const agents = page.getByRole("region", { name: "AI agents" });
+    await agents.getByRole("textbox").fill(name);
+    if (scope) await agents.getByRole("radio", { name: new RegExp(scope) }).check();
+    await agents.getByRole("button", { name: "Create key" }).click();
+    const key = (await agents.locator(".agent-created code").first().textContent())!.trim();
+    await expect(agents.locator(".agent-keys li", { hasText: name })).toContainText(scope ?? "Read only");
+    await page.keyboard.press("Escape");
+    return key;
+  };
+  const reader = await makeKey("Reader");
+  const maker = await makeKey("Maker", "Read and create");
+  const agent = await playwright.request.newContext({ baseURL });
+  const call = async (key: string, method: string, params: object = {}) =>
+    (await (await agent.post("/api/mcp", { headers: { Authorization: `Bearer ${key}` }, data: { jsonrpc: "2.0", id: 1, method, params } })).json()).result;
+  const tools = async (key: string) => (await call(key, "tools/list")).tools.map((t: { name: string }) => t.name);
+
+  expect(await tools(reader)).not.toContain("create_page");
+  expect(await tools(maker)).toEqual(expect.arrayContaining(["create_page", "create_database", "create_playbook"]));
+  const refused = await call(reader, "tools/call", { name: "create_page", arguments: { title: "Nope" } });
+  expect(refused.isError).toBe(true);
+
+  // A page inside the hub: the open tab shows it without a reload.
+  const made = await call(maker, "tools/call", {
+    name: "create_page",
+    arguments: { title: "Agent notes", content: "## From Claude\n\n- [ ] Check the gutters", parent_page_id: account!.ids.hub },
+  });
+  expect(made.isError).toBe(false);
+  expect(made.structuredContent.url).toBe(`${baseURL}/p/${made.structuredContent.page_id}`);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+  await expect(sidebar.locator(".tree-row", { hasText: "Agent notes" })).toBeVisible();
+  await page.goto(made.structuredContent.url);
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Agent notes");
+  await expect(page.getByLabel("Page content", { exact: true })).toContainText("Check the gutters");
+
+  // A database with rows.
+  const db = await call(maker, "tools/call", {
+    name: "create_database",
+    arguments: {
+      title: "Repairs",
+      properties: [{ name: "Cost", type: "currency" }, { name: "Done", type: "checkbox" }],
+      rows: [{ Name: "Fix the gate", Cost: 120, Done: false }, { Name: "Paint the fence", Cost: 300 }],
+    },
+  });
+  expect(db.isError).toBe(false);
+  await page.goto(db.structuredContent.url);
+  await expect(page.getByRole("table")).toContainText("Fix the gate");
+  await expect(page.getByRole("table")).toContainText("Paint the fence");
+
+  // A playbook people can run.
+  const playbook = await call(maker, "tools/call", {
+    name: "create_playbook",
+    arguments: {
+      title: "Move-out check",
+      when_to_use: "A tenant moves out.",
+      inputs: [{ label: "Unit" }],
+      sections: [{ title: "Walkthrough", steps: [{ type: "check", text: "Inspect {{unit}} for damage." }, { type: "finish", text: "Done" }] }],
+    },
+  });
+  expect(playbook.isError).toBe(false);
+  await page.goto(playbook.structuredContent.url);
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Move-out check");
+  await expect(page.getByRole("button", { name: "Run", exact: true })).toBeVisible();
+  await agent.dispose();
 });

@@ -17,7 +17,8 @@ export interface ToolDefinition {
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  annotations: { readOnlyHint: true; openWorldHint: false };
+  /** MCP tool hints: whether it changes anything, can remove anything, or reaches outside. */
+  annotations: { readOnlyHint: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint: boolean };
 }
 export interface ToolResult {
   /** The answer as JSON, for agents that read structured results. */

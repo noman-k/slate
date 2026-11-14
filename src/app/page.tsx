@@ -44,7 +44,7 @@ const FACTS = [
   { value: '1', label: 'workspace for notes, data and playbooks' },
   { value: '3', label: 'database views: table, board and list' },
   { value: '4', label: 'kinds of playbook step: check, ask, decide, call' },
-  { value: '5', label: 'read-only tools for your AI agents' },
+  { value: '8', label: 'tools for your AI agents: 5 to read, 3 to create' },
 ];
 
 /** The tools people juggle today — and what Slate puts in one place. */
@@ -97,7 +97,7 @@ const FAQ = [
   },
   {
     q: 'How do AI agents use my workspace?',
-    a: 'Create an agent key in Settings and connect any MCP-compatible agent, such as Claude. It can search, read pages, query databases and look up playbooks — read-only. Each agent has its own key, which you can revoke at any time.',
+    a: 'Create an agent key in Settings and connect any MCP-compatible agent, such as Claude. It can search, read pages, query databases and look up playbooks. If you choose “Read and create” for its key, it can also add new pages, databases and playbooks, but never edit or delete existing ones. Each agent has its own key, which you can revoke at any time.',
   },
   {
     q: 'Who can see my pages?',
@@ -437,7 +437,7 @@ export default async function Home() {
             <div className="agents">
               <ul className="agents-points">
                 <li><span><KeyRound size={16} /></span><div><strong>One key per agent.</strong> Revoke any of them, any time.</div></li>
-                <li><span><Lock size={16} /></span><div><strong>Read-only.</strong> Agents can search and read — they can’t change a thing.</div></li>
+                <li><span><Lock size={16} /></span><div><strong>Read-only, unless you say so.</strong> Give a key permission and agents can add pages, databases and playbooks. They never edit or delete anything that’s already there.</div></li>
                 <li><span><Zap size={16} /></span><div><strong>Works with any MCP client.</strong> Claude, Cursor, VS Code, Codex or your own. <Link href="/docs/mcp" className="agents-guide">See the setup guide</Link></div></li>
               </ul>
               <div className="agent-chat" aria-hidden>

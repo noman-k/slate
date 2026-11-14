@@ -61,6 +61,17 @@ export async function saveRemoteState(
   if (userId === savingUserId) revision = Number(data);
 }
 
+/**
+ * The account's current revision, without loading the workspace: a cheap way for an idle tab
+ * to notice changes made elsewhere (another tab, or an AI agent creating pages).
+ */
+export async function loadRemoteRevision(): Promise<number | null> {
+  if (!isSupabaseConfigured || !userId) return null;
+  const { data, error } = await getSupabaseClient().from("profiles").select("sync_revision").eq("id", userId).maybeSingle();
+  if (error || !data) return null;
+  return Number(data.sync_revision);
+}
+
 export function getRemoteIdentity(): {
   userId: string | null;
   revision: number | null;

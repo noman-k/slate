@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowRight, BookOpen, Eye, KeyRound, Lock, ShieldCheck, Sparkles, Wrench } from "lucide-react";
+import { ArrowRight, BookOpen, Eye, KeyRound, Lock, PlusCircle, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { AGENT_TOOLS, type ToolDefinition } from "@/lib/agent-tools";
+import { WRITE_TOOLS } from "@/lib/agent-writes";
 import { SUPPORTED_PROTOCOLS } from "@/lib/mcp";
 import { REPOSITORY_URL } from "@/lib/project";
 import { LIMITS } from "@/lib/rate-limit";
@@ -14,7 +15,7 @@ import "../docs.css";
 export const metadata: Metadata = {
   title: "Connect AI agents (MCP) · Slate",
   description:
-    "Let Claude, Cursor, VS Code or any MCP client read your Slate workspace: pages, databases and playbooks. Read-only, with a key you can revoke.",
+    "Let Claude, Cursor, VS Code or any MCP client read your Slate workspace (pages, databases and playbooks) and, if you allow it, create new ones. With a key you can revoke.",
 };
 
 const KEY = "slate_YOUR_KEY";
@@ -144,6 +145,8 @@ const EXAMPLES = [
   { prompt: "Find my notes about the Q3 launch and summarize them.", how: "Searches the workspace, then reads the pages it finds." },
   { prompt: "What does our refund playbook say to do for an order over 30 days old?", how: "Looks up the playbook and walks through its steps." },
   { prompt: "What databases do I have, and what does each one track?", how: "Lists your databases with their properties." },
+  { prompt: "Turn these meeting notes into a page under Projects.", how: "Creates a page (with a key that can create)." },
+  { prompt: "Make a database of my vendors with name, phone and contract end date.", how: "Creates a database with those columns and rows." },
 ];
 
 type Schema = {
@@ -201,7 +204,11 @@ function Tool({ tool }: { tool: ToolDefinition }) {
       <header>
         <code>{tool.name}</code>
         <span>{tool.title}</span>
-        <span className="docs-badge"><Eye size={12} /> Read-only</span>
+        {tool.annotations.readOnlyHint ? (
+          <span className="docs-badge"><Eye size={12} /> Read-only</span>
+        ) : (
+          <span className="docs-badge is-create"><PlusCircle size={12} /> Creates</span>
+        )}
       </header>
       <p>{description}</p>
       <Params schema={tool.inputSchema as Schema} />
@@ -239,9 +246,9 @@ export default async function McpDocs() {
               answer with your own notes instead of guessing.
             </p>
             <ul className="docs-facts" aria-label="At a glance">
-              <li><Eye size={15} /> <span><strong>Read-only.</strong> Agents can look, never change.</span></li>
+              <li><Eye size={15} /> <span><strong>Read-only by default.</strong> A key can also create; nothing ever edits or deletes.</span></li>
               <li><KeyRound size={15} /> <span><strong>One key per agent.</strong> Revoke any time.</span></li>
-              <li><Wrench size={15} /> <span><strong>{AGENT_TOOLS.length} tools</strong> for search, pages, databases and playbooks.</span></li>
+              <li><Wrench size={15} /> <span><strong>{AGENT_TOOLS.length + WRITE_TOOLS.length} tools</strong>: {AGENT_TOOLS.length} to read, {WRITE_TOOLS.length} to create.</span></li>
             </ul>
             <div className="docs-endpoint">
               <span>Endpoint</span>
@@ -255,7 +262,9 @@ export default async function McpDocs() {
             <ol className="docs-quick">
               <li>
                 <strong>Create a key.</strong> In Slate, open <em>Settings › AI agents</em>, name the key after the agent
-                that will use it (say, “Claude on my laptop”) and choose <em>Create key</em>. Copy it: it&apos;s shown only once.
+                that will use it (say, “Claude on my laptop”), choose what it can do (<em>Read only</em>, or{" "}
+                <em>Read and create</em> to let it add pages, databases and playbooks) and choose <em>Create key</em>. Copy it:
+                it&apos;s shown only once.
                 <Link href="/app" className="docs-inline-link">Open Slate <ArrowRight size={13} /></Link>
               </li>
               <li>
@@ -290,18 +299,30 @@ export default async function McpDocs() {
           <section id="tools" aria-labelledby="tools-title">
             <h2 id="tools-title">Tools</h2>
             <p>
-              Agents choose these tools themselves; you just ask in your own words. Every tool only reads. Results come
-              back as readable text and as structured JSON.
+              Agents choose these tools themselves; you just ask in your own words. Results come back as readable text and
+              as structured JSON.
             </p>
+            <h3 className="docs-tools-group">Reading (every key)</h3>
             <div className="docs-tools">
               {AGENT_TOOLS.map((tool) => <Tool key={tool.name} tool={tool} />)}
+            </div>
+            <h3 className="docs-tools-group">Creating (keys with “Read and create”)</h3>
+            <p>
+              These only add. A new page or playbook can go inside an existing page, where it appears as a link at the end of
+              that page; nothing else that exists is changed, and nothing is deleted. A playbook is checked the way the
+              builder checks it, and anything that would break a run comes back as an error to fix before it&apos;s made.
+              Each answer includes the new page&apos;s address.
+            </p>
+            <div className="docs-tools">
+              {WRITE_TOOLS.map((tool) => <Tool key={tool.name} tool={tool} />)}
             </div>
           </section>
 
           <section id="security" aria-labelledby="security-title">
             <h2 id="security-title">Security &amp; privacy</h2>
             <ul className="docs-points">
-              <li><Eye size={16} /><span><strong>Read-only.</strong> No tool can create, change or delete anything in your workspace.</span></li>
+              <li><Eye size={16} /><span><strong>Read-only unless you choose otherwise.</strong> Keys can only read unless created with <em>Read and create</em>. Even then, agents only add new pages, databases and playbooks: no tool edits or deletes anything.</span></li>
+              <li><PlusCircle size={16} /><span><strong>Limits on creating.</strong> A key can create at most 20 things a minute, and one database at most 200 rows at once. Agent text is kept as text: it can&apos;t embed other pages or databases.</span></li>
               <li><Lock size={16} /><span><strong>Scoped to your account.</strong> A key reads every workspace in the account that created it, and nothing else. Pages in Trash aren&apos;t visible.</span></li>
               <li><KeyRound size={16} /><span><strong>One key per agent, revocable.</strong> Settings › AI agents lists your keys with when each was last used. Revoking one stops it on the agent&apos;s next request.</span></li>
               <li><ShieldCheck size={16} /><span><strong>Stored as a hash.</strong> Slate keeps only a fingerprint of each key, which is why it&apos;s shown once. If you lose it, revoke it and create another.</span></li>
@@ -320,6 +341,8 @@ export default async function McpDocs() {
                 ["My client wants me to sign in", "Slate uses keys rather than a sign-in flow. Add it through the client's config file with the key in a header, or through `mcp-remote` as shown above."],
                 ["The agent can't find a page", "Agents see what's in your workspace now, apart from pages in Trash. Ask it to search by a word from the page's title, or give it the page's link."],
                 ["“Unable to read the workspace right now” (503)", "Slate couldn't reach its database for a moment. Try again shortly."],
+                ["“This agent key can only read”", "The key was created as Read only. Create a new key with Read and create in Settings › AI agents, and use that one where the agent should be able to create."],
+                ["A new page doesn't show in Slate yet", "Slate checks for changes every few seconds while the tab is open, and right away when you come back to it. If you were in the middle of editing, it waits until your changes are saved."],
                 ["“Too many requests” (429)", `Each key can make ${LIMITS.MCP_KEY_LIMITER} requests a minute, and each address ${LIMITS.MCP_IP_LIMITER}. Wait the number of seconds in the \`Retry-After\` header (the message says it too), then carry on. Normal use never gets near this.`],
               ].map(([q, a]) => (
                 <details key={q}>
@@ -337,8 +360,8 @@ export default async function McpDocs() {
               <div><dt>Transport</dt><dd>Streamable HTTP. One JSON-RPC message per <code>POST</code>, answered with JSON; no sessions and no server-sent stream (<code>GET</code> answers 405).</dd></div>
               <div><dt>Authentication</dt><dd><code>Authorization: Bearer slate_…</code>. Keys are 43 random characters after the <code>slate_</code> prefix.</dd></div>
               <div><dt>Protocol versions</dt><dd>{SUPPORTED_PROTOCOLS.map((v, i) => <span key={v}>{i ? ", " : ""}<code>{v}</code></span>)}</dd></div>
-              <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. All tools are marked <code>readOnlyHint</code>.</dd></div>
-              <div><dt>Rate limits</dt><dd>{LIMITS.MCP_KEY_LIMITER} requests a minute per key and {LIMITS.MCP_IP_LIMITER} per IP address. Over a limit: <code>429</code> with <code>Retry-After</code>.</dd></div>
+              <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. A key sees the reading tools (<code>readOnlyHint</code>), plus the creating ones (<code>readOnlyHint: false</code>, <code>destructiveHint: false</code>) when its scope allows.</dd></div>
+              <div><dt>Rate limits</dt><dd>{LIMITS.MCP_KEY_LIMITER} requests a minute per key and {LIMITS.MCP_IP_LIMITER} per IP address; creating, {LIMITS.MCP_WRITE_LIMITER} a minute per key. Over a limit: <code>429</code> with <code>Retry-After</code>.</dd></div>
               <div><dt>Server name</dt><dd><code>slate</code></dd></div>
               <div><dt>Source</dt><dd>The server is <code>src/app/api/mcp</code> and <code>src/lib/mcp.ts</code>; the tools are <code>src/lib/agent-tools.ts</code> in the <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub repository</a>.</dd></div>
             </dl>

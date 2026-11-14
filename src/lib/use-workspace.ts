@@ -7,7 +7,21 @@ import {
   loadRemoteState,
   saveRemoteState,
   getRemoteIdentity,
+  loadRemoteRevision,
 } from "./persistence";
+/** How often an idle, visible tab checks for changes made elsewhere. */
+const CHECK_EVERY_MS = 20_000;
+/** Page icons are line icons only: convert emoji (and the old "file" marker). */
+function withLineIcons(state: WorkspaceState): WorkspaceState {
+  if (!state.pages.some((page) => normalizePageIcon(page.icon) !== page.icon)) return state;
+  return {
+    ...state,
+    pages: state.pages.map((page) => {
+      const icon = normalizePageIcon(page.icon);
+      return icon === page.icon ? page : { ...page, icon };
+    }),
+  };
+}
 const emptyState = (): WorkspaceState => ({
   workspaces: [],
   pages: [],
@@ -104,15 +118,7 @@ export function useWorkspace() {
           }
         }
         if (next) {
-          // Page icons are line icons only: convert emoji (and the old "file" marker).
-          if (next.pages.some((page) => normalizePageIcon(page.icon) !== page.icon))
-            next = {
-              ...next,
-              pages: next.pages.map((page) => {
-                const icon = normalizePageIcon(page.icon);
-                return icon === page.icon ? page : { ...page, icon };
-              }),
-            };
+          next = withLineIcons(next);
           current.current = next;
           setState(next);
         }
@@ -219,6 +225,47 @@ export function useWorkspace() {
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [save, journal]);
+  // Changes made elsewhere (another tab, or an AI agent creating pages) show up in an idle
+  // tab: when it's visible, it checks the account's revision now and then and on focus, and
+  // loads the workspace again only if it moved and nothing here is waiting to be saved.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let checking = false;
+    const idle = () => loaded.current && !dirty.current && !saving.current && !hydration.current;
+    const check = async () => {
+      if (checking || document.visibilityState !== "visible" || !idle()) return;
+      checking = true;
+      try {
+        const latest = await loadRemoteRevision();
+        if (latest === null || latest === baseRevision.current || !idle()) return;
+        const next = await loadRemoteState();
+        // Someone started editing while it loaded: keep their work; the next save sorts it out.
+        if (!next || !idle()) return;
+        const identity = getRemoteIdentity();
+        if (identity.userId !== owner.current) return;
+        baseRevision.current = identity.revision;
+        const shown = withLineIcons(next);
+        persisted.current = shown;
+        current.current = shown;
+        setState(shown);
+      } catch {
+        // A failed check changes nothing; the next one tries again.
+      } finally {
+        checking = false;
+      }
+    };
+    const timer = setInterval(() => void check(), CHECK_EVERY_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
   const retry = useCallback(async () => {
     if (loaded.current) await save();
     else if (await hydrate()) await save();

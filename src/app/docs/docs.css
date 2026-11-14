@@ -589,3 +589,13 @@
 .docs-main .docs-contact a {
   font-weight: 600;
 }
+
+.docs-main h3.docs-tools-group {
+  margin: 22px 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.docs-badge.is-create {
+  background: var(--tag-blue-bg);
+}

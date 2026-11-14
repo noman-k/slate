@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { AGENT_TOOLS } from "../../src/lib/agent-tools";
+import { WRITE_TOOLS } from "../../src/lib/agent-writes";
 
 // The MCP guide is public: no account needed to read it.
 test("the MCP guide is public and documents every tool", async ({ page, baseURL }) => {
@@ -9,7 +10,9 @@ test("the MCP guide is public and documents every tool", async ({ page, baseURL 
   // The endpoint is this server's own address.
   await expect(page.locator(".docs-endpoint code")).toHaveText(`${baseURL}/api/mcp`);
   // The tools reference comes from the same list the server answers tools/list with.
-  for (const tool of AGENT_TOOLS) await expect(page.locator(`#tool-${tool.name}`)).toContainText(tool.title);
+  for (const tool of [...AGENT_TOOLS, ...WRITE_TOOLS]) await expect(page.locator(`#tool-${tool.name}`)).toContainText(tool.title);
+  await expect(page.locator("#tool-create_page")).toContainText("Creates");
+  await expect(page.locator("#tool-read_page")).toContainText("Read-only");
 });
 
 test("setup tabs switch by click and arrow keys, and remember the choice", async ({ page }) => {
