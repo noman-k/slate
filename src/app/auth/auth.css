@@ -17,3 +17,6 @@
 .auth-sent-actions{display:flex;flex-wrap:wrap;gap:16px}
 .auth-sent .auth-error{margin-top:12px}
 a.auth-submit{text-decoration:none}
+
+.auth-private a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.auth-private a:hover{color:var(--text-secondary)}

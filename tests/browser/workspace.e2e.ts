@@ -1153,6 +1153,9 @@ test("settings explain AI agent access and offer agent keys", async ({ page }) =
   await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
   await expect(agents).toContainText("No agent keys yet.");
   await expect(agents.getByRole("link", { name: /Setup guide/ })).toHaveAttribute("href", "/docs/mcp");
+  // About: where to ask about the account and its data.
+  await expect(page.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact?topic=delete");
+  await expect(page.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
 });
 test("run-request and MCP turn away callers over their limit", async ({ page, playwright, baseURL }) => {
   // The test server allows 5 a minute for each (see playwright.config.ts); production

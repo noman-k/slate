@@ -68,7 +68,9 @@ Open http://localhost:3000 and register; the workspace is at http://localhost:30
 | `src/app/auth/*` | Register, log in, forgot/reset password, auth callback |
 | `src/app/api/mcp` | MCP endpoint for AI agents |
 | `src/app/docs/mcp` | Public MCP setup guide (`/docs/mcp`) |
-| `src/lib/project.ts` | Repository URL and license name, used for the source-code links |
+| `src/lib/project.ts` | Repository URL, license name and site address |
+| `src/app/privacy`, `src/app/contact` | Public privacy page and contact form (`/privacy`, `/contact`); messages go to `/api/contact` |
+| `src/components/site-chrome.tsx` | Header and footer for the public pages |
 | `src/lib/rate-limit.ts` | Rate limits for `/api/run-request` and `/api/mcp` |
 | `src/app/api/run-request` | Server-side sender for playbook API steps |
 | `src/app/api/attachments/[id]` | Signed redirects to private uploads |
@@ -199,13 +201,13 @@ To run your own copy, fork the repository and follow the deployment steps above 
 - **`wrangler.jsonc`:** the Worker `name`, and the `routes` pattern to your own domain (or remove `routes` to use the Worker's `workers.dev` address).
 - **Cloudflare build variables:** your Supabase project's URL and publishable key, and `NEXT_PUBLIC_APP_URL` set to your address.
 - **Supabase Authentication:** your address in the Site URL and redirect URLs.
-- **`src/lib/project.ts`:** `REPOSITORY_URL`, if you change the code. The AGPL asks that people using your hosted copy can get its source; the app links to this address from Settings, the front page and the docs.
+- **`src/lib/project.ts`:** `SITE_URL`, and update `src/app/privacy/page.tsx` to describe your copy. Contact-form messages land in your Supabase project's `contact_messages` table. Also `REPOSITORY_URL`, if you change the code. The AGPL asks that people using your hosted copy can get its source; the app links to this address from Settings, the front page and the docs.
 
 Other mentions of slate.noman.io (this README, `package.json`'s `homepage`, `SECURITY.md`, the issue templates and the MCP guide's fallback address) describe the hosted version; update them if you publish your own fork.
 
 ## Contributing
 
-Slate is built and maintained by one person, so issues and pull requests are reviewed when time allows, and not everything can be answered quickly. For anything bigger than a small fix, please open an issue to discuss it first.
+Slate is built and maintained by one person, so issues and pull requests are reviewed when time allows, and not everything can be answered quickly. For anything bigger than a small fix, please open an issue to discuss it first. For account, data or privacy questions about the hosted version, use the [contact form](https://slate.noman.io/contact) (see also the [privacy page](https://slate.noman.io/privacy)).
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the checks to run, and the rules for database migrations. Please report security problems privately as described in [SECURITY.md](SECURITY.md), and follow the [code of conduct](CODE_OF_CONDUCT.md).
 

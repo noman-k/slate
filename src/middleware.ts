@@ -5,10 +5,12 @@ export async function middleware(request: NextRequest) {
   // AI agents call the MCP endpoint with an agent key, not a session cookie; the route
   // checks the key itself (and answers 503 when Supabase isn't connected).
   if (request.nextUrl.pathname === '/api/mcp') return NextResponse.next();
+  // The contact form is for everyone, signed in or not; the route reads the session itself.
+  if (request.nextUrl.pathname === '/api/contact') return NextResponse.next();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  // The front page and docs are public; the front page adapts to signed-in visitors itself.
-  const isPublic = request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/auth') || request.nextUrl.pathname.startsWith('/docs');
+  // The front page, docs and privacy page are public; the front page adapts to signed-in visitors itself.
+  const isPublic = request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/auth') || request.nextUrl.pathname.startsWith('/docs') || request.nextUrl.pathname === '/privacy' || request.nextUrl.pathname === '/contact';
   // Without Supabase there are no accounts, so there's no workspace to show: the auth
   // pages explain what's missing.
   if (!url || !key) {

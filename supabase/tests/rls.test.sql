@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
-select plan(12);
+select plan(15);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('a0000000-0000-4000-8000-000000000001','owner-a@example.test','{"display_name":"Owner A"}'),
  ('a0000000-0000-4000-8000-000000000002','owner-b@example.test','{"display_name":"Owner B"}');
@@ -21,5 +21,9 @@ select throws_ok($$insert into public.workspaces(owner_id,name) values('a0000000
 select is((public.load_workspace_state()->'state'->'workspaces'->0->>'owner_id'),'a0000000-0000-4000-8000-000000000001','Transport snapshot remains scoped by RLS');
 select is(public.save_workspace_state(public.load_workspace_state()->'state',0),1::bigint,'Atomic transaction increments revision');
 select throws_ok($$select public.save_workspace_state(public.load_workspace_state()->'state',0)$$,'P0001','Sync conflict: reload before saving','Stale tab cannot overwrite newer data');
+select lives_ok($$select public.submit_contact_message('privacy', 'Owner-A@Example.test', 'Where is my data stored?')$$, 'A signed-in member can send a contact message');
+select throws_ok($$select * from public.contact_messages$$, '42501', null, 'Contact messages cannot be read through the API');
+reset role;
+select is((select user_id::text || '|' || email from public.contact_messages where message = 'Where is my data stored?'), 'a0000000-0000-4000-8000-000000000001|owner-a@example.test', 'A message records the signed-in sender, and the email is stored lowercase');
 select * from finish();
 rollback;

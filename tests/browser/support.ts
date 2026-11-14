@@ -152,3 +152,14 @@ export async function emailLinkToken(type: "signup" | "recovery", email: string,
   if (!token) throw new Error("Supabase did not return an email link token.");
   return token;
 }
+
+/** Contact-form messages saved for an address (read with the service key, as the operator would). */
+export async function contactMessages(email: string) {
+  return call<{ topic: string; email: string; message: string; user_id: string | null }[]>(
+    `/rest/v1/contact_messages?email=eq.${encodeURIComponent(email.toLowerCase())}&select=topic,email,message,user_id`,
+    { admin: true },
+  );
+}
+export async function deleteContactMessages(email: string) {
+  await call(`/rest/v1/contact_messages?email=eq.${encodeURIComponent(email.toLowerCase())}`, { method: "DELETE", admin: true }).catch(() => {});
+}

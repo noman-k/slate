@@ -706,6 +706,19 @@ function SettingsDialog({
               <ArrowUpRight size={14} />
             </a>
           </div>
+          <div className="settings-row">
+            <div>
+              <strong>Your account and data</strong>
+              <p>
+                Delete your account, get a copy of your data, or ask about privacy. See{" "}
+                <a className="settings-link" href="/privacy" target="_blank" rel="noreferrer">Privacy</a> for what Slate stores.
+              </p>
+            </div>
+            <a className="secondary-button" href="/contact?topic=delete" target="_blank" rel="noreferrer">
+              Contact
+              <ArrowUpRight size={14} />
+            </a>
+          </div>
         </section>
         <section className="settings-section danger-zone">
           <h3>Danger zone</h3>

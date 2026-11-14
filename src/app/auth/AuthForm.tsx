@@ -215,7 +215,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <Link href={mode === 'reset' ? '/app' : '/auth/login'}><ArrowLeft size={14} /> {mode === 'reset' ? 'Back to workspace' : 'Back to log in'}</Link>
           )}
         </p>
-        <div className="auth-private"><LockKeyhole size={12} /> A quiet space. Only yours.</div>
+        <div className="auth-private"><LockKeyhole size={12} /> A quiet space. Only yours. <Link href="/privacy">Privacy</Link></div>
       </div>
       <span className="auth-bottom">Thoughtfully organized. Effortlessly connected.</span>
     </main>

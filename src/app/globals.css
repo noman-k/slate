@@ -4621,3 +4621,12 @@ section.is-folded .section-toggle svg {
   align-items: center;
   gap: 2px;
 }
+
+/* An inline link inside a settings row's description. */
+.settings-link {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.settings-link:hover {
+  text-decoration: underline;
+}

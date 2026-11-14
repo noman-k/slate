@@ -564,6 +564,11 @@ export default async function Home() {
             <Link href="/app">Open Slate</Link>
           )}
         </nav>
+        <nav aria-label="About">
+          <h2>About</h2>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/contact">Contact</Link>
+        </nav>
       </footer>
     </div>
   );

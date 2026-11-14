@@ -5,3 +5,6 @@
  */
 export const REPOSITORY_URL = "https://github.com/noman-k/slate";
 export const LICENSE_NAME = "AGPL-3.0";
+
+/** The address of the hosted copy these pages describe. */
+export const SITE_URL = "https://slate.noman.io";

@@ -3,6 +3,9 @@ contact_links:
   - name: Report a security problem
     url: https://github.com/noman-k/slate/security/advisories/new
     about: Please report vulnerabilities privately, never in a public issue.
+  - name: Account or privacy question
+    url: https://slate.noman.io/contact
+    about: Deleting your account, getting a copy of your data, or privacy questions. Send a private message.
   - name: MCP setup guide
     url: https://slate.noman.io/docs/mcp
     about: Connecting Claude, Cursor, VS Code or another AI client.

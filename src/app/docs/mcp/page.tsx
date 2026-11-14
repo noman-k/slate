@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { ArrowRight, BookOpen, Eye, KeyRound, Lock, ShieldCheck, Sparkles, Wrench } from "lucide-react";
-import { Brand } from "@/components/brand";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { AGENT_TOOLS, type ToolDefinition } from "@/lib/agent-tools";
 import { SUPPORTED_PROTOCOLS } from "@/lib/mcp";
 import { REPOSITORY_URL } from "@/lib/project";
@@ -225,18 +224,7 @@ export default async function McpDocs() {
   return (
     <div className="landing docs">
       <a className="skip-link" href="#main">Skip to content</a>
-      <header className="landing-header">
-        <div className="landing-nav">
-          <Link href="/" className="landing-brand" aria-label="Slate home"><Brand size={26} /></Link>
-          <nav className="landing-sections" aria-label="Site">
-            <Link href="/">Product</Link>
-            <Link href="/docs/mcp" aria-current="page">AI agents (MCP)</Link>
-          </nav>
-          <div className="landing-account">
-            <Link href="/app" className="landing-button small outline">Open Slate</Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader current="/docs/mcp" />
 
       <div className="docs-layout">
         <TableOfContents sections={SECTIONS} />
@@ -362,24 +350,7 @@ export default async function McpDocs() {
         </main>
       </div>
 
-      <footer className="landing-footer docs-footer">
-        <div className="footer-brand">
-          <Brand size={20} />
-          <p>Write it down. Organize it. Run it.</p>
-          <ThemeSwitcher compact />
-        </div>
-        <nav aria-label="Product">
-          <h2>Product</h2>
-          <Link href="/">Home</Link>
-          <Link href="/docs/mcp">AI agents (MCP)</Link>
-          <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">Source code (GitHub)</a>
-        </nav>
-        <nav aria-label="Account">
-          <h2>Workspace</h2>
-          <Link href="/app">Open Slate</Link>
-          <Link href="/auth/register">Create an account</Link>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

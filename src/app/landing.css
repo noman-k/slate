@@ -1299,7 +1299,7 @@ html:has(.landing) {
 /* Footer */
 .landing-footer {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 32px;
   max-width: var(--landing-max);
   margin: 0 auto;

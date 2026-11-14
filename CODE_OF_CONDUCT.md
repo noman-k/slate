@@ -6,6 +6,6 @@ In short: be respectful and constructive, assume good intent, and help keep this
 
 ## Reporting
 
-If something happens that you'd like the maintainer to know about, report it privately through the repository's **Security** tab (**Report a vulnerability** works for conduct reports too), or contact the maintainer directly on GitHub. Reports are handled confidentially.
+If something happens that you'd like the maintainer to know about, send a message through the [contact form](https://slate.noman.io/contact), or report it privately through the repository's **Security** tab. Reports are handled confidentially.
 
 The maintainer may remove, edit or reject comments, commits, code and issues that don't follow this code of conduct, and may block people who repeatedly or seriously break it.

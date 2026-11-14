@@ -31,3 +31,14 @@ test("the landing page links to the guide", async ({ page }) => {
   await page.getByRole("link", { name: "See the setup guide" }).click();
   await expect(page).toHaveURL(/\/docs\/mcp$/);
 });
+
+test("the privacy page is public and gives a way to reach the operator", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Privacy" }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Send a message" }).first()).toHaveAttribute("href", "/contact?topic=privacy");
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
+  // No email address on the page: everything goes through the contact form.
+  await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
+});
