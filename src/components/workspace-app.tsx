@@ -223,30 +223,40 @@ export function WorkspaceApp() {
     (p) => p.database_id === record?.database_id,
   );
   // The Playbooks view isn't a page: nothing falls back to the first page behind it.
-  const page = activeId === PLAYBOOKS_VIEW ? undefined :
-    (record
-      ? recordAsPage
-        ? recordPage
-        : recordParent
+  const chosen =
+    activeId === PLAYBOOKS_VIEW
+      ? undefined
+      : record
+        ? recordAsPage
+          ? recordPage
+          : recordParent
+        : state.pages.find(
+            (p) => p.id === activeId && !p.deleted_at && p.workspace_id === state.active_workspace_id,
+          );
+  // Nothing chosen (at /app): the page last open here, then the first page. A page that
+  // was asked for but isn't here gets "not found", never a different page: typing there
+  // would change the wrong page.
+  const page =
+    chosen ??
+    (activeId
+      ? undefined
       : state.pages.find(
+          (p) => p.id === savedLast[state.active_workspace_id] && p.workspace_id === state.active_workspace_id && !p.deleted_at,
+        ) ??
+        state.pages.find(
           (p) =>
-            p.id === activeId &&
+            p.workspace_id === state.active_workspace_id &&
             !p.deleted_at &&
-            p.workspace_id === state.active_workspace_id,
-        )) ||
-    // Nothing chosen (at /app): the page last open here, then the first page.
-    state.pages.find(
-      (p) =>
-        p.id === savedLast[state.active_workspace_id] &&
-        p.workspace_id === state.active_workspace_id &&
-        !p.deleted_at,
-    ) ||
-    state.pages.find(
-      (p) =>
-        p.workspace_id === state.active_workspace_id &&
-        !p.deleted_at &&
-        !state.records.some((r) => r.page_id === p.id),
-    );
+            !state.records.some((r) => r.page_id === p.id),
+        ));
+  // A link to a page in another of your workspaces opens that workspace.
+  const elsewhere = ready && activeId ? state.pages.find((p) => p.id === activeId && !p.deleted_at && p.workspace_id !== state.active_workspace_id) : undefined;
+  useEffect(() => {
+    if (elsewhere) change((s) => ({ ...s, active_workspace_id: elsewhere.workspace_id }));
+  }, [elsewhere, change]);
+  /** A page asked for by its address that isn't open-able here (trashed, or not found). */
+  const missing = ready && !!activeId && activeId !== PLAYBOOKS_VIEW && !page && !elsewhere;
+  const missingPage = missing ? state.pages.find((p) => p.id === activeId) : undefined;
   const chain = page ? breadcrumbs(state.pages, page.id) : [];
   // Reveal the open page in the sidebar tree: expand every page above it. (A record's
   // breadcrumbs end at its database page, which is what the tree shows for it.)
@@ -733,14 +743,30 @@ export function WorkspaceApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
   /** Like Notion: a new page opens immediately with the cursor in its title. */
+  /** A New page asked for while the workspace was still loading: made once it's there. */
+  const pendingNew = useRef<[string | null, "document" | "database"] | null>(null);
   const requestNew = (
     parent?: string | null,
     kind: "document" | "database" = "document",
   ) => {
+    // Before the workspace loads, a page can't be made yet (it would vanish): hold the
+    // click and do it the moment it's ready.
+    if (!ready) {
+      pendingNew.current = [parent ?? null, kind];
+      return;
+    }
     const made = createPage(parent ?? null, "", kind, true);
     open(made.pageId);
     setFocusTitle(made.pageId);
   };
+  useEffect(() => {
+    if (!ready || !pendingNew.current) return;
+    const [parent, kind] = pendingNew.current;
+    pendingNew.current = null;
+    queueMicrotask(() => requestNew(parent, kind));
+    // Only when the workspace becomes ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
   const action = (action: PageAction, p: Page) => {
     if (action === "rename") dialogs.renamePage(p);
     // The open page gets the picker right at its icon; other pages use the dialog.
@@ -1538,6 +1564,43 @@ export function WorkspaceApp() {
                 )}
               </div>
             </article>
+          ) : missing ? (
+            <div className="empty-workspace" role="status">
+              <FileText size={36} />
+              {missingPage?.deleted_at ? (
+                <>
+                  <h2>“{missingPage.title || "Untitled"}” is in the Trash.</h2>
+                  <p>Restore it to open it again, or go back to your pages.</p>
+                </>
+              ) : (
+                <>
+                  <h2>This page isn’t here.</h2>
+                  <p>It may have been deleted, or the link is for another account.</p>
+                </>
+              )}
+              <div className="empty-workspace-actions">
+                {missingPage?.deleted_at && (
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      change((s) => trashPage(s, missingPage.id, true));
+                      toast.success("Restored");
+                    }}
+                  >
+                    Restore
+                  </button>
+                )}
+                <button
+                  className={missingPage?.deleted_at ? "secondary-button" : "primary-button"}
+                  onClick={() => {
+                    const home = returnPage(state.active_workspace_id);
+                    if (home && home !== activeId) open(home);
+                  }}
+                >
+                  Go to your pages
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="empty-workspace">
               <FileText size={36} />

@@ -1577,3 +1577,34 @@ test("going to the front page and back returns to the page you were on, in each 
   await page.getByRole("menuitem", { name: "Side project" }).click();
   await expect(title).toHaveValue("Side notes");
 });
+test("a page's address never shows a different page, and New page waits for the workspace", async ({ page }) => {
+  const title = page.getByLabel("Page title", { exact: true });
+  // A page that isn't there says so, instead of opening another page in its place.
+  await page.goto("/p/00000000-0000-4000-8000-0000000000ff");
+  await expect(page.getByRole("heading", { name: "This page isn’t here." })).toBeVisible();
+  await expect(title).toHaveCount(0);
+  await page.getByRole("button", { name: "Go to your pages" }).click();
+  await expect(title).toBeVisible();
+  // A page in the Trash can be restored from its address.
+  await page.goto(`/p/${account!.ids.guide}`);
+  await expect(title).toHaveValue("Getting started");
+  await page.getByRole("button", { name: "Page options" }).click();
+  await page.getByRole("menuitem", { name: /Move to trash/i }).click();
+  await page.goto(`/p/${account!.ids.guide}`);
+  await expect(page.getByRole("heading", { name: "“Getting started” is in the Trash." })).toBeVisible();
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(title).toHaveValue("Getting started");
+  // New page, clicked while the workspace is still loading, makes a new page once it's there.
+  await page.goto(`/p/${account!.ids.hub}`);
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
+  await expect(title).toHaveValue("");
+  await expect(page.getByLabel("Start this page")).toBeVisible();
+});
+test("menus hand focus back to what opened them when closed with Escape", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  const icon = page.getByRole("button", { name: "Change page icon" });
+  await icon.click();
+  await expect(page.getByLabel("Choose a page icon")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(icon).toBeFocused();
+});

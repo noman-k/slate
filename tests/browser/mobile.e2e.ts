@@ -255,3 +255,25 @@ test("swiping the sidebar scrolls it; only a long press picks a page up", async 
   await expect(sidebar.locator(".tree-row.is-dragging")).toHaveCount(1);
   await touch("touchEnd", x, y);
 });
+
+test("menus on a phone: finger-sized rows, on screen, and no keyboard until you ask for it", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  // A sidebar page's menu fits on the screen (there's no room beside it on a phone).
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "Actions for Rental Property Finance Hub" }).tap();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  // Measured once its opening animation has finished.
+  await page.waitForTimeout(300);
+  const box = (await menu.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  for (const item of await menu.getByRole("menuitem").all()) expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press("Escape");
+  // A database's menus don't put the cursor in a field (that would raise the keyboard over them).
+  await page.goto(`/p/${account!.ids.ledger}`);
+  await page.getByRole("button", { name: "Add property" }).first().tap();
+  await expect(page.locator(".db-menu")).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement?.matches("input, textarea"))).toBe(false);
+});

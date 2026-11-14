@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isTouchOnly } from '../keys';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import * as Popover from '@radix-ui/react-popover';
@@ -24,7 +25,7 @@ export function PropertyIcon({ type }: { type: PropertyType }) {
 }
 function ViewIcon({ type }: { type: View['type'] }) { const Icon = type === 'board' ? KanbanSquare : type === 'list' ? List : Table2; return <Icon size={16} />; }
 function Menu({ trigger, children, label, className = '', align = 'start', open, onOpenChange }: { trigger: React.ReactNode; children: React.ReactNode; label?: string; className?: string; align?: 'start' | 'end'; open?: boolean; onOpenChange?: (open: boolean) => void }) {
-  return <Popover.Root open={open} onOpenChange={onOpenChange}><Popover.Trigger asChild>{trigger}</Popover.Trigger><Popover.Portal><Popover.Content className={`db-menu ${className}`} align={align} sideOffset={6} collisionPadding={12} aria-label={label} onOpenAutoFocus={(event) => { event.preventDefault(); (event.currentTarget as HTMLElement)?.querySelector<HTMLElement>('input:not([type=checkbox]), textarea')?.focus(); }}>{children}</Popover.Content></Popover.Portal></Popover.Root>;
+  return <Popover.Root open={open} onOpenChange={onOpenChange}><Popover.Trigger asChild>{trigger}</Popover.Trigger><Popover.Portal><Popover.Content className={`db-menu ${className}`} align={align} sideOffset={6} collisionPadding={12} aria-label={label} onOpenAutoFocus={(event) => { event.preventDefault(); /* On a phone, focusing a field would raise the keyboard over the menu: tap it when needed. */ if (isTouchOnly()) return; (event.currentTarget as HTMLElement)?.querySelector<HTMLElement>('input:not([type=checkbox]), textarea')?.focus(); }}>{children}</Popover.Content></Popover.Portal></Popover.Root>;
 }
 function MenuAction({ children, icon, onClick, danger, disabled }: { children: React.ReactNode; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }) {
   return <button type="button" className={`db-menu-action ${danger ? 'danger' : ''}`} onClick={onClick} disabled={disabled}>{icon}<span>{children}</span></button>;

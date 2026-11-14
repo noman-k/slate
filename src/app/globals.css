@@ -5054,3 +5054,55 @@ summary,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/*
+ * Touch screens: menu rows a finger can hit without care (about 44px, as the platform
+ * guidelines ask), with slightly larger text. A mouse keeps the compact rows. `html`
+ * raises these above each component's own sizes.
+ */
+@media (pointer: coarse) {
+  html .menu-item,
+  html .db-menu-action,
+  html .db-option-row,
+  html .editor-context-menu > button,
+  html .slash-command-menu > button,
+  html .editor-db-picker-list > button {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  html .menu-label {
+    padding-top: 10px;
+  }
+  html .editor-bubble button {
+    width: 34px;
+    height: 34px;
+  }
+  html .icon-swatch {
+    width: 28px;
+    height: 28px;
+  }
+  /* Fields and small buttons inside menus. */
+  html .db-menu input:not([type="checkbox"]):not([type="radio"]),
+  html .editor-db-picker-search input,
+  html .db-menu .db-menu-select,
+  html .icon-search,
+  html .icon-tool {
+    min-height: 40px;
+    height: auto;
+  }
+  html .db-menu .db-icon-button {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  html .db-menu button:not(.db-badge-remove) {
+    min-height: 40px;
+  }
+  html .db-menu .db-badge-remove {
+    width: 24px;
+    height: 24px;
+  }
+  html .db-relation-option > button,
+  html .db-open-mode button {
+    min-height: 44px;
+  }
+}

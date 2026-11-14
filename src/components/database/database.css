@@ -247,7 +247,7 @@
 .db-board-property .db-inline-input { height: 24px; }
 .db-board-card > button.db-row-menu-trigger { position: absolute; top: 8px; right: 6px; width: 22px; height: 22px; background: var(--bg-elevated); }
 .database-view button:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 1px; }
-@media (max-width: 1100px) { .db-toolbar { gap: 7px; } .db-view-tab { padding: 0 6px; gap: 5px; font-size: 13px; } .db-automation-button { display: none; } }
+@media (max-width: 1100px) { .db-toolbar { gap: 7px; } .db-view-tab { padding: 0 6px; gap: 5px; font-size: 13px; } }
 @media (max-width: 700px) { .db-toolbar { align-items: flex-start; flex-direction: column; height: auto; gap: 6px; padding-bottom: 6px; } .db-tabs { height: 34px; max-width: 100%; } .db-tools { width: 100%; justify-content: flex-end; } .db-menu { max-width: calc(100vw - 24px); } .db-list-values { display: none; } }
 
 /* Record properties (peek and full page) */

@@ -85,7 +85,7 @@ import { setRunFrom } from "./procedure-nodes";
 import { EditorUrlPopover } from "./EditorUrlPopover";
 import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
-import { useKeys } from "../keys";
+import { isTouchOnly, useKeys } from "../keys";
 
 export interface DocumentEditorProps {
   pageId: string;
@@ -135,7 +135,8 @@ interface SlashState {
 }
 const SLASH_MENU_WIDTH = 300;
 const SLASH_MENU_HEIGHT = 360;
-const BUBBLE_WIDTH = 296;
+/** The selection toolbar's width (its buttons are larger on touch screens). */
+const bubbleWidth = () => (isTouchOnly() ? 342 : 304);
 
 /** The Markdown mark, as GitHub shows under its editors. */
 function MarkdownMark() {
@@ -306,13 +307,16 @@ function placeBubble(editor: Editor, wrapper: HTMLElement | null) {
   const end = editor.view.coordsAtPos(selection.to);
   const rect = wrapper?.getBoundingClientRect();
   const center = (start.left + end.right) / 2 - (rect?.left || 0);
+  const BUBBLE_WIDTH = bubbleWidth();
   // Near the top of the window there is no room above: show it under the selection.
   const below = start.top < 96;
   return {
     top: below ? end.bottom - (rect?.top || 0) + 8 : start.top - (rect?.top || 0) - 46,
+    // Centred on the selection, kept inside the editor and at least 8px inside the window
+    // (on a phone the editor reaches the screen's edges).
     left: Math.min(
-      Math.max(0, (rect?.width || 0) - BUBBLE_WIDTH),
-      Math.max(0, center - BUBBLE_WIDTH / 2),
+      Math.min((rect?.width || 0) - BUBBLE_WIDTH, window.innerWidth - 8 - BUBBLE_WIDTH - (rect?.left || 0)),
+      Math.max(0, 8 - (rect?.left || 0), center - BUBBLE_WIDTH / 2),
     ),
   };
 }
@@ -1728,7 +1732,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
         ];
         const close = () => {
           setBlockMenu(false);
-          editor?.view.focus();
+          // Back to writing, except on a phone, where that would raise the keyboard.
+          if (!isTouchOnly()) editor?.view.focus();
         };
         return (
           <>

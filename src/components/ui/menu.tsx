@@ -3,8 +3,26 @@ import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import * as Popover from "@radix-ui/react-popover";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Check } from "lucide-react";
-import { useRef, type ReactNode, type RefObject } from "react";
+import { useRef, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 type Side = "top" | "right" | "bottom" | "left";
+
+const NARROW = "(max-width: 560px)";
+/**
+ * On a phone there's no room beside a button for a menu: one asked to open to the side
+ * opens below it instead (side-opening menus can't be nudged back on screen).
+ */
+function useSide(side: Side): Side {
+  const narrow = useSyncExternalStore(
+    (change) => {
+      const query = matchMedia(NARROW);
+      query.addEventListener("change", change);
+      return () => query.removeEventListener("change", change);
+    },
+    () => matchMedia(NARROW).matches,
+    () => false,
+  );
+  return narrow && (side === "left" || side === "right") ? "bottom" : side;
+}
 
 /**
  * Dropdown menu. Radix flips it when there isn't room on `side`, keeps it 12px inside
@@ -26,17 +44,30 @@ export function Menu({
   /** False when choosing an item moves focus somewhere else (e.g. into the editor). */
   returnFocus?: boolean;
 }) {
+  // Escape (or a click outside) always hands focus back to the trigger; only choosing an
+  // item may send it elsewhere.
+  const escaped = useRef(false);
+  const placed = useSide(side);
   return (
-    <Dropdown.Root onOpenChange={onOpenChange}>
+    <Dropdown.Root
+      onOpenChange={(open) => {
+        if (open) escaped.current = false;
+        onOpenChange?.(open);
+      }}
+    >
       <Dropdown.Trigger asChild>{trigger}</Dropdown.Trigger>
       <Dropdown.Portal>
         <Dropdown.Content
           className="menu-surface"
-          side={side}
+          side={placed}
           sideOffset={6}
           align={align}
           collisionPadding={12}
-          onCloseAutoFocus={returnFocus ? undefined : (event) => event.preventDefault()}
+          onEscapeKeyDown={() => (escaped.current = true)}
+          onPointerDownOutside={() => (escaped.current = true)}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocus && !escaped.current) event.preventDefault();
+          }}
         >
           {children}
         </Dropdown.Content>
@@ -79,13 +110,14 @@ export function Popup({
   align?: "start" | "end";
   side?: Side;
 }) {
+  const placed = useSide(side);
   return (
     <Popover.Root>
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           className="menu-surface"
-          side={side}
+          side={placed}
           sideOffset={6}
           align={align}
           collisionPadding={12}

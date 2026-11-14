@@ -1,4 +1,5 @@
 "use client";
+import { isTouchOnly } from "./keys";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Search, Shuffle, X } from "lucide-react";
@@ -109,6 +110,8 @@ export function IconPicker({
   useEffect(() => {
     // A menu that opened the picker restores focus to its own trigger just after
     // closing; take focus back so typing goes straight into search.
+    // On a phone that would raise the keyboard over the icons: tap search when needed.
+    if (isTouchOnly()) return;
     const timer = setTimeout(() => {
       if (!rootRef.current?.contains(document.activeElement)) searchRef.current?.focus();
     }, 60);
@@ -145,7 +148,6 @@ export function IconPicker({
           <Search size={16} />
           <input
             ref={searchRef}
-            autoFocus
             aria-label="Search icons"
             placeholder="Search icons…"
             value={query}
@@ -286,9 +288,11 @@ export function IconPickerPopover({
   onChange: (icon: string) => void;
   children: ReactNode;
 }) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Anchor asChild>{children}</Popover.Anchor>
+      <Popover.Anchor asChild ref={anchorRef}>{children}</Popover.Anchor>
       <Popover.Portal>
         <Popover.Content
           className="icon-popover"
@@ -303,7 +307,20 @@ export function IconPickerPopover({
           onFocusOutside={(event) => event.preventDefault()}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            (event.currentTarget as HTMLElement)?.querySelector<HTMLElement>("input")?.focus();
+            // What opened it (the icon, or a menu's trigger), to hand focus back to.
+            const active = document.activeElement as HTMLElement | null;
+            opener.current = active && active !== document.body ? active : null;
+            if (!isTouchOnly()) (event.currentTarget as HTMLElement)?.querySelector<HTMLElement>("input")?.focus();
+          }}
+          // It's anchored to the icon rather than opened by a trigger, so Radix has nothing
+          // to return focus to: send it back to what opened it, or the icon itself.
+          onCloseAutoFocus={(event) => {
+            const target = opener.current?.isConnected
+              ? opener.current
+              : anchorRef.current?.querySelector<HTMLElement>(".document-icon, button");
+            if (!target) return;
+            event.preventDefault();
+            target.focus({ preventScroll: true });
           }}
         >
           <IconPicker value={value} onChange={onChange} onClose={() => onOpenChange(false)} />

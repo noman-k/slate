@@ -14,6 +14,8 @@ export function useKeyPlatform(): KeyPlatform {
 }
 
 const TOUCH_ONLY = "(hover: none) and (pointer: coarse)";
+/** The same, for event handlers: true on a phone or tablet used by touch. */
+export const isTouchOnly = () => typeof window !== "undefined" && matchMedia(TOUCH_ONLY).matches;
 /** A phone or tablet used by touch (no mouse or trackpad): keyboard shortcuts don't apply. */
 export function useTouchOnly(): boolean {
   return useSyncExternalStore(
