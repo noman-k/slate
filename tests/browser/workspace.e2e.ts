@@ -11,9 +11,11 @@ async function createPage(page: Page, name: string) {
   await title.fill(name);
   await expect(page.getByLabel("Page content", { exact: true })).toBeVisible();
 }
+/** A new page from a playbook template (`kind` only says what the template is for). */
 async function startFromTemplate(page: Page, kind: "Playbook" | "Runbook", template: RegExp) {
+  void kind;
   await page.getByRole("button", { name: "New page", exact: true }).first().click();
-  await page.getByLabel("Start this page").getByRole("button", { name: kind, exact: true }).click();
+  await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).click();
   await page.locator(".procedure-gallery").getByRole("option", { name: template }).click();
   await page.keyboard.press("Enter");
   await expect(page.locator(".procedure-gallery")).toBeHidden();
@@ -610,21 +612,19 @@ test("a database dragged out of its page leaves a linked view with its own views
   await expect(page.locator(".db-compact")).toHaveCount(1);
   await expect(page.locator(".slate-prose .editor-page-reference")).toHaveCount(0);
 });
-test("a new page can start from a playbook or runbook template", async ({ page }) => {
+test("a new page can start from a playbook template", async ({ page }) => {
   await page.getByRole("button", { name: "New page", exact: true }).first().click();
   const starter = page.getByLabel("Start this page");
   await starter.getByRole("button", { name: "Playbook", exact: true }).click();
-  // The dialog is named after the tab you're on ("New playbook" / "New runbook").
+  // One gallery: a blank playbook first, then templates grouped by what they're for.
   const gallery = page.locator(".procedure-gallery");
   await expect(page.getByRole("dialog", { name: "New playbook" })).toBeVisible();
+  await expect(gallery.locator(".procedure-group")).toHaveText(["Start fresh", "Support", "Operations", "Notes & automations"]);
+  await expect(gallery.getByRole("tab")).toHaveCount(0);
   await expect(gallery.getByRole("option", { name: /Blank playbook/ })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowDown");
   await expect(gallery.getByRole("region", { name: "Refund request preview" })).toContainText("Check eligibility");
-  await gallery.getByRole("tab", { name: "Runbooks" }).click();
-  await expect(page.getByRole("dialog", { name: "New runbook" })).toBeVisible();
   await expect(gallery.getByRole("option", { name: /Incident response/ })).toBeVisible();
-  await gallery.getByRole("tab", { name: "Playbooks" }).click();
-  await expect(gallery.getByRole("option", { name: /Refund request/ })).toHaveAttribute("aria-selected", "true");
   await gallery.getByRole("button", { name: "Use template" }).click();
   await expect(gallery).toBeHidden();
   // The page takes the template's name and "when to use", and opens in the builder.
@@ -636,10 +636,10 @@ test("a new page can start from a playbook or runbook template", async ({ page }
   await page.locator("[data-sonner-toast]").getByRole("button", { name: "Undo" }).click();
   await expect(starter).toBeVisible();
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("");
-  // A runbook keeps a title you already typed, and dates its review.
+  // An operations template keeps a title you already typed, and dates its review.
   await page.getByLabel("Page title", { exact: true }).fill("Ship v2");
-  await starter.getByRole("button", { name: "Runbook", exact: true }).click();
-  await page.getByRole("dialog", { name: "New runbook" }).getByRole("option", { name: /Deploy a release/ }).click();
+  await starter.getByRole("button", { name: "Playbook", exact: true }).click();
+  await page.getByRole("dialog", { name: "New playbook" }).getByRole("option", { name: /Deploy a release/ }).click();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Ship v2");
   await expect(page.getByLabel("Section name").last()).toHaveValue("Roll back");
@@ -657,7 +657,8 @@ test("/runbook in a page creates a runbook page and links it there", async ({ pa
   await page.locator(".slate-prose > p").last().click();
   await page.keyboard.type("/runbook");
   await page.keyboard.press("Enter");
-  const gallery = page.getByRole("dialog", { name: "New runbook" });
+  // "/runbook" still finds it: there's one kind of playbook now.
+  const gallery = page.getByRole("dialog", { name: "New playbook" });
   await gallery.getByRole("option", { name: /Deploy a release/ }).click();
   await page.keyboard.press("Enter");
   await expect(gallery).toBeHidden();
@@ -1004,7 +1005,7 @@ test("ordinary pages don't offer playbook steps in the / menu", async ({ page })
   await expect(page.locator(".slash-command-menu")).not.toContainText("Say something");
   await page.keyboard.press("Escape");
   await page.keyboard.type(" /playbook");
-  await expect(page.locator(".slash-command-menu")).toContainText("A new playbook page, linked here");
+  await expect(page.locator(".slash-command-menu")).toContainText("A new playbook page from a template, linked here");
 });
 test("the builder checks the playbook and says what to fix", async ({ page }) => {
   await startFromTemplate(page, "Playbook", /Refund request/);
@@ -1052,11 +1053,11 @@ test("the builder scrolls as one page, with inputs as one-line summaries", async
   await expect(page.getByRole("region", { name: "Outline" })).toBeInViewport();
 });
 test("automation templates call other apps and keep secrets out of run history", async ({ page }) => {
-  // The gallery groups templates into guides and automations.
+  // Automations have their own group in the gallery.
   await page.getByRole("button", { name: "New page", exact: true }).first().click();
   await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).click();
   const gallery = page.locator(".procedure-gallery");
-  await expect(gallery.locator(".procedure-group")).toHaveText(["Guides", "Automations"]);
+  await expect(gallery.locator(".procedure-group").last()).toHaveText("Notes & automations");
   // Daily standup: answers are posted to the team webhook, and kept as the run's note.
   let posted = "";
   await page.route("https://hooks.example.test/**", async (route) => {

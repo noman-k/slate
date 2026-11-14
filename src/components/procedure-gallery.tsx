@@ -3,79 +3,54 @@ import { Fragment, useRef, useState } from "react";
 import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
 import {
-  PROCEDURE_KINDS,
+  PLAYBOOK_BLURB,
+  TEMPLATE_CATEGORIES,
   templateInputs,
   templateOutline,
-  templatesOf,
-  type ProcedureKind,
+  templatesInOrder,
   type ProcedureTemplate,
 } from "@/lib/procedures";
 import { labelOf } from "@/lib/runner";
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+const categoryLabel = (id: ProcedureTemplate["category"]) =>
+  TEMPLATE_CATEGORIES.find((c) => c.id === id)?.label ?? "";
 
 /**
- * Pick a playbook or runbook to start from: a list of common use cases on the left
- * (blank first) and a preview of the chosen one's sections on the right. Arrow keys move,
- * Enter uses the highlighted template; Tab switches between playbooks and runbooks.
+ * Pick a playbook to start from: templates grouped by what they're for (a blank one
+ * first) on the left, a preview of the chosen one's sections on the right. Arrow keys
+ * move, Enter uses the highlighted template.
  */
 export function ProcedureGallery({
-  kind,
-  onKindChange,
+  open,
   onClose,
   onUse,
 }: {
-  /** null keeps the dialog closed. */
-  kind: ProcedureKind | null;
-  onKindChange: (kind: ProcedureKind) => void;
+  open: boolean;
   onClose: () => void;
   onUse: (template: ProcedureTemplate) => void;
 }) {
-  const list = templatesOf(kind ?? "playbook");
-  // The highlighted template, remembered per tab while switching back and forth.
-  const [picked, setPicked] = useState<Record<ProcedureKind, number>>({ playbook: 0, runbook: 0 });
-  const index = picked[kind ?? "playbook"];
-  const setIndex = (next: number | ((i: number) => number)) =>
-    setPicked((all) => {
-      const k = kind ?? "playbook";
-      return { ...all, [k]: typeof next === "function" ? next(all[k]) : next };
-    });
+  const list = templatesInOrder();
+  const [index, setIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const chosen = list[Math.min(index, list.length - 1)];
   const outline = chosen ? templateOutline(chosen) : [];
   const inputs = chosen ? templateInputs(chosen) : [];
-  const info = PROCEDURE_KINDS[kind ?? "playbook"];
   return (
     <Modal
-      open={kind !== null}
-      onOpenChange={(open) => !open && onClose()}
-      title={`New ${info.label.toLowerCase()}`}
-      description={info.blurb}
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title="New playbook"
+      description={PLAYBOOK_BLURB}
       className="procedure-gallery"
       initialFocus={listRef}
     >
-      <div className="procedure-kinds" role="tablist" aria-label="Template type">
-        {(["playbook", "runbook"] as const).map((k) => (
-          <button
-            key={k}
-            role="tab"
-            aria-selected={k === kind}
-            className={k === kind ? "is-active" : ""}
-            onClick={() => {
-              onKindChange(k);
-              listRef.current?.focus();
-            }}
-          >
-            {PROCEDURE_KINDS[k].plural}
-          </button>
-        ))}
-      </div>
       <div className="procedure-body">
         <div
           ref={listRef}
           className="procedure-list"
           role="listbox"
-          aria-label={`${info.label} templates`}
+          aria-label="Playbook templates"
           aria-activedescendant={chosen ? `procedure-${chosen.id}` : undefined}
           tabIndex={0}
           onKeyDown={(event) => {
@@ -95,9 +70,9 @@ export function ProcedureGallery({
         >
           {list.map((template, i) => (
             <Fragment key={template.id}>
-            {(i === 0 || (template.group ?? "") !== (list[i - 1].group ?? "")) && (
+            {(i === 0 || template.category !== list[i - 1].category) && (
               <div className="procedure-group" role="presentation">
-                {template.group === "automation" ? "Automations" : "Guides"}
+                {categoryLabel(template.category)}
               </div>
             )}
             <div

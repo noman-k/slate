@@ -1,19 +1,25 @@
 /**
- * Playbooks and runbooks: pages that start from a structured template.
+ * Playbook templates: pages that start from a structured guide you can run.
  *
- * A playbook (in Ada's sense) is a procedure split into phases; each step says what kind
- * of move it is — Ask, Send, Run, If/Else, Hand off, End — so a person or an AI agent can
- * follow it. A runbook is a fixed, repeatable operation: owner and review date up top,
- * prerequisites, numbered steps with the result to expect, then verify, roll back and
- * escalate. Both are plain Markdown, so they read the same in either editor mode.
+ * One kind of thing covers both a guided response (a refund: ask, decide, hand off) and
+ * a fixed operation (a release: check each step, roll back if one fails). Templates are
+ * grouped by what they're for instead. They're plain Markdown underneath (see
+ * lib/playbook-model.ts), so runs, links and the source view all read them the same way.
  */
 import { END, NEXT, parseProcedure, type Param, type StepAttrs, type StepType } from "./runner";
 
-export type ProcedureKind = "playbook" | "runbook";
+export type TemplateCategory = "start" | "support" | "operations" | "automation";
+/** Gallery order and headings. */
+export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
+  { id: "start", label: "Start fresh" },
+  { id: "support", label: "Support" },
+  { id: "operations", label: "Operations" },
+  { id: "automation", label: "Notes & automations" },
+];
 
 export type ProcedureTemplate = {
   id: string;
-  kind: ProcedureKind;
+  category: TemplateCategory;
   name: string;
   /** One line for the gallery list. */
   summary: string;
@@ -23,25 +29,13 @@ export type ProcedureTemplate = {
   icon: string;
   /** The page's Markdown; `{today}` becomes the date it's created. */
   markdown: string;
-  /** Automations call other apps or write notes for you; shown under their own heading. */
-  group?: "automation";
 };
 
-export const PROCEDURE_KINDS: Record<ProcedureKind, { label: string; plural: string; blurb: string }> = {
-  playbook: {
-    label: "Playbook",
-    plural: "Playbooks",
-    blurb: "A step-by-step guide for handling a situation, like a refund or a late order. Press Run to be walked through it.",
-  },
-  runbook: {
-    label: "Runbook",
-    plural: "Runbooks",
-    blurb: "A checklist for a task you do the same way every time, like a release or a backup, with a way back if something fails.",
-  },
-};
+/** What a playbook is, in one line (the gallery's description). */
+export const PLAYBOOK_BLURB =
+  "A step-by-step guide you can run — for a situation like a refund, or a task like a release. Press Run to be walked through it.";
 
 const playbookIcon = "icon:compass:blue";
-const runbookIcon = "icon:clipboard:orange";
 
 /* Builders for the blocks a runnable page is made of (see lib/runner.ts). */
 type StepOptions = Omit<StepAttrs, "step">;
@@ -84,7 +78,7 @@ const reviewTable = (owner: string, time: string) => `| Owner | Time needed | La
 export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   {
     id: "playbook-blank",
-    kind: "playbook",
+    category: "start",
     name: "Blank playbook",
     summary: "Inputs, guidelines and three phases",
     whenToUse: "When to use: describe the situation this playbook handles.",
@@ -105,7 +99,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   },
   {
     id: "playbook-refund",
-    kind: "playbook",
+    category: "support",
     name: "Refund request",
     summary: "Check eligibility, refund or offer credit",
     whenToUse: "When to use: a customer asks for their money back on an order.",
@@ -137,79 +131,8 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
     ),
   },
   {
-    id: "playbook-verify",
-    kind: "playbook",
-    name: "Verify identity",
-    summary: "Confirm who you're talking to first",
-    whenToUse: "When to use: before changing account details or sharing private information.",
-    icon: "icon:shield:purple",
-    markdown: lines(
-      params([{ name: "customer_email", type: "text", required: true }]),
-      "## Guidelines",
-      "- Ask for one piece of information at a time.\n- Don't reveal which detail was wrong.",
-      "## Send a code",
-      send("Send a one-time code to {{customer_email}}."),
-      ask("What code did the customer give?", "code"),
-      check("Compare {{code}} with the code that was sent.", "The codes match", "Not verified"),
-      "## Verified",
-      send("Thanks, you're verified — let's carry on."),
-      end("Verified"),
-      "## Not verified",
-      send("That code didn't work, so I'll pass you to our account security team."),
-      end("Not verified — handed off to Account security"),
-    ),
-  },
-  {
-    id: "playbook-order-status",
-    kind: "playbook",
-    name: "Order status",
-    summary: "Track a delivery and set expectations",
-    whenToUse: "When to use: a customer asks where their order is.",
-    icon: "icon:truck:brown",
-    markdown: lines(
-      params([
-        { name: "order_number", type: "text", required: true },
-        { name: "days_late", type: "number", required: false, default: "0" },
-      ]),
-      "## Guidelines",
-      "- Share dates, not guesses.\n- If a delivery is late, say so plainly and offer the next step.",
-      "## Check the order",
-      when("days_late", "gt", "5", "Late order", NEXT),
-      "## On its way",
-      send("Order {{order_number}} is on its way — here's the tracking link and the expected date."),
-      end("Shared tracking"),
-      "## Late order",
-      send("I'm sorry — order {{order_number}} is {{days_late}} days late."),
-      ask("Would the customer like a replacement sent?", "wants_replacement", "yesno"),
-      when("wants_replacement", "is", "Yes", NEXT, "@end"),
-      check("Create a replacement order for {{order_number}}.", "The replacement has an order number"),
-      end("Replacement sent"),
-    ),
-  },
-  {
-    id: "runbook-blank",
-    kind: "runbook",
-    name: "Blank runbook",
-    summary: "Checks with expected results, roll back",
-    whenToUse: "When to use: describe the task this runbook performs.",
-    icon: runbookIcon,
-    markdown: lines(
-      reviewTable("Add an owner", "15 min"),
-      params([{ name: "environment", type: "choice", required: true, options: ["Staging", "Production"] }]),
-      "## Before you start",
-      check("Make sure you have access to {{environment}}.", "You can sign in and see the dashboard"),
-      "## Steps",
-      check("Describe the first step.", "What you should see when it worked", "Roll back"),
-      check("Describe the next step.", "What you should see when it worked", "Roll back"),
-      end("Done"),
-      "## Roll back",
-      send("Undo the change in {{environment}}."),
-      end("Rolled back"),
-    ),
-  },
-  {
     id: "runbook-incident",
-    kind: "runbook",
+    category: "operations",
     name: "Incident response",
     summary: "Triage, escalate, mitigate, verify",
     whenToUse: "When to use: something customers rely on is down or badly degraded.",
@@ -238,7 +161,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   },
   {
     id: "runbook-deploy",
-    kind: "runbook",
+    category: "operations",
     name: "Deploy a release",
     summary: "Ship safely with checks and a way back",
     whenToUse: "When to use: shipping a new version to production.",
@@ -266,7 +189,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   },
   {
     id: "runbook-restore",
-    kind: "runbook",
+    category: "operations",
     name: "Restore from backup",
     summary: "Bring data back to a known good point",
     whenToUse: "When to use: data was lost or corrupted and needs restoring.",
@@ -295,8 +218,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   /* ---------- Automations: notes that write themselves, and calls to other apps ---------- */
   {
     id: "playbook-standup",
-    kind: "playbook",
-    group: "automation",
+    category: "automation",
     name: "Daily standup note",
     summary: "Three questions; saved as a note, shared if you like",
     whenToUse: "When to use: every morning. Your answers are saved as today's note in Runs, and can be posted to your team's chat.",
@@ -323,8 +245,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   },
   {
     id: "playbook-meeting-tasks",
-    kind: "playbook",
-    group: "automation",
+    category: "automation",
     name: "Meeting notes to tasks",
     summary: "Capture decisions and send follow-ups to your task app",
     whenToUse: "When to use: right after a meeting. The notes are saved in Runs, and the action items go to your task tool's API.",
@@ -358,8 +279,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   },
   {
     id: "playbook-github-issue",
-    kind: "playbook",
-    group: "automation",
+    category: "automation",
     name: "Check a GitHub issue",
     summary: "Look up an issue live and say where it stands",
     whenToUse: "When to use: someone asks about a bug or feature request that's tracked on GitHub.",
@@ -388,8 +308,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   },
   {
     id: "runbook-uptime",
-    kind: "runbook",
-    group: "automation",
+    category: "operations",
     name: "Check a site is up",
     summary: "Load the site, and alert the team if it's down",
     whenToUse: "When to use: someone reports the site is down, or as a quick check after a change.",
@@ -417,73 +336,12 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       end("Team alerted"),
     ),
   },
-  {
-    id: "runbook-weather",
-    kind: "runbook",
-    group: "automation",
-    name: "Weather check before a site visit",
-    summary: "Live forecast, with a plan for rain or wind",
-    whenToUse: "When to use: before heading out to work on site.",
-    icon: "icon:sun:yellow",
-    markdown: lines(
-      reviewTable("Site lead", "5 min"),
-      params([
-        { name: "place", label: "Where", type: "text", required: true, default: "London" },
-        { name: "latitude", type: "number", required: true, default: "51.51" },
-        { name: "longitude", type: "number", required: true, default: "-0.13" },
-      ]),
-      "## Forecast",
-      call(
-        "Get the current weather",
-        "GET",
-        "https://api.open-meteo.com/v1/forecast?latitude={{latitude}}&longitude={{longitude}}&current=temperature_2m,precipitation,wind_speed_10m",
-        "weather",
-        "No forecast",
-      ),
-      send("Right now in {{place}}: {{weather.current.temperature_2m}}°C, {{weather.current.precipitation}} mm of rain, wind {{weather.current.wind_speed_10m}} km/h."),
-      when("weather.current.precipitation", "gt", "0", "Rain plan", NEXT),
-      when("weather.current.wind_speed_10m", "gt", "40", "High wind plan", NEXT),
-      end("Good to go"),
-      "## Rain plan",
-      check("Pack waterproofs and cover any equipment.", "Everything that can't get wet is covered"),
-      end("Going, with rain gear"),
-      "## High wind plan",
-      check("Put off any work at height and tell the team.", "Work at height is rescheduled"),
-      end("Going, without work at height"),
-      "## No forecast",
-      send("The weather service didn't answer. Check a forecast site before you leave."),
-      end("Checked the forecast by hand"),
-    ),
-  },
-  {
-    id: "runbook-webhook",
-    kind: "runbook",
-    group: "automation",
-    name: "Send a webhook",
-    summary: "Post a message to any webhook and confirm it arrived",
-    whenToUse: "When to use: to notify a chat channel or another app at a set point in a process.",
-    icon: "icon:zap:orange",
-    markdown: lines(
-      reviewTable("Add an owner", "1 min"),
-      params([
-        { name: "webhook_url", label: "Webhook address", type: "text", required: true },
-        { name: "message", type: "text", required: true },
-      ]),
-      "## Send",
-      call("Send the message", "POST", "{{webhook_url}}", "reply", "Not sent", {
-        body: '{ "text": "{{message}}" }',
-      }),
-      check("Confirm the message arrived.", "You can see it where the webhook posts"),
-      end("Sent"),
-      "## Not sent",
-      send("The webhook answered {{reply_status}}. Check the address and try again."),
-      end("Not sent"),
-    ),
-  },
 ];
 
-export function templatesOf(kind: ProcedureKind) {
-  return PROCEDURE_TEMPLATES.filter((t) => t.kind === kind);
+/** Every template, in gallery order (by category, then as listed). */
+export function templatesInOrder() {
+  const order = TEMPLATE_CATEGORIES.map((c) => c.id);
+  return [...PROCEDURE_TEMPLATES].sort((x, y) => order.indexOf(x.category) - order.indexOf(y.category));
 }
 
 /** A date as YYYY-MM-DD in the person's own time zone (not UTC). */

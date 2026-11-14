@@ -8,7 +8,6 @@ import {
   Copy,
   Download,
   CircleHelp,
-  ClipboardList,
   Code2,
   Compass,
   FileText,
@@ -33,7 +32,7 @@ import { ShortcutsPopover } from "./shortcuts";
 import { PageIcon, parsePageIcon } from "./page-icon";
 import { BrandMark } from "./brand";
 import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@/lib/page-blocks";
-import { templateMarkdown, type ProcedureKind, type ProcedureTemplate } from "@/lib/procedures";
+import { templateMarkdown, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
 import { PlaybookBuilder } from "./playbook-builder";
 import { RunStartDialog, RunView } from "./run-mode";
@@ -170,8 +169,8 @@ export function WorkspaceApp() {
   const clearFreshDatabase = useCallback(() => setFreshDatabase(null), []);
   /** A freshly created page whose title should take focus. */
   const [focusTitle, setFocusTitle] = useState<string | null>(null);
-  /** The playbook / runbook gallery, open for the current page when set. */
-  const [procedureKind, setProcedureKind] = useState<ProcedureKind | null>(null);
+  /** The playbook template gallery, for the current page. */
+  const [galleryOpen, setGalleryOpen] = useState(false);
   /** The run form (inputs) for a page, and the run being played back. */
   const [runStart, setRunStart] = useState<{
     pageId: string;
@@ -184,15 +183,12 @@ export function WorkspaceApp() {
   const [sourceView, setSourceView] = useState<string | null>(null);
   const [sourceEdit, setSourceEdit] = useState<string | null>(null);
   const sourceDoneRef = useRef<HTMLButtonElement>(null);
-  /** Set when the gallery was opened from "/playbook" or "/runbook" in the editor. */
+  /** Set when the gallery was opened from "/playbook" in the editor. */
   const procedureInsert = useRef<((pageId: string) => void) | null>(null);
-  const insertProcedure = useCallback(
-    (kind: ProcedureKind, insert: (pageId: string) => void) => {
-      procedureInsert.current = insert;
-      setProcedureKind(kind);
-    },
-    [],
-  );
+  const insertProcedure = useCallback((insert: (pageId: string) => void) => {
+    procedureInsert.current = insert;
+    setGalleryOpen(true);
+  }, []);
   /** The icon picker popover anchored at the open page's icon. */
   const [iconPicker, setIconPicker] = useState(false);
   const remember = useCallback((pageId: string) => {
@@ -1251,18 +1247,11 @@ export function WorkspaceApp() {
                               Template
                             </span>
                             <button
-                              title="Start from a playbook: a guided procedure in phases"
-                              onClick={() => setProcedureKind("playbook")}
+                              title="Start from a playbook: a step-by-step guide you can run"
+                              onClick={() => setGalleryOpen(true)}
                             >
                               <Compass size={16} />
                               Playbook
-                            </button>
-                            <button
-                              title="Start from a runbook: steps for a repeatable operation"
-                              onClick={() => setProcedureKind("runbook")}
-                            >
-                              <ClipboardList size={16} />
-                              Runbook
                             </button>
                           </span>
                         </div>
@@ -1566,14 +1555,13 @@ export function WorkspaceApp() {
         </div>
       </Modal>
       <ProcedureGallery
-        kind={procedureKind}
-        onKindChange={setProcedureKind}
+        open={galleryOpen}
         onClose={() => {
-          setProcedureKind(null);
+          setGalleryOpen(false);
           procedureInsert.current = null;
         }}
         onUse={(template) => {
-          setProcedureKind(null);
+          setGalleryOpen(false);
           // From the slash menu: add the template where it was typed (⌘Z undoes it).
           const insert = procedureInsert.current;
           procedureInsert.current = null;

@@ -50,7 +50,7 @@ describe("playbook checks", () => {
   });
 
   it("suggests ending with a Finish step", () => {
-    const model = parsePlaybook(templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "runbook-blank")!));
+    const model = parsePlaybook(templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-blank")!));
     model.sections.at(-1)!.steps.pop();
     expect(messages(model)).toContain("Runs stop after this step. End with a Finish step to say how it ended.");
   });

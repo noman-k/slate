@@ -58,7 +58,6 @@ import {
   ArrowUp,
   ArrowDown,
   CircleHelp,
-  ClipboardList,
   Code2,
   Compass,
   Flag,
@@ -104,11 +103,11 @@ export interface DocumentEditorProps {
   onLinkDatabase?: (databaseId: string) => string;
   resolvePage?: EmbedOptions["resolvePage"];
   /**
-   * Opens the playbook / runbook gallery; the chosen template's Markdown comes back
+   * Opens the playbook template gallery; the chosen template's Markdown comes back
    * through `insert`, which puts it where the slash command was typed.
    */
   /** Opens the template gallery; the new playbook page's id comes back to be linked here. */
-  onInsertProcedure?: (kind: "playbook" | "runbook", insert: (pageId: string) => void) => void;
+  onInsertProcedure?: (insert: (pageId: string) => void) => void;
   /** Starts a run of this page at a section (from the section heading). */
   onRunFrom?: (section: string) => void;
   /**
@@ -964,33 +963,27 @@ export function DocumentEditor(props: DocumentEditorProps) {
           }) satisfies SlashItem,
       ),
       ...(onInsertProcedure
-        ? (
-            [
-              ["playbook", "Playbook", Compass, "A new playbook page, linked here", "procedure guide support workflow sop steps ada"],
-              ["runbook", "Runbook", ClipboardList, "A new runbook page, linked here", "procedure ops operation incident deploy checklist sop steps"],
-            ] as const
-          ).map(
-            ([kind, name, icon, description, keywords]) =>
-              ({
-                name,
-                group: "Templates",
-                keywords,
-                description,
-                icon,
-                run: (e: Editor) => {
-                  // A playbook is its own page: it's created from the chosen template and
-                  // linked here, on the line where "/" was typed.
-                  const at = e.state.selection.from;
-                  onInsertProcedure(kind, (pageId) => {
-                    e.chain()
-                      .focus()
-                      .setTextSelection(at)
-                      .insertContent({ type: "workspaceEmbed", attrs: { kind: "page", id: pageId } })
-                      .run();
-                  });
-                },
-              }) satisfies SlashItem,
-          )
+        ? [
+            {
+              name: "Playbook",
+              group: "Templates",
+              keywords: "runbook procedure guide checklist sop steps workflow automation support ops incident deploy",
+              description: "A new playbook page from a template, linked here",
+              icon: Compass,
+              run: (e: Editor) => {
+                // A playbook is its own page: it's created from the chosen template and
+                // linked here, on the line where "/" was typed.
+                const at = e.state.selection.from;
+                onInsertProcedure((pageId) => {
+                  e.chain()
+                    .focus()
+                    .setTextSelection(at)
+                    .insertContent({ type: "workspaceEmbed", attrs: { kind: "page", id: pageId } })
+                    .run();
+                });
+              },
+            } satisfies SlashItem,
+          ]
         : []),
     ],
     [onCreatePage, onCreateDatabase, onUploadImage, listDatabases, onInsertProcedure],

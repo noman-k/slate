@@ -3,23 +3,27 @@ import { getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { createDocumentExtensions, parseDocument } from "../src/components/editor/extensions";
 import { PAGE_ICON_SET, parsePageIcon } from "../src/components/page-icon";
-import { PROCEDURE_TEMPLATES, templateMarkdown, templateOutline, templatesOf } from "../src/lib/procedures";
+import { PROCEDURE_TEMPLATES, TEMPLATE_CATEGORIES, templateMarkdown, templateOutline, templatesInOrder } from "../src/lib/procedures";
 
 const extensions = createDocumentExtensions();
 const manager = new MarkdownManager({ extensions, markedOptions: { gfm: true } });
 const api = { schema: getSchema(extensions), markdown: manager };
 
-describe("playbook and runbook templates", () => {
-  it("offers a blank template first for each kind", () => {
-    expect(templatesOf("playbook")[0].id).toBe("playbook-blank");
-    expect(templatesOf("runbook")[0].id).toBe("runbook-blank");
+describe("playbook templates", () => {
+  it("lists a blank playbook first, then templates grouped by category", () => {
+    const list = templatesInOrder();
+    expect(list[0].id).toBe("playbook-blank");
+    const order = TEMPLATE_CATEGORIES.map((c) => c.id);
+    const seen = list.map((t) => order.indexOf(t.category));
+    expect(seen).toEqual([...seen].sort((a, b) => a - b));
+    expect(new Set(list.map((t) => t.category))).toEqual(new Set(order));
   });
 
   it("uses icons that exist and dates runbook reviews", () => {
     for (const t of PROCEDURE_TEMPLATES) expect(parsePageIcon(t.icon).kind).toBe("icon");
     expect(Object.keys(PAGE_ICON_SET).length).toBeGreaterThan(0);
     // Late evening locally is still that day, whatever the UTC date is.
-    const md = templateMarkdown(templatesOf("runbook")[0], new Date(2026, 10, 13, 23, 30));
+    const md = templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "runbook-deploy")!, new Date(2026, 10, 13, 23, 30));
     expect(md).toContain("| 2026-11-13 |");
     expect(md).not.toMatch(/(?<!\{)\{today\}(?!\})/);
     // A value named {{today}} in a step isn't touched.
@@ -42,7 +46,7 @@ describe("playbook and runbook templates", () => {
       expect(types.has("heading")).toBe(true);
       expect(types.has("preserved") || types.has("preservedSource")).toBe(false);
       expect(types.has("procedureStep")).toBe(true);
-      if (t.kind === "runbook") expect(types.has("table")).toBe(true);
+      if (t.category === "operations") expect(types.has("table")).toBe(true);
       // Every branch goes somewhere real.
       const sections = new Set(doc.content?.filter((n) => n.type === "heading").map((n) => n.content?.map((c) => c.text).join("")));
       for (const n of doc.content || [])
