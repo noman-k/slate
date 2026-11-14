@@ -1,24 +1,31 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { Mona_Sans } from 'next/font/google';
 import {
-  ArrowRight, Check, ChevronDown, Code2, Command, Download, FileText, FolderTree,
-  KanbanSquare, Lock, Search, Star, Table2, Undo2,
+  Activity, ArrowRight, Bot, Check, CheckCircle2, ChevronDown, CircleHelp, Code2, Command, Compass,
+  FileText, GitBranch, Globe, History, House, KanbanSquare, KeyRound, Lock, MessageSquare, PenLine, Play,
+  Receipt, Search, Sparkles, Table2, Users, Zap,
 } from 'lucide-react';
-import { Brand } from '@/components/brand';
-import { ThemeSwitcher } from '@/components/theme-switcher';
+import { Brand, BrandMark } from '@/components/brand';
 import { createClient } from '@/lib/supabase/server';
 import './landing.css';
 
-const TITLE = 'Slate — a quiet place for your notes and ideas';
+// GitHub's open-source typeface; self-hosted by next/font, no requests to Google from the browser.
+const display = Mona_Sans({ subsets: ['latin'], variable: '--font-landing', display: 'swap' });
+
+const TITLE = 'Slate — write it down, organize it, run it';
 const DESCRIPTION =
-  'Slate is a private workspace for writing and organizing: calm pages, databases with table, board and list views, and Markdown in and out.';
+  'Slate is a private workspace where notes, databases and runnable playbooks live together — and AI agents like Claude can read it all.';
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   openGraph: { title: TITLE, description: DESCRIPTION, type: 'website', siteName: 'Slate' },
-  twitter: { card: 'summary', title: TITLE, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 };
+
+// Light only, so the phone's browser bar matches whatever the visitor's system theme is.
+export const viewport: Viewport = { themeColor: '#ffffff', colorScheme: 'light' };
 
 const configured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -36,39 +43,177 @@ async function audience(): Promise<'demo' | 'member' | 'visitor'> {
   }
 }
 
-const USE_CASES = ['Personal notes', 'Project plans', 'Reading lists', 'Journals', 'Meeting notes', 'Research'];
+/** Plain facts about the product — no invented usage numbers. */
+const FACTS = [
+  { value: '1', label: 'workspace for notes, data and playbooks' },
+  { value: '3', label: 'database views: table, board and list' },
+  { value: '4', label: 'kinds of playbook step: check, ask, decide, call' },
+  { value: '5', label: 'read-only tools for your AI agents' },
+];
 
-const DETAILS = [
-  { Icon: Command, title: 'Find anything', text: 'Press ⌘K to search every title and every line you have written.' },
-  { Icon: FolderTree, title: 'Pages inside pages', text: 'Nest freely and drag to rearrange. The sidebar keeps your tree tidy.' },
-  { Icon: Star, title: 'Favorites & recents', text: 'Keep what matters one click away, and pick up where you left off.' },
-  { Icon: Undo2, title: 'Undo that just works', text: 'Every edit can be undone, in the editor and in Markdown alike.' },
-  { Icon: Download, title: 'Export any time', text: 'Download any page as Markdown. Your words are never locked in.' },
-  { Icon: Lock, title: 'Private by default', text: 'Your workspace is visible to you and no one else.' },
+/** The tools people juggle today — and what Slate puts in one place. */
+const SCATTERED = [
+  { Icon: FileText, label: 'Notes in one app' },
+  { Icon: Table2, label: 'Spreadsheets in another' },
+  { Icon: CheckCircle2, label: 'Checklists on sticky notes' },
+  { Icon: MessageSquare, label: '“How do we do this again?”' },
+];
+
+const AUDIENCES = [
+  {
+    Icon: House,
+    tone: 'orange',
+    who: 'Landlords & property managers',
+    story: 'Rent ledger, tenants and units in linked databases. Run the monthly rent check, move-ins and move-outs the same way every time.',
+    tags: ['Monthly rent check', 'Tenant move-in', 'Chase late rent'],
+  },
+  {
+    Icon: Users,
+    tone: 'blue',
+    who: 'Small teams',
+    story: 'Incident response, releases and support playbooks anyone can follow — with a record of every run and who got stuck where.',
+    tags: ['Incident response', 'Deploy a release', 'Refund request'],
+  },
+  {
+    Icon: PenLine,
+    tone: 'green',
+    who: 'Writers & planners',
+    story: 'Calm pages for notes, journals and plans. Nest them, link them, and turn any to-do list into a checklist you can run.',
+    tags: ['Daily standup note', 'Meeting notes', 'Reading lists'],
+  },
+  {
+    Icon: Code2,
+    tone: 'purple',
+    who: 'Builders & tinkerers',
+    story: 'Markdown both ways, API calls inside playbooks, and an MCP endpoint so your AI agents can read the whole workspace.',
+    tags: ['Call an API', 'Webhooks', 'MCP'],
+  },
 ];
 
 const FAQ = [
   {
-    q: 'Do I need an account to try it?',
-    a: 'No. The demo runs right in your browser with example content, so you can poke around first. Your demo changes stay in that browser.',
+    q: 'What makes Slate different from a notes app?',
+    a: 'Your notes, your databases and your procedures live in one place — and procedures aren’t just written down, they run. A playbook walks you (or a teammate) through each step, branches on your answers, can call other apps, and keeps a record of every run.',
   },
   {
-    q: 'What is the difference between a page and a database?',
-    a: 'A page is for writing. A database is a collection of pages with properties, like status or dates, that you can view as a table, a board or a list. Any new page can become a database with one click.',
+    q: 'What is a playbook, exactly?',
+    a: 'A checklist you can run. Start with a plain list of steps. When you need more, add questions, decisions (“if more than 30 days, offer store credit”), checks with expected results, and calls to other apps. Every run is saved, and a paused run can be picked up later.',
+  },
+  {
+    q: 'How do AI agents use my workspace?',
+    a: 'Create an agent key in Settings and connect any MCP-compatible agent, such as Claude. It can search, read pages, query databases and look up playbooks — read-only. Each agent has its own key, which you can revoke at any time.',
   },
   {
     q: 'Who can see my pages?',
-    a: 'Only you. Slate is a private workspace: there is no sharing and no public pages.',
+    a: 'Only you. Slate is private by default. Agents only see what you give them a key for, and API tokens in playbooks are kept out of run history and links.',
   },
   {
-    q: 'Can I get my notes out?',
-    a: 'Yes. Every page has a Markdown view you can edit or copy, and you can export any page as a Markdown file.',
+    q: 'Can I get my data out?',
+    a: 'Yes. Every page has a Markdown view you can copy, and you can export any page as a Markdown file. Databases export to CSV.',
   },
   {
-    q: 'Does it work on my phone?',
-    a: 'Slate runs in any modern browser, and the layout adapts to small screens.',
+    q: 'Do I need to install anything?',
+    a: 'No. Slate runs in any modern browser, on desktop or phone, in light or dark mode.',
   },
 ];
+
+/** The hero's product shot: a page, a board and a playbook run, layered. */
+function HeroShot() {
+  return (
+    <div className="shot" aria-hidden>
+      <div className="shot-frame">
+        <div className="shot-window">
+          <div className="shot-chrome">
+            <span /><span /><span />
+            <em><Lock size={9} /> slate.app</em>
+          </div>
+          <div className="shot-body">
+            <aside className="shot-sidebar">
+              <div className="shot-brand"><Brand size={14} /></div>
+              <div className="shot-search"><Search size={11} /> Search <kbd>⌘K</kbd></div>
+              <div className="shot-row"><House size={12} /> Home</div>
+              <div className="shot-row"><Compass size={12} /> Playbooks <i>5</i></div>
+              <div className="shot-heading">Private</div>
+              <div className="shot-row"><House size={12} className="t-orange" /> Rental Property Hub</div>
+              <div className="shot-row sub"><Receipt size={12} className="t-green" /> Rent Ledger <i>9</i></div>
+              <div className="shot-row sub active"><Compass size={12} className="t-blue" /> Monthly rent check</div>
+              <div className="shot-row sub"><Users size={12} /> Tenants</div>
+              <div className="shot-row"><FileText size={12} /> Weekly review</div>
+              <div className="shot-row"><FileText size={12} /> Reading list</div>
+            </aside>
+            <div className="shot-page">
+              <div className="shot-title">Monthly rent check</div>
+              <div className="shot-meta">
+                <span className="shot-run"><Play size={10} /> Run</span>
+                <span>7 steps · 12 runs · last run 3 days ago</span>
+              </div>
+              <div className="shot-section">
+                <b>1</b> Check payments
+              </div>
+              {[
+                ['CHECK', 'check', 'Open the Rent Ledger and look at November'],
+                ['CHECK', 'check', 'Match each payment against your bank statement'],
+                ['ASK', 'ask', 'Did anyone pay late or less than they owe?'],
+                ['DECIDE', 'if', 'When anyone behind is Yes → Chase late rent'],
+                ['CALL', 'api', 'POST a reminder to your messaging webhook'],
+              ].map(([label, tone, text]) => (
+                <div className={`shot-step is-${tone}`} key={text}>
+                  <span>{label}</span>
+                  {text}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="shot-card shot-board">
+        <div className="shot-card-head"><KanbanSquare size={12} /> Rent Ledger · By status</div>
+        <div className="shot-columns">
+          {[
+            ['Paid', 'green', ['Unit 1A · Nov', 'Unit 2B · Nov']],
+            ['Late', 'red', ['Unit 3C · Nov']],
+          ].map(([label, tone, cards]) => (
+            <div key={label as string}>
+              <span className={`tag ${tone}`}>{label as string}</span>
+              {(cards as string[]).map((card) => <p key={card}>{card}</p>)}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="shot-card shot-runcard">
+        <div className="shot-runtop"><span className="dot" /> Running · step 4 of 7</div>
+        <p className="shot-q">Did anyone pay late or less than they owe?</p>
+        <div className="shot-answers"><span className="on">Yes</span><span>No</span></div>
+        <div className="shot-progress"><span /></div>
+      </div>
+    </div>
+  );
+}
+
+/** A chapter on the rail: a glowing node, a kicker, a headline. */
+function Chapter({
+  id, tone, Icon, kicker, title, lede, children,
+}: {
+  id: string;
+  tone: 'blue' | 'orange' | 'purple';
+  Icon: typeof FileText;
+  kicker: string;
+  title: React.ReactNode;
+  lede: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className={`chapter tone-${tone}`} aria-labelledby={`${id}-title`}>
+      <div className="chapter-head">
+        <span className="chapter-node" aria-hidden><Icon size={18} /></span>
+        <p className="landing-kicker">{kicker}</p>
+        <h2 id={`${id}-title`}>{title}</h2>
+        <p className="chapter-lede">{lede}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default async function Home() {
   const who = await audience();
@@ -77,9 +222,9 @@ export default async function Home() {
       ? { href: '/app', label: 'Open Slate' }
       : who === 'demo'
         ? { href: '/app', label: 'Try the demo' }
-        : { href: '/auth/register', label: 'Get started' };
+        : { href: '/auth/register', label: 'Get started for free' };
   return (
-    <div className="landing">
+    <div className={`landing ${display.variable}`}>
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="landing-header">
         <div className="landing-nav">
@@ -87,15 +232,16 @@ export default async function Home() {
             <Brand size={26} />
           </Link>
           <nav className="landing-sections" aria-label="Sections">
-            <a href="#features">Features</a>
-            <a href="#how">How it works</a>
+            <a href="#write">Product</a>
+            <a href="#run">Playbooks</a>
+            <a href="#connect">AI agents</a>
             <a href="#faq">FAQ</a>
           </nav>
           <div className="landing-account">
             {who === 'visitor' && (
               <Link href="/auth/login" className="landing-link">Log in</Link>
             )}
-            <Link href={primary.href} className="landing-button small">
+            <Link href={primary.href} className="landing-button small outline">
               {who === 'visitor' ? 'Sign up' : primary.label}
             </Link>
           </div>
@@ -103,188 +249,256 @@ export default async function Home() {
       </header>
 
       <main id="main">
-        <section className="landing-hero">
-          <p className="landing-eyebrow">Notes · Docs · Databases</p>
-          <h1>A quiet place for your notes, ideas, and everything in between.</h1>
-          <p className="landing-lede">
-            Write in calm pages. Organize with databases. Slate keeps it all in one private
-            workspace that stays out of your way.
-          </p>
-          <div className="landing-ctas">
-            <Link href={primary.href} className="landing-button">
-              {primary.label}
-              <ArrowRight size={16} />
+        {/* Hero: the outcome, centered, then the product. */}
+        <section className="hero">
+          <div className="hero-backdrop" aria-hidden />
+          <div className="hero-copy">
+            <Link href="#run" className="hero-pill">
+              <span className="hero-pill-badge"><Sparkles size={12} /> New</span>
+              <span className="hero-pill-text">Playbooks you can run, and AI agents that read your workspace</span>
+              <ArrowRight size={13} />
             </Link>
-            <a href="#how" className="landing-button ghost">See how it works</a>
+            <h1>
+              <span className="nowrap">Write it down.</span>{' '}
+              <span className="nowrap">Organize it.</span>{' '}
+              <span className="hero-gradient nowrap">Run it.</span>
+            </h1>
+            <p className="hero-lede">
+              The private workspace where your notes, your databases and the way you get things done live together —
+              with checklists that walk you through, and remember every run.
+            </p>
+            <div className="landing-ctas">
+              <Link href={primary.href} className="landing-button">
+                {primary.label}
+                <ArrowRight size={16} />
+              </Link>
+              <a href="#run" className="landing-button ghost">
+                <Play size={14} />
+                See how playbooks work
+              </a>
+            </div>
+            <ul className="hero-assurances" aria-label="Highlights">
+              <li><Check size={14} /> Private by default</li>
+              <li><Check size={14} /> {who === 'demo' ? 'No account needed' : 'Nothing to install'}</li>
+              <li><Check size={14} /> Markdown in and out</li>
+            </ul>
           </div>
-          <ul className="landing-assurances" aria-label="Highlights">
-            <li><Check size={14} /> Private by default</li>
-            <li><Check size={14} /> Markdown in and out</li>
-            <li><Check size={14} /> {who === 'demo' ? 'No account needed' : 'Nothing to install'}</li>
-          </ul>
+          <HeroShot />
         </section>
 
-        <section className="landing-showcase" aria-label="What Slate looks like">
-          <div className="preview-window">
-            <div className="preview-chrome" aria-hidden>
-              <span /><span /><span />
-            </div>
-            <div className="preview-body">
-              <div className="preview-sidebar">
-                <div className="preview-brand"><Brand size={16} /></div>
-                <div className="preview-search"><Search size={12} /> Search <kbd>⌘K</kbd></div>
-                <div className="preview-heading">Private</div>
-                <div className="preview-row"><FileText size={13} /> Reading notes</div>
-                <div className="preview-row active"><Table2 size={13} /> Projects <em>4</em></div>
-                <div className="preview-row"><KanbanSquare size={13} /> Roadmap</div>
-                <div className="preview-row"><FileText size={13} /> Journal</div>
-              </div>
-              <div className="preview-page">
-                <div className="preview-title">Projects</div>
-                <div className="preview-tabs"><span className="on"><Table2 size={12} /> Table</span><span>Board</span><span>List</span></div>
-                <div className="preview-table">
-                  {[
-                    ['Website refresh', 'In progress', 'blue', 'Mar 4'],
-                    ['Q3 planning', 'Not started', 'gray', 'Mar 9'],
-                    ['Hiring notes', 'Done', 'green', 'Feb 27'],
-                    ['Reading list', 'In progress', 'blue', 'Mar 12'],
-                  ].map(([name, status, tone, date]) => (
-                    <div className="preview-tr" key={name}>
-                      <span><FileText size={12} /> {name}</span>
-                      <span className="preview-date">{date}</span>
-                      <span className={`preview-tag ${tone}`}>{status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-usecases" aria-label="Made for">
-          <p>Made for</p>
+        <section className="facts" aria-label="Slate at a glance">
           <ul>
-            {USE_CASES.map((item) => <li key={item}>{item}</li>)}
+            {FACTS.map(({ value, label }) => (
+              <li key={label}>
+                <strong>{value}</strong>
+                <span>{label}</span>
+              </li>
+            ))}
           </ul>
         </section>
 
-        <section id="features" className="landing-section">
-          <header className="section-intro">
-            <p className="landing-kicker">Features</p>
-            <h2>Everything you need to think clearly. Nothing you don’t.</h2>
-          </header>
+        <section className="problem" aria-labelledby="problem-title">
+          <h2 id="problem-title">
+            Your work is scattered across four tools. <span>Slate puts it in one.</span>
+          </h2>
+          <ul className="scattered">
+            {SCATTERED.map(({ Icon, label }) => (
+              <li key={label}><Icon size={15} /> {label}</li>
+            ))}
+          </ul>
+        </section>
 
-          <div className="feature-row">
-            <div className="feature-copy">
-              <span className="feature-icon"><FileText size={18} /></span>
-              <h3>Pages that stay out of the way</h3>
-              <p>A clean editor that formats as you type. Headings, lists, to-dos, code and tables, all a slash away.</p>
-              <ul className="feature-points">
-                <li><Check size={14} /> Type <code>/</code> for any block</li>
-                <li><Check size={14} /> Markdown shortcuts like <code>##</code> and <code>- [ ]</code></li>
-                <li><Check size={14} /> Drag blocks to reorder</li>
-              </ul>
+        <div className="rail">
+          <Chapter
+            id="write"
+            tone="blue"
+            Icon={FileText}
+            kicker="Write & organize"
+            title={<>Notes, databases, checklists. <span className="muted">One calm workspace.</span></>}
+            lede="A clean editor for your thinking, databases for everything that needs structure, and search that finds it all."
+          >
+            <div className="bento">
+              <article className="bento-card span-2">
+                <span className="bento-icon tone-blue"><FileText size={18} /></span>
+                <h3>Pages that stay out of your way</h3>
+                <p>A clean editor that formats as you type. Headings, to-dos, tables, code and callouts are a <kbd>/</kbd> away — or flip to Markdown and write the source.</p>
+                <div className="mini-doc" aria-hidden>
+                  <div className="mini-h">Weekly review</div>
+                  <div className="mini-todo done"><span /> Ship the new onboarding</div>
+                  <div className="mini-todo"><span /> Draft Q3 goals</div>
+                  <div className="mini-slash">
+                    <div className="on"><FileText size={11} /> Text</div>
+                    <div><Table2 size={11} /> Database</div>
+                    <div><Compass size={11} /> Playbook</div>
+                  </div>
+                </div>
+              </article>
+              <article className="bento-card">
+                <span className="bento-icon tone-green"><Table2 size={18} /></span>
+                <h3>Databases with views</h3>
+                <p>Table, board and list. Status, dates, money, relations and formulas — and every record opens as a page.</p>
+                <div className="mini-tags" aria-hidden>
+                  <span className="tag green">Paid</span><span className="tag blue">In progress</span><span className="tag gray">Not started</span>
+                </div>
+              </article>
+              <article className="bento-card">
+                <span className="bento-icon tone-orange"><Compass size={18} /></span>
+                <h3>Checklists you can run</h3>
+                <p>Go step by step, branch on answers, and see every run in a history you can search and resume.</p>
+                <div className="mini-steps" aria-hidden>
+                  <span className="is-check">CHECK</span><span className="is-ask">ASK</span><span className="is-if">DECIDE</span><span className="is-api">CALL</span>
+                </div>
+              </article>
+              <article className="bento-card">
+                <span className="bento-icon"><Command size={18} /></span>
+                <h3>Find anything with ⌘K</h3>
+                <p>Every title and every line you’ve written, a keystroke away.</p>
+              </article>
+              <article className="bento-card">
+                <span className="bento-icon"><Lock size={18} /></span>
+                <h3>Private by default</h3>
+                <p>Your workspace is yours alone. Secrets in playbooks stay out of run history and links.</p>
+              </article>
+              <article className="bento-card">
+                <span className="bento-icon"><Code2 size={18} /></span>
+                <h3>Markdown in and out</h3>
+                <p>Paste Markdown in, copy it out, export any page as a file. Databases export to CSV.</p>
+              </article>
             </div>
-            <div className="feature-visual" aria-hidden>
-              <div className="mock-doc">
-                <div className="mock-h">Weekly review</div>
-                <div className="mock-line w80" />
-                <div className="mock-line w60" />
-                <div className="mock-todo done"><span /> Ship the new onboarding</div>
-                <div className="mock-todo"><span /> Draft Q3 goals</div>
-                <div className="mock-slash">
-                  <div className="mock-slash-item on"><FileText size={13} /> Text</div>
-                  <div className="mock-slash-item"><Table2 size={13} /> Table</div>
-                  <div className="mock-slash-item"><Code2 size={13} /> Code</div>
+          </Chapter>
+
+          <Chapter
+            id="run"
+            tone="orange"
+            Icon={Compass}
+            kicker="Playbooks"
+            title={<>The checklist <span className="muted">that remembers.</span></>}
+            lede="The steps you repeat — the rent check, the move-in, the release, the refund — shouldn’t live in your head. Write them once. Run them every time."
+          >
+            <div className="spotlight">
+              <ul className="spotlight-points">
+                <li>
+                  <span><CheckCircle2 size={16} /></span>
+                  <div><strong>Start as a simple list.</strong> Three steps and Run. Turn any to-do list into one with a click.</div>
+                </li>
+                <li>
+                  <span><GitBranch size={16} /></span>
+                  <div><strong>Grow it when you need to.</strong> Ask questions, branch on the answers, check results, jump to a “roll back” section.</div>
+                </li>
+                <li>
+                  <span><Globe size={16} /></span>
+                  <div><strong>Call other apps.</strong> Post to a webhook, look up an order, create a task — with secrets kept safe.</div>
+                </li>
+                <li>
+                  <span><History size={16} /></span>
+                  <div><strong>Every run is remembered.</strong> Inputs, answers, results and who stopped where. Pause and pick up later.</div>
+                </li>
+              </ul>
+              <div className="run-demo" aria-hidden>
+                <div className="run-demo-head">
+                  <Compass size={14} className="t-blue" /> Monthly rent check
+                  <span className="run-demo-chip">Month · November</span>
+                </div>
+                <div className="run-demo-body">
+                  <ol className="run-demo-outline">
+                    <li className="done"><i><Check size={9} /></i> Open the Rent Ledger</li>
+                    <li className="done"><i><Check size={9} /></i> Match each payment</li>
+                    <li className="current"><i /> Anyone behind?</li>
+                    <li><i /> Send a reminder</li>
+                    <li><i /> Note it in the ledger</li>
+                  </ol>
+                  <div className="run-demo-card">
+                    <span className="run-demo-kind"><CircleHelp size={12} /> ASK · Step 3 of 7</span>
+                    <p>Did anyone pay late or less than they owe?</p>
+                    <div className="run-demo-answers"><span className="on">Yes</span><span>No</span></div>
+                    <div className="run-demo-decision">
+                      <strong>Yes</strong> — going to <b>Chase late rent</b>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="feature-row reverse">
-            <div className="feature-copy">
-              <span className="feature-icon"><Table2 size={18} /></span>
-              <h3>Databases with views</h3>
-              <p>Give any page structure. Track work with properties and switch between a table, a board and a list.</p>
-              <ul className="feature-points">
-                <li><Check size={14} /> Status, dates, numbers, relations and more</li>
-                <li><Check size={14} /> Filters and sorts saved per view</li>
-                <li><Check size={14} /> Every record opens as its own page</li>
-              </ul>
+            <div className="spotlight-templates">
+              <span>Start from a template</span>
+              {['Monthly rent check', 'Tenant move-in', 'Incident response', 'Daily standup note', 'Refund request'].map((t) => (
+                <em key={t}>{t}</em>
+              ))}
             </div>
-            <div className="feature-visual" aria-hidden>
-              <div className="mock-board">
-                {[
-                  ['Not started', 'gray', ['Q3 planning', 'Team offsite']],
-                  ['In progress', 'blue', ['Website refresh', 'Reading list']],
-                  ['Done', 'green', ['Hiring notes']],
-                ].map(([label, tone, cards]) => (
-                  <div className="mock-column" key={label as string}>
-                    <span className={`preview-tag ${tone}`}>{label as string}</span>
-                    {(cards as string[]).map((card) => (
-                      <div className="mock-card" key={card}><FileText size={12} /> {card}</div>
-                    ))}
-                  </div>
-                ))}
+          </Chapter>
+
+          <Chapter
+            id="connect"
+            tone="purple"
+            Icon={Bot}
+            kicker="AI agents"
+            title={<>Give your AI <span className="muted">the context it’s missing.</span></>}
+            lede="Agents make things up when they can’t see your work. Connect Claude — or any MCP-compatible agent — and it reads your pages, databases and playbooks instead of guessing."
+          >
+            <div className="agents">
+              <ul className="agents-points">
+                <li><span><KeyRound size={16} /></span><div><strong>One key per agent.</strong> Revoke any of them, any time.</div></li>
+                <li><span><Lock size={16} /></span><div><strong>Read-only.</strong> Agents can search and read — they can’t change a thing.</div></li>
+                <li><span><Zap size={16} /></span><div><strong>Works with any MCP client.</strong> Claude, Claude Code, or your own.</div></li>
+              </ul>
+              <div className="agent-chat" aria-hidden>
+                <div className="chat-row user">Which units are late on rent this month?</div>
+                <div className="chat-tool"><Activity size={12} /> query_database · Rent Ledger · Status is Late</div>
+                <div className="chat-row agent">
+                  Unit 3C is late — $1,200, 6 days overdue. Your <b>Chase late rent</b> playbook says to send a friendly reminder before 14 days.
+                </div>
               </div>
             </div>
-          </div>
+          </Chapter>
+        </div>
 
-          <div className="feature-row">
-            <div className="feature-copy">
-              <span className="feature-icon"><Code2 size={18} /></span>
-              <h3>Markdown, both ways</h3>
-              <p>Flip any page into Markdown, edit the source, and flip back. Nothing is lost on the way.</p>
-              <ul className="feature-points">
-                <li><Check size={14} /> GitHub-style source editor</li>
-                <li><Check size={14} /> Export pages as <code>.md</code> files</li>
-                <li><Check size={14} /> Headings, lists, to-dos and code round-trip</li>
-              </ul>
-            </div>
-            <div className="feature-visual" aria-hidden>
-              <pre className="mock-code"><span className="c-h"># Weekly review</span>{'\n\n'}<span className="c-p">-</span> [x] Ship the new onboarding{'\n'}<span className="c-p">-</span> [ ] Draft <span className="c-b">**Q3 goals**</span>{'\n\n'}<span className="c-p">&gt;</span> <span className="c-q">Small steps, every week.</span></pre>
-            </div>
-          </div>
-
-          <div className="detail-grid">
-            {DETAILS.map(({ Icon, title, text }) => (
-              <article key={title}>
-                <Icon size={18} />
-                <h3>{title}</h3>
-                <p>{text}</p>
+        <section className="landing-section" aria-labelledby="audience-title">
+          <header className="section-intro">
+            <p className="landing-kicker">Made for</p>
+            <h2 id="audience-title">People with work <span className="muted">worth doing right.</span></h2>
+          </header>
+          <div className="audiences">
+            {AUDIENCES.map(({ Icon, tone, who: name, story, tags }) => (
+              <article key={name} className={`tone-${tone}`}>
+                <span className={`bento-icon tone-${tone}`}><Icon size={18} /></span>
+                <h3>{name}</h3>
+                <p>{story}</p>
+                <div className="audience-tags">{tags.map((t) => <em key={t}>{t}</em>)}</div>
               </article>
             ))}
           </div>
         </section>
 
-        <section id="how" className="landing-section">
+        <section className="landing-section" aria-labelledby="how-title">
           <header className="section-intro">
             <p className="landing-kicker">How it works</p>
-            <h2>Up and writing in under a minute.</h2>
+            <h2 id="how-title">Up and running <span className="muted">in a minute.</span></h2>
           </header>
           <ol className="steps">
             <li>
               <span className="step-number">1</span>
-              <h3>{who === 'demo' ? 'Open the demo' : 'Create your account'}</h3>
-              <p>{who === 'demo' ? 'Everything runs in your browser. No sign-up.' : 'Just an email and a password. Your private workspace is ready right away.'}</p>
+              <h3>{who === 'demo' ? 'Open Slate' : 'Create your account'}</h3>
+              <p>{who === 'demo' ? 'It runs right in your browser, with an example workspace to explore.' : 'An email and a password. Your private workspace is ready straight away.'}</p>
             </li>
             <li>
               <span className="step-number">2</span>
-              <h3>Start a page</h3>
-              <p>Click New page and type. Press <kbd>/</kbd> for blocks, or turn it into a table, board or list.</p>
+              <h3>Write, then organize</h3>
+              <p>Start a page and press <kbd>/</kbd>. When a list needs structure, make it a database.</p>
             </li>
             <li>
               <span className="step-number">3</span>
-              <h3>Find it again</h3>
-              <p>Nest pages, star favorites, and press <kbd>⌘K</kbd> to jump to anything.</p>
+              <h3>Run what you repeat</h3>
+              <p>Pick a playbook template — or turn a to-do list into one — and press Run.</p>
             </li>
           </ol>
         </section>
 
-        <section id="faq" className="landing-section narrow">
-          <header className="section-intro">
+        <section id="faq" className="landing-section faq-section" aria-labelledby="faq-title">
+          <header>
             <p className="landing-kicker">FAQ</p>
-            <h2>Questions, answered.</h2>
+            <h2 id="faq-title">Questions, <span className="muted">answered.</span></h2>
+            <p className="faq-aside">
+              Still curious? <Link href={primary.href}>{who === 'visitor' ? 'Create a workspace' : 'Open Slate'}</Link> and look around — it takes a minute.
+            </p>
           </header>
           <div className="faq">
             {FAQ.map(({ q, a }) => (
@@ -299,17 +513,26 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="landing-closing">
-          <h2>Make some room to think.</h2>
-          <p>Your notes, your projects, your pace.</p>
-          <div className="landing-ctas">
-            <Link href={primary.href} className="landing-button">
-              {primary.label}
-              <ArrowRight size={16} />
-            </Link>
-            {who === 'visitor' && (
-              <Link href="/auth/login" className="landing-button ghost">Log in</Link>
-            )}
+        <section className="closing" aria-labelledby="closing-title">
+          <div className="closing-inner">
+            <span className="closing-mark" aria-hidden><BrandMark size={30} /></span>
+            <h2 id="closing-title">
+              Stop re-explaining
+              <br />
+              <span className="hero-gradient">how things get done.</span>
+            </h2>
+            <p>Write it down once. Run it every time. Let your agents read it too.</p>
+            <div className="landing-ctas">
+              <Link href={primary.href} className="landing-button">
+                {primary.label}
+                <ArrowRight size={16} />
+              </Link>
+              {who === 'visitor' ? (
+                <Link href="/auth/login" className="landing-button ghost">Log in</Link>
+              ) : (
+                <a href="#run" className="landing-button ghost">See playbooks</a>
+              )}
+            </div>
           </div>
         </section>
       </main>
@@ -317,13 +540,13 @@ export default async function Home() {
       <footer className="landing-footer">
         <div className="footer-brand">
           <Brand size={20} />
-          <p>A quiet place for your notes, ideas, and everything in between.</p>
-          <ThemeSwitcher compact />
+          <p>Write it down. Organize it. Run it.</p>
         </div>
         <nav aria-label="Product">
           <h2>Product</h2>
-          <a href="#features">Features</a>
-          <a href="#how">How it works</a>
+          <a href="#write">Pages & databases</a>
+          <a href="#run">Playbooks</a>
+          <a href="#connect">AI agents</a>
           <a href="#faq">FAQ</a>
         </nav>
         <nav aria-label="Account">
