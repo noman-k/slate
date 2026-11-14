@@ -170,7 +170,8 @@ test("front page links into the app", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   // Signed in, the front page offers the way back into the workspace.
   await page.getByRole("link", { name: "Open Slate" }).first().click();
-  await expect(page).toHaveURL(/\/(app|p\/[0-9a-f-]+)$/);
+  // The dev server may compile the app on this first visit: allow it a moment.
+  await expect(page).toHaveURL(/\/(app|p\/[0-9a-f-]+)$/, { timeout: 15_000 });
   await page.getByRole("link", { name: "Slate home" }).click();
   await expect(page).toHaveURL(/\/$/);
 });
@@ -1607,4 +1608,36 @@ test("menus hand focus back to what opened them when closed with Escape", async 
   await expect(page.getByLabel("Choose a page icon")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(icon).toBeFocused();
+});
+test("menus fade away when they close, and spinners keep turning for reduced motion", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  await page.getByRole("button", { name: "Page options" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  // Watch the menu as it closes: it plays its closing animation before it's removed.
+  const closing = page.evaluate(
+    () =>
+      new Promise<string>((resolve) => {
+        const surface = document.querySelector<HTMLElement>(".menu-surface")!;
+        new MutationObserver(() => {
+          if (surface.dataset.state === "closed") resolve(getComputedStyle(surface).animationName);
+        }).observe(surface, { attributes: true });
+        setTimeout(() => resolve("none"), 1000);
+      }),
+  );
+  await page.keyboard.press("Escape");
+  expect(await closing).toBe("menu-out");
+  await expect(menu).toBeHidden();
+  // With reduced motion, a loading spinner still turns (a frozen one looks like a hang).
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const spinning = await page.evaluate(() => {
+    const spinner = document.createElement("span");
+    spinner.className = "spin";
+    document.body.append(spinner);
+    const style = getComputedStyle(spinner);
+    const result = { duration: style.animationDuration, count: style.animationIterationCount };
+    spinner.remove();
+    return result;
+  });
+  expect(spinning).toEqual({ duration: "1.6s", count: "infinite" });
 });

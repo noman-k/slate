@@ -89,7 +89,13 @@
     "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji";
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --ease: cubic-bezier(0.2, 0, 0, 1);/* Older names, kept as aliases. */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  /* Motion: things arrive with --ease (quick, then settling) and leave with --ease-in
+     (they get out of the way). Leaving is a little quicker than arriving. */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-fast: 120ms; /* menus, popovers, small things */
+  --motion-base: 180ms; /* dialogs */
+  --motion-slow: 240ms; /* side panels and drawers *//* Older names, kept as aliases. */
   
   /* Theme-specific extras */
   --on-accent: #fff;
@@ -2248,6 +2254,58 @@ section.is-folded .section-toggle svg {
     opacity: 0.5;
   }
 }
+
+/* Closing: menus, dialogs and the side panel fade away instead of vanishing. Radix keeps
+   them on screen until the animation ends, and they ignore clicks meanwhile. */
+.menu-surface[data-state="closed"],
+.db-menu[data-state="closed"],
+.icon-popover[data-state="closed"] {
+  animation: menu-out 90ms var(--ease-in) forwards;
+  pointer-events: none;
+}
+.modal-backdrop[data-state="closed"] {
+  animation: fade-out 140ms var(--ease-in) forwards;
+}
+.modal-surface[data-state="closed"] {
+  animation: modal-out 120ms var(--ease-in) forwards;
+  pointer-events: none;
+}
+.search-dialog[data-state="closed"] {
+  animation: search-out 110ms var(--ease-in) forwards;
+}
+.peek-surface[data-state="closed"] {
+  animation: peek-out 160ms var(--ease-in) forwards;
+  pointer-events: none;
+}
+@keyframes menu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes modal-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.98);
+  }
+}
+@keyframes search-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -4px) scale(0.98);
+  }
+}
+@keyframes peek-out {
+  to {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
 @media (min-width: 1600px) {
   .page-content {
     padding-left: 105px;
@@ -2326,6 +2384,36 @@ section.is-folded .section-toggle svg {
   }
   .sidebar.is-collapsed {
     box-shadow: none;
+  }
+  /* On a phone the sidebar is a drawer: it slides in over the page (moving it, rather
+     than growing its width, keeps it smooth), and it's hidden once it has slid away. */
+  .sidebar {
+    width: 272px !important;
+    max-width: calc(100vw - 48px);
+    /* "none", not translateX(0): any transform here would throw off where menus opened
+       from the sidebar are placed. */
+    transform: none;
+    transition:
+      transform var(--motion-slow) var(--ease),
+      visibility 0s;
+  }
+  .sidebar.is-collapsed {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 200ms var(--ease-in),
+      visibility 0s linear 200ms;
+  }
+  /* Before the app has settled, the drawer starts closed and still. */
+  .workspace-app:not(.is-settled) .sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: none;
+  }
+  .workspace-app:not(.is-settled) .sidebar-scrim {
+    opacity: 0;
+    visibility: hidden;
+    transition: none;
   }
   .main-pane {
     width: 100%;
@@ -2415,7 +2503,18 @@ section.is-folded .section-toggle svg {
   inset: 0;
   z-index: 54;
   background: var(--backdrop);
-  animation: appear 0.16s ease;
+  /* Fades with the drawer, both ways, and is out of the way once faded. (Hidden, not
+     pointer-events: setting those would override a menu's "nothing else is clickable".) */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms var(--ease-in),
+    visibility 0s linear 200ms;
+}
+.sidebar-scrim.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-slow) var(--ease);
 }
 @media (hover: hover) {
   .sidebar-scrim:hover {
@@ -2446,6 +2545,16 @@ section.is-folded .section-toggle svg {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+/* …except loading spinners: a frozen one looks like a hang. They turn slowly instead. */
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .auth-spinner,
+  .contact-spinner,
+  .editor-upload-spinner {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

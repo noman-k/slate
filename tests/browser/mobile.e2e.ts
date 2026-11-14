@@ -230,6 +230,7 @@ test("a page block opens on the first tap, and a tap reveals nothing before it's
 test("swiping the sidebar scrolls it; only a long press picks a page up", async ({ page }) => {
   await page.goto(`/p/${account!.ids.hub}`);
   await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
   const sidebar = page.locator("aside.sidebar");
   const order = () => sidebar.locator(".tree-page .tree-title").allTextContents();
   await expect(sidebar.locator(".tree-page").nth(1)).toBeVisible();
@@ -260,7 +261,8 @@ test("menus on a phone: finger-sized rows, on screen, and no keyboard until you 
   await page.goto(`/p/${account!.ids.hub}`);
   // A sidebar page's menu fits on the screen (there's no room beside it on a phone).
   await page.getByRole("button", { name: "Show sidebar" }).tap();
-  await page.waitForTimeout(400);
+  // Once the drawer has slid in.
+  await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
   await page.getByRole("button", { name: "Actions for Rental Property Finance Hub" }).tap();
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
@@ -276,4 +278,26 @@ test("menus on a phone: finger-sized rows, on screen, and no keyboard until you 
   await page.getByRole("button", { name: "Add property" }).first().tap();
   await expect(page.locator(".db-menu")).toBeVisible();
   expect(await page.evaluate(() => document.activeElement?.matches("input, textarea"))).toBe(false);
+});
+
+test("the sidebar slides in and out as a drawer, with a backdrop that fades both ways", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  const sidebar = page.locator("aside.sidebar");
+  const scrim = page.locator(".sidebar-scrim");
+  // Closed from the start: moved off screen (not squashed to no width), hidden, and the
+  // backdrop is see-through and untappable.
+  await expect(page.locator(".workspace-app.is-settled")).toBeAttached();
+  await expect(sidebar).toBeHidden();
+  const closed = await sidebar.evaluate((el) => ({ width: el.getBoundingClientRect().width, transform: getComputedStyle(el).transform }));
+  expect(closed.width).toBeGreaterThan(200);
+  expect(closed.transform).toMatch(/matrix\(1, 0, 0, 1, -2\d\d/);
+  await expect(sidebar).toBeHidden();
+  await expect(scrim).toBeHidden();
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await expect(sidebar).toBeVisible();
+  await expect.poll(() => scrim.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+  // Tapping the backdrop closes it; the backdrop fades out rather than vanishing.
+  await scrim.tap({ position: { x: 360, y: 400 } });
+  await expect.poll(() => scrim.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+  await expect(sidebar).toBeHidden();
 });

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { scrollBehavior } from "@/lib/utils";
 import type { Editor } from "@tiptap/core";
 import {
   EditorState as ProseMirrorState,
@@ -612,7 +613,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
     if (position >= editor.state.doc.content.size) return;
     const element = editor.view.nodeDOM(position);
     if (element instanceof HTMLElement)
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
   }, [editor, pageId]);
 
   useEffect(() => {

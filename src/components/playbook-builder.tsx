@@ -6,6 +6,7 @@
  * Markdown (see lib/playbook-model.ts), so runs and links are unaffected.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { scrollBehavior } from "@/lib/utils";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
@@ -513,7 +514,7 @@ export function PlaybookBuilder({
   /** Scrolls to the first thing to fix. */
   const showFirstIssue = () => {
     const el = document.querySelector(".pb-step.has-warning, .pb-section-head + .pb-issues");
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
   };
   const editSection = (sectionId: string, fn: (s: BuilderSection) => BuilderSection) =>
     update((m) => ({ ...m, sections: m.sections.map((s) => (s.id === sectionId ? fn(s) : s)) }));
@@ -597,7 +598,7 @@ export function PlaybookBuilder({
     if (from >= 0 && to >= 0) update((m) => ({ ...m, sections: arrayMove(m.sections, from, to) }));
   };
   const jumpTo = (sectionId: string) =>
-    document.querySelector(`[data-section-id="${sectionId}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.querySelector(`[data-section-id="${sectionId}"]`)?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
 
   return (
     <ProcedureValuesContext.Provider value={values}>

@@ -167,6 +167,11 @@ export function WorkspaceApp() {
   const [activeId, setActiveId] = useState("");
   const [search, setSearch] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  /**
+   * Whether the sidebar has taken its starting position (closed on a phone). Until then,
+   * a phone keeps it closed and still, so it doesn't slide shut on every page load.
+   */
+  const [settled, setSettled] = useState(false);
   const [expanded, setExpanded] = useState(new Set<string>());
   const [recordId, setRecordId] = useState<string | null>(null);
   const [describing, setDescribing] = useState<string | null>(null);
@@ -395,6 +400,8 @@ export function WorkspaceApp() {
         );
         if (prefs.expanded) setExpanded(new Set(prefs.expanded));
         if (prefs.collapsed || window.innerWidth < 760) setCollapsed(true);
+        // Animate from the next frame on, once that position is on screen.
+        requestAnimationFrame(() => requestAnimationFrame(() => setSettled(true)));
         if (Array.isArray(prefs.recent))
           setRecent((ids) =>
             [...new Set([...ids, ...prefs.recent])].slice(0, 12),
@@ -1017,7 +1024,7 @@ export function WorkspaceApp() {
     if (target) open(target);
   };
   return (
-    <div className="workspace-app">
+    <div className={`workspace-app ${settled ? "is-settled" : ""}`}>
       {/* React hoists this into <head>; it follows the open page or record. */}
       <title>{ready && tabTitle ? `${tabTitle} · Slate` : "Slate"}</title>
       {/* Screen readers hear page switches (the app swaps pages without a reload). */}
@@ -1054,14 +1061,14 @@ export function WorkspaceApp() {
         playbooksOpen={activeId === PLAYBOOKS_VIEW}
         onCollapseAll={() => setExpanded(new Set())}
       />
-      {!collapsed && (
-        <button
-          className="sidebar-scrim"
-          aria-label="Close sidebar"
-          tabIndex={-1}
-          onClick={() => setCollapsed(true)}
-        />
-      )}
+      {/* Always there (on a phone), so it can fade out as the drawer slides away. */}
+      <button
+        className={`sidebar-scrim ${collapsed ? "" : "is-open"}`}
+        aria-label="Close sidebar"
+        aria-hidden={collapsed}
+        tabIndex={-1}
+        onClick={() => setCollapsed(true)}
+      />
       <div className="main-pane">
         <header className="topbar">
           <div className="topbar-left">
