@@ -9,7 +9,7 @@
  */
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-export type LimiterName = "RUN_REQUEST_LIMITER" | "MCP_KEY_LIMITER" | "MCP_IP_LIMITER" | "MCP_WRITE_LIMITER" | "CONTACT_LIMITER";
+export type LimiterName = "RUN_REQUEST_LIMITER" | "MCP_KEY_LIMITER" | "MCP_IP_LIMITER" | "MCP_WRITE_LIMITER" | "CONTACT_LIMITER" | "OAUTH_LIMITER";
 
 /** Requests per minute. Keep in step with "ratelimits" in wrangler.jsonc. */
 export const LIMITS: Record<LimiterName, number> = {
@@ -20,6 +20,8 @@ export const LIMITS: Record<LimiterName, number> = {
   MCP_WRITE_LIMITER: 20,
   // The contact form, per IP address.
   CONTACT_LIMITER: 5,
+  // Apps registering and getting tokens (OAuth), per IP address.
+  OAUTH_LIMITER: 30,
 };
 export const PERIOD_SECONDS = 60;
 

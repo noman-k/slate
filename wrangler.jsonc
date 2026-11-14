@@ -16,7 +16,8 @@
     {"name": "MCP_KEY_LIMITER", "namespace_id": "1002", "simple": {"limit": 120, "period": 60}},
     {"name": "MCP_IP_LIMITER", "namespace_id": "1003", "simple": {"limit": 300, "period": 60}},
     {"name": "CONTACT_LIMITER", "namespace_id": "1004", "simple": {"limit": 5, "period": 60}},
-    {"name": "MCP_WRITE_LIMITER", "namespace_id": "1005", "simple": {"limit": 20, "period": 60}}
+    {"name": "MCP_WRITE_LIMITER", "namespace_id": "1005", "simple": {"limit": 20, "period": 60}},
+    {"name": "OAUTH_LIMITER", "namespace_id": "1006", "simple": {"limit": 30, "period": 60}}
   ],
   "observability": {"enabled": true}
 }

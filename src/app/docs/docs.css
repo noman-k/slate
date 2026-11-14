@@ -599,3 +599,8 @@
 .docs-badge.is-create {
   background: var(--tag-blue-bg);
 }
+
+/* A long address inside running text may wrap anywhere. */
+.docs-break {
+  word-break: break-all;
+}

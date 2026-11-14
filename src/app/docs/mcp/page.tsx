@@ -15,7 +15,7 @@ import "../docs.css";
 export const metadata: Metadata = {
   title: "Connect AI agents (MCP) · Slate",
   description:
-    "Let Claude, Cursor, VS Code or any MCP client read your Slate workspace (pages, databases and playbooks) and, if you allow it, create new ones. With a key you can revoke.",
+    "Connect Claude, ChatGPT, Codex, Cursor or any MCP client to your Slate workspace by signing in: it reads your pages, databases and playbooks and, if you allow it, creates new ones.",
 };
 
 const KEY = "slate_YOUR_KEY";
@@ -31,73 +31,41 @@ async function endpoint() {
 function guides(url: string): ClientGuide[] {
   return [
     {
+      id: "claude",
+      name: "Claude",
+      steps: [
+        {
+          text: "In Claude (the desktop app or claude.ai), go to **Customize › Connectors**, choose **Add**, then **Add custom connector**. Name it Slate and paste this address:",
+          caption: "Remote MCP server URL",
+          code: url,
+        },
+        { text: "Choose **Add**, then **Connect**. Slate opens: sign in, pick the workspace and what Claude can do, and choose **Allow access**." },
+        { text: "In a chat, open **+ › Connectors** and check that Slate is on." },
+      ],
+      note: "Leave the connector's advanced settings as they are: Claude registers itself with Slate. On Team and Enterprise plans an owner adds the connector under Organization settings › Connectors first; then each person connects their own workspace.",
+    },
+    {
+      id: "chatgpt",
+      name: "ChatGPT",
+      steps: [
+        { text: "In ChatGPT, open **Settings › Apps & Connectors › Advanced** and turn on **Developer mode**." },
+        {
+          text: "Back in **Apps & Connectors**, create a connector named Slate with this URL, and choose **OAuth** for authentication:",
+          caption: "MCP server URL",
+          code: url,
+        },
+        { text: "Slate opens: sign in, pick the workspace and what ChatGPT can do, and choose **Allow access**. Then turn Slate on in a chat from the **+** menu." },
+      ],
+      note: "Developer mode depends on your ChatGPT plan, and where it lives in Settings can change; OpenAI's Developer mode guide has the current steps.",
+    },
+    {
       id: "claude-code",
       name: "Claude Code",
       steps: [
-        {
-          text: `Run this in a terminal, with your key in place of \`${KEY}\`:`,
-          caption: "Terminal",
-          code: `claude mcp add --transport http slate ${url} \\\n  --header "Authorization: Bearer ${KEY}"`,
-        },
-        { text: "Start Claude Code and run `/mcp`: slate should be listed as connected." },
+        { text: "Add Slate in a terminal:", caption: "Terminal", code: `claude mcp add --transport http slate ${url}` },
+        { text: "Start Claude Code, run `/mcp`, choose slate and **Authenticate**. Your browser opens Slate: sign in and choose **Allow access**." },
       ],
-      note: "Add `--scope user` to use Slate in every project, not just this one.",
-    },
-    {
-      id: "claude-desktop",
-      name: "Claude Desktop",
-      steps: [
-        {
-          text: "In Claude, open Settings › Developer › Edit Config to open `claude_desktop_config.json`, and add Slate:",
-          caption: "claude_desktop_config.json",
-          code: JSON.stringify(
-            {
-              mcpServers: {
-                slate: {
-                  command: "npx",
-                  args: ["mcp-remote", url, "--header", "Authorization:${AUTH_HEADER}"],
-                  env: { AUTH_HEADER: `Bearer ${KEY}` },
-                },
-              },
-            },
-            null,
-            2,
-          ),
-        },
-        { text: "Quit Claude completely and open it again. Slate's tools appear in the tools menu of a new chat." },
-      ],
-      note: "Slate signs agents in with a key rather than an account login, so Claude Desktop reaches it through the small `mcp-remote` helper, which needs Node.js. The key goes in `env` (not straight into `args`) because some apps mishandle spaces in arguments.",
-    },
-    {
-      id: "cursor",
-      name: "Cursor",
-      steps: [
-        {
-          text: "Open `~/.cursor/mcp.json` (every project) or `.cursor/mcp.json` (this project only) and add Slate:",
-          caption: "mcp.json",
-          code: JSON.stringify({ mcpServers: { slate: { url, headers: { Authorization: `Bearer ${KEY}` } } } }, null, 2),
-        },
-        { text: "Open Cursor's MCP settings and check that slate is on and shows its tools." },
-      ],
-      note: "To keep the key out of the file, write `\"Bearer ${env:SLATE_API_KEY}\"` and set `SLATE_API_KEY` in your environment.",
-    },
-    {
-      id: "vscode",
-      name: "VS Code",
-      steps: [
-        {
-          text: "Create `.mcp.json` at the root of your workspace:",
-          caption: ".mcp.json",
-          code: JSON.stringify(
-            { mcpServers: { slate: { type: "http", url, headers: { Authorization: "Bearer ${SLATE_API_KEY}" } } } },
-            null,
-            2,
-          ),
-        },
-        { text: "Set `SLATE_API_KEY` to your key in the environment VS Code starts from, then reload the window." },
-        { text: "Run MCP: List Servers from the Command Palette and check that slate is running." },
-      ],
-      note: "Using an environment variable keeps the key out of a file that might be committed with your project.",
+      note: `Add \`--scope user\` to use Slate in every project. Rather use a key? Add \`--header "Authorization: Bearer ${KEY}"\` to the command.`,
     },
     {
       id: "codex",
@@ -106,29 +74,56 @@ function guides(url: string): ClientGuide[] {
         {
           text: "Add Slate to `~/.codex/config.toml`:",
           caption: "~/.codex/config.toml",
-          code: `[mcp_servers.slate]\nurl = "${url}"\nbearer_token_env_var = "SLATE_API_KEY"`,
+          code: `[mcp_servers.slate]\nurl = "${url}"`,
         },
-        {
-          text: "Set the key in your shell profile (for example `~/.zshrc`), then open a new terminal:",
-          caption: "Shell profile",
-          code: `export SLATE_API_KEY="${KEY}"`,
-        },
+        { text: "Sign in from a terminal. Your browser opens Slate: choose the workspace and **Allow access**.", caption: "Terminal", code: "codex mcp login slate" },
       ],
-      note: "The same file is used by the Codex CLI, the IDE extension and the desktop app.",
+      note: "The same file is used by the Codex CLI, the IDE extension and the desktop app. To use a key instead, add `bearer_token_env_var = \"SLATE_API_KEY\"` under `[mcp_servers.slate]` and set `SLATE_API_KEY` in your environment.",
+    },
+    {
+      id: "cursor",
+      name: "Cursor",
+      steps: [
+        {
+          text: "Open `~/.cursor/mcp.json` (every project) or `.cursor/mcp.json` (this project only) and add Slate:",
+          caption: "mcp.json",
+          code: JSON.stringify({ mcpServers: { slate: { url } } }, null, 2),
+        },
+        { text: "In Cursor's MCP settings, choose **Connect** (or **Needs login**) next to slate. Your browser opens Slate: choose **Allow access**." },
+      ],
+      note: `Rather use a key? Add \`"headers": { "Authorization": "Bearer ${KEY}" }\` next to the url.`,
+    },
+    {
+      id: "vscode",
+      name: "VS Code",
+      steps: [
+        {
+          text: "Create `.vscode/mcp.json` in your project (or run **MCP: Add Server** and choose HTTP):",
+          caption: ".vscode/mcp.json",
+          code: JSON.stringify({ servers: { slate: { type: "http", url } } }, null, 2),
+        },
+        { text: "Start the server from the file or from **MCP: List Servers**. VS Code asks to sign in: allow it, then choose **Allow access** on Slate's page." },
+      ],
+      note: `To use a key instead, add \`"headers": { "Authorization": "Bearer \${env:SLATE_API_KEY}" }\` and set \`SLATE_API_KEY\` in the environment VS Code starts from.`,
     },
     {
       id: "other",
       name: "Other clients",
       steps: [
         {
-          text: "Point any client that supports remote MCP servers over Streamable HTTP at the endpoint, and send your key in the `Authorization` header:",
+          text: "Point any client that supports remote MCP servers over Streamable HTTP at the address. If it can sign in (OAuth), it finds everything it needs from there:",
           caption: "Connection",
-          code: `URL:     ${url}\nHeader:  Authorization: Bearer ${KEY}`,
+          code: url,
         },
         {
-          text: "For a client that only runs local (stdio) servers, start Slate through `mcp-remote`:",
+          text: "A client that can't sign in sends a key instead, in the `Authorization` header:",
+          caption: "Header",
+          code: `Authorization: Bearer ${KEY}`,
+        },
+        {
+          text: "For a client that only runs local (stdio) servers, start Slate through `mcp-remote` (it signs in for you):",
           caption: "Command",
-          code: `AUTH_HEADER="Bearer ${KEY}" npx mcp-remote ${url} --header "Authorization:\${AUTH_HEADER}"`,
+          code: `npx mcp-remote ${url}`,
         },
         {
           text: "To check a key without any client, list the tools with curl:",
@@ -242,12 +237,13 @@ export default async function McpDocs() {
             <h1 id="overview-title">Connect AI agents to Slate</h1>
             <p className="docs-lede">
               Slate runs an <a href="https://modelcontextprotocol.io" target="_blank" rel="noreferrer">MCP</a> server, so
-              Claude, Cursor, VS Code and other AI tools can search and read your pages, databases and playbooks, and
-              answer with your own notes instead of guessing.
+              Claude, ChatGPT, Codex, Cursor and other AI tools can search and read your pages, databases and playbooks,
+              and answer with your own notes instead of guessing. Add Slate&apos;s address to your app and sign in: no key
+              to copy.
             </p>
             <ul className="docs-facts" aria-label="At a glance">
               <li><Eye size={15} /> <span><strong>Read-only by default.</strong> A key can also create; nothing ever edits or deletes.</span></li>
-              <li><KeyRound size={15} /> <span><strong>One key per agent.</strong> Revoke any time.</span></li>
+              <li><KeyRound size={15} /> <span><strong>Sign in to connect.</strong> One workspace per app; disconnect any time.</span></li>
               <li><Wrench size={15} /> <span><strong>{AGENT_TOOLS.length + WRITE_TOOLS.length} tools</strong>: {AGENT_TOOLS.length} to read, {WRITE_TOOLS.length} to create.</span></li>
             </ul>
             <div className="docs-endpoint">
@@ -261,16 +257,13 @@ export default async function McpDocs() {
             <h2 id="quick-start-title">Quick start</h2>
             <ol className="docs-quick">
               <li>
-                <strong>Create a key.</strong> In Slate, switch to the workspace the agent should use and open{" "}
-                <em>Settings › AI agents</em>. Name the key after the agent
-                that will use it (say, “Claude on my laptop”), choose what it can do (<em>Read only</em>, or{" "}
-                <em>Read and create</em> to let it add pages, databases and playbooks) and choose <em>Create key</em>. Copy it:
-                it&apos;s shown only once.
-                <Link href="/app" className="docs-inline-link">Open Slate <ArrowRight size={13} /></Link>
+                <strong>Add Slate to your app.</strong> Give it this address, using the steps for your app{" "}
+                <a href="#setup">below</a>: <code className="docs-break">{url}</code>
               </li>
               <li>
-                <strong>Add Slate to your AI client</strong> with the key, using the steps for your client{" "}
-                <a href="#setup">below</a>.
+                <strong>Sign in and allow it.</strong> The app opens Slate. Pick the workspace it should use and what it can
+                do (<em>Read only</em>, or <em>Read and create</em> to let it add pages, databases and playbooks), then choose{" "}
+                <em>Allow access</em>.
               </li>
               <li>
                 <strong>Ask about your workspace.</strong> For example:
@@ -291,10 +284,16 @@ export default async function McpDocs() {
 
           <section id="setup" aria-labelledby="setup-title">
             <h2 id="setup-title">Set up your client</h2>
-            <p>
-              Replace <code>{KEY}</code> with the key you created. Pick your client:
-            </p>
+            <p>Pick your app. Each one signs in to Slate the first time it connects.</p>
             <ClientSetup guides={guides(url)} />
+            <h3 id="keys" className="docs-tools-group">Apps that can&apos;t sign in: use a key</h3>
+            <p>
+              In Slate, switch to the workspace the agent should use and open <em>Settings › AI agents</em>. Name the key
+              after the agent (say, “Claude on my laptop”), choose what it can do and choose <em>Create key</em>. Copy it:
+              it&apos;s shown only once. Then send it as <code>Authorization: Bearer {KEY}</code>; each app&apos;s tab
+              above says where.
+              <Link href="/app" className="docs-inline-link">Open Slate <ArrowRight size={13} /></Link>
+            </p>
           </section>
 
           <section id="tools" aria-labelledby="tools-title">
@@ -303,11 +302,11 @@ export default async function McpDocs() {
               Agents choose these tools themselves; you just ask in your own words. Results come back as readable text and
               as structured JSON.
             </p>
-            <h3 className="docs-tools-group">Reading (every key)</h3>
+            <h3 className="docs-tools-group">Reading (every app and key)</h3>
             <div className="docs-tools">
               {AGENT_TOOLS.map((tool) => <Tool key={tool.name} tool={tool} />)}
             </div>
-            <h3 className="docs-tools-group">Creating (keys with “Read and create”)</h3>
+            <h3 className="docs-tools-group">Creating (apps and keys allowed to “Read and create”)</h3>
             <p>
               These only add. A new page or playbook can go inside an existing page, where it appears as a link at the end of
               that page; nothing else that exists is changed, and nothing is deleted. A playbook is checked the way the
@@ -322,11 +321,12 @@ export default async function McpDocs() {
           <section id="security" aria-labelledby="security-title">
             <h2 id="security-title">Security &amp; privacy</h2>
             <ul className="docs-points">
-              <li><Eye size={16} /><span><strong>Read-only unless you choose otherwise.</strong> Keys can only read unless created with <em>Read and create</em>. Even then, agents only add new pages, databases and playbooks: no tool edits or deletes anything.</span></li>
-              <li><PlusCircle size={16} /><span><strong>Limits on creating.</strong> A key can create at most 20 things a minute, and one database at most 200 rows at once. Agent text is kept as text: it can&apos;t embed other pages or databases.</span></li>
-              <li><Lock size={16} /><span><strong>Scoped to one workspace.</strong> A key opens only the workspace it was made in (in that workspace&apos;s Settings), never your other workspaces or anyone else&apos;s. Pages in Trash aren&apos;t visible.</span></li>
-              <li><KeyRound size={16} /><span><strong>One key per agent, revocable.</strong> Settings › AI agents lists the workspace&apos;s keys with when each was last used. Revoking one stops it on the agent&apos;s next request.</span></li>
-              <li><ShieldCheck size={16} /><span><strong>Stored as a hash.</strong> Slate keeps only a fingerprint of each key, which is why it&apos;s shown once. If you lose it, revoke it and create another.</span></li>
+              <li><Eye size={16} /><span><strong>Read-only unless you choose otherwise.</strong> Apps and keys can only read unless you choose <em>Read and create</em>. Even then, agents only add new pages, databases and playbooks: no tool edits or deletes anything.</span></li>
+              <li><PlusCircle size={16} /><span><strong>Limits on creating.</strong> An app or key can create at most 20 things a minute, and one database at most 200 rows at once. Agent text is kept as text: it can&apos;t embed other pages or databases.</span></li>
+              <li><Lock size={16} /><span><strong>Scoped to one workspace.</strong> An app opens only the workspace you picked when you allowed it, and a key only the workspace it was made in: never your other workspaces or anyone else&apos;s. Pages in Trash aren&apos;t visible.</span></li>
+              <li><KeyRound size={16} /><span><strong>Disconnect any time.</strong> Settings › AI agents lists the workspace&apos;s connected apps and keys with when each was last used. Disconnecting an app or revoking a key stops it on its next request.</span></li>
+              <li><ShieldCheck size={16} /><span><strong>Signing in, not sharing a secret.</strong> A connected app gets an access token that lasts an hour and is renewed as it&apos;s used; your password never reaches the app. Slate uses OAuth 2.1 with PKCE, and only sends people back to an address the app registered.</span></li>
+              <li><ShieldCheck size={16} /><span><strong>Stored as a hash.</strong> Slate keeps only a fingerprint of each key and token, which is why a key is shown once. If you lose it, revoke it and create another.</span></li>
               <li><KeyRound size={16} /><span><strong>Treat a key like a password.</strong> Keep it out of shared files and Git; prefer an environment variable where your client supports one.</span></li>
               <li><ShieldCheck size={16} /><span><strong>Your content is data, not instructions.</strong> Slate labels page content that way for the agent, but agents can still be swayed by what they read, so check before acting on anything important.</span></li>
             </ul>
@@ -336,15 +336,16 @@ export default async function McpDocs() {
             <h2 id="troubleshooting-title">Troubleshooting</h2>
             <div className="docs-faq">
               {[
-                ["“Add an agent key” (401)", "The request had no key, or it wasn't in the right form. Send exactly `Authorization: Bearer slate_…`, with one space after Bearer."],
-                ["“This agent key is not valid, or was revoked” (401)", "Check the key was copied whole, with no space or line break at either end (pasting often adds one). If it was revoked or lost, create a new key."],
-                ["Slate doesn't show up in my client", "Restart the client after editing its config, and check the file is valid JSON (a missing comma is easy to miss). Then try the curl check under Other clients: if that lists the tools, the key and endpoint are fine."],
-                ["My client wants me to sign in", "Slate uses keys rather than a sign-in flow. Add it through the client's config file with the key in a header, or through `mcp-remote` as shown above."],
+                ["The app says it couldn't connect, or sign-in didn't open", "Check the address is exactly the one above, ending in /api/mcp. Remove the connector and add it again: the app registers itself with Slate again and opens the sign-in page."],
+                ["I chose the wrong workspace", "Disconnect the app in that workspace's Settings › AI agents, then connect it again from the app and pick the right one."],
+                ["“Connect this app by signing in” (401)", "The request had no sign-in or key. Apps that can sign in do it from there; with a key, send exactly `Authorization: Bearer slate_…`, with one space after Bearer."],
+                ["“Not valid, has expired, or was revoked” (401)", "An app renews its sign-in by itself; if it was disconnected, connect it again. For a key, check it was copied whole, with no space or line break at either end. If it was revoked or lost, create a new key."],
+                ["Slate doesn't show up in my client", "Restart the client after editing its config, and check the file is valid JSON (a missing comma is easy to miss). With a key, try the curl check under Other clients: if that lists the tools, the key and endpoint are fine."],
                 ["The agent can't find a page", "Agents see what's in your workspace now, apart from pages in Trash. Ask it to search by a word from the page's title, or give it the page's link."],
                 ["“Unable to read the workspace right now” (503)", "Slate couldn't reach its database for a moment. Try again shortly."],
-                ["“This agent key can only read”", "The key was created as Read only. Create a new key with Read and create in Settings › AI agents, and use that one where the agent should be able to create."],
+                ["“This agent key can only read”", "It was allowed Read only. Disconnect the app (or revoke the key) in Settings › AI agents and connect again choosing Read and create."],
                 ["A new page doesn't show in Slate yet", "Slate checks for changes every few seconds while the tab is open, and right away when you come back to it. If you were in the middle of editing, it waits until your changes are saved."],
-                ["“Too many requests” (429)", `Each key can make ${LIMITS.MCP_KEY_LIMITER} requests a minute, and each address ${LIMITS.MCP_IP_LIMITER}. Wait the number of seconds in the \`Retry-After\` header (the message says it too), then carry on. Normal use never gets near this.`],
+                ["“Too many requests” (429)", `Each app or key can make ${LIMITS.MCP_KEY_LIMITER} requests a minute, and each address ${LIMITS.MCP_IP_LIMITER}. Wait the number of seconds in the \`Retry-After\` header (the message says it too), then carry on. Normal use never gets near this.`],
               ].map(([q, a]) => (
                 <details key={q}>
                   <summary>{q}</summary>
@@ -359,7 +360,8 @@ export default async function McpDocs() {
             <dl className="docs-specs">
               <div><dt>Endpoint</dt><dd><code>{url}</code></dd></div>
               <div><dt>Transport</dt><dd>Streamable HTTP. One JSON-RPC message per <code>POST</code>, answered with JSON; no sessions and no server-sent stream (<code>GET</code> answers 405).</dd></div>
-              <div><dt>Authentication</dt><dd><code>Authorization: Bearer slate_…</code>. Keys are 43 random characters after the <code>slate_</code> prefix.</dd></div>
+              <div><dt>Authentication</dt><dd>OAuth 2.1 per the MCP authorization spec: a <code>401</code> carries <code>WWW-Authenticate</code> with <code>resource_metadata</code>; authorization code with PKCE (<code>S256</code>), public clients, Dynamic Client Registration, rotating refresh tokens. Scopes <code>read</code> and <code>write</code>. Or an agent key: <code>Authorization: Bearer slate_…</code>, 43 random characters after the prefix.</dd></div>
+              <div><dt>Discovery</dt><dd><code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code></dd></div>
               <div><dt>Protocol versions</dt><dd>{SUPPORTED_PROTOCOLS.map((v, i) => <span key={v}>{i ? ", " : ""}<code>{v}</code></span>)}</dd></div>
               <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. A key sees the reading tools (<code>readOnlyHint</code>), plus the creating ones (<code>readOnlyHint: false</code>, <code>destructiveHint: false</code>) when its scope allows.</dd></div>
               <div><dt>Rate limits</dt><dd>{LIMITS.MCP_KEY_LIMITER} requests a minute per key and {LIMITS.MCP_IP_LIMITER} per IP address; creating, {LIMITS.MCP_WRITE_LIMITER} a minute per key. Over a limit: <code>429</code> with <code>Retry-After</code>.</dd></div>

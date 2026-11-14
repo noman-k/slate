@@ -5,6 +5,9 @@ export async function middleware(request: NextRequest) {
   // AI agents call the MCP endpoint with an agent key, not a session cookie; the route
   // checks the key itself (and answers 503 when Supabase isn't connected).
   if (request.nextUrl.pathname === '/api/mcp') return NextResponse.next();
+  // Apps connecting with OAuth: discovery, registration and tokens are for apps, not
+  // people, and check what they're sent themselves. (/oauth/authorize is a page people sign in to.)
+  if (request.nextUrl.pathname.startsWith('/api/oauth/') || request.nextUrl.pathname.startsWith('/.well-known/')) return NextResponse.next();
   // The contact form is for everyone, signed in or not; the route reads the session itself.
   if (request.nextUrl.pathname === '/api/contact') return NextResponse.next();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,6 +43,8 @@ export async function middleware(request: NextRequest) {
     }
     const destination = request.nextUrl.clone();
     destination.pathname = '/auth/login';
+    // Only "next": the page's own query (an app's sign-in request, say) rides inside it.
+    destination.search = '';
     destination.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(destination);
   }

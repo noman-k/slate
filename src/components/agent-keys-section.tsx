@@ -20,6 +20,8 @@ type AgentKey = {
   last_used_at: string | null;
   scope?: Scope;
   workspace_id: string;
+  /** Set for an app connected by signing in (OAuth), not with a pasted key. */
+  client_id?: string | null;
 };
 
 /** What a key lets its agent do, in the words used in the form and the list. */
@@ -81,7 +83,7 @@ export function AgentKeysSection({
   const refresh = useCallback(async () => {
     const { data, error } = await (await client())
       .from("agent_keys")
-      .select("id,name,key_prefix,created_at,last_used_at,scope,workspace_id")
+      .select("id,name,key_prefix,created_at,last_used_at,scope,workspace_id,client_id")
       .is("revoked_at", null)
       .order("created_at", { ascending: false });
     if (error) {
@@ -124,9 +126,10 @@ export function AgentKeysSection({
   const revoke = async (id: string) => {
     const { error } = await (await client()).from("agent_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id);
     setConfirming(null);
-    if (error) toast.error("Couldn't revoke the key. Try again.");
+    const app = allKeys?.find((key) => key.id === id)?.client_id;
+    if (error) toast.error(app ? "Couldn't disconnect the app. Try again." : "Couldn't revoke the key. Try again.");
     else {
-      toast(`Key revoked — agents using it can no longer use ${workspaceName}`);
+      toast(app ? `Disconnected — it can no longer use ${workspaceName}` : `Key revoked — agents using it can no longer use ${workspaceName}`);
       void refresh();
     }
   };
@@ -139,9 +142,10 @@ export function AgentKeysSection({
         <div>
           <strong>Let an AI agent use {workspaceCount > 1 ? `“${workspaceName}”` : "this workspace"}</strong>
           <p>
-            Agents like Claude can search your pages, read them, query your databases and look up playbooks. A key can
-            also let them create new pages, databases and playbooks; agents never edit or delete what&apos;s there. Each
-            agent uses its own key, which you can revoke at any time.
+            Agents like Claude can search your pages, read them, query your databases and look up playbooks, and if you
+            allow it, create new pages, databases and playbooks; agents never edit or delete what&apos;s there. Connect an
+            app by adding <code className="agent-url">{endpoint}</code> to it and signing in, or create a key for apps that
+            need one. Revoke either at any time.
           </p>
           <p className="agent-boundary">
             <Lock size={13} aria-hidden />
@@ -150,7 +154,7 @@ export function AgentKeysSection({
               : "A key opens only this workspace. Any workspace you add later stays out of its reach."}
           </p>
           <a className="agent-guide" href="/docs/mcp" target="_blank" rel="noreferrer">
-            Setup guide for Claude, Cursor, VS Code and more
+            Setup guide for Claude, ChatGPT, Codex, Cursor and more
             <ArrowUpRight size={13} />
           </a>
         </div>
@@ -209,7 +213,7 @@ export function AgentKeysSection({
             </fieldset>
           </form>
           {keys && keys.length > 0 && (
-            <ul className="agent-keys" aria-label="Agent keys">
+            <ul className="agent-keys" aria-label="Connected apps and agent keys">
               {keys.map((key) => (
                 <li key={key.id}>
                   <div>
@@ -220,13 +224,14 @@ export function AgentKeysSection({
                       </span>
                     </strong>
                     <small>
-                      <code>{key.key_prefix}…</code> · created {when(key.created_at)} · last used {when(key.last_used_at)}
+                      {key.client_id ? "Connected by signing in" : <code>{key.key_prefix}…</code>} ·{" "}
+                      {key.client_id ? "connected" : "created"} {when(key.created_at)} · last used {when(key.last_used_at)}
                     </small>
                   </div>
                   {confirming === key.id ? (
                     <span className="agent-confirm">
                       <button type="button" className="danger-text" onClick={() => void revoke(key.id)}>
-                        Revoke
+                        {key.client_id ? "Disconnect" : "Revoke"}
                       </button>
                       <button type="button" onClick={() => setConfirming(null)}>
                         Keep
@@ -234,7 +239,7 @@ export function AgentKeysSection({
                     </span>
                   ) : (
                     <button type="button" className="secondary-button" onClick={() => setConfirming(key.id)}>
-                      Revoke
+                      {key.client_id ? "Disconnect" : "Revoke"}
                     </button>
                   )}
                 </li>
@@ -242,12 +247,12 @@ export function AgentKeysSection({
             </ul>
           )}
           {keys && keys.length === 0 && !created && (
-            <p className="settings-muted">No agent keys for this workspace yet.</p>
+            <p className="settings-muted">No apps or agent keys for this workspace yet.</p>
           )}
           {elsewhere > 0 && (
             <p className="settings-muted">
-              {elsewhere === 1 ? "1 key belongs" : `${elsewhere} keys belong`} to your other workspaces. Switch to a
-              workspace to see and revoke its keys.
+              {elsewhere === 1 ? "1 app or key belongs" : `${elsewhere} apps and keys belong`} to your other workspaces.
+              Switch to a workspace to see and revoke them.
             </p>
           )}
       </>

@@ -44,12 +44,18 @@ export function CodeBlock({ code, caption }: { code: string; caption?: string })
   );
 }
 
-/** Text with `inline code` in backticks. */
+/** Text with `inline code` in backticks and **menu names** in bold. */
 export function Inline({ text }: { text: string }) {
   return (
     <>
-      {text.split(/(`[^`]+`)/).map((part, index) =>
-        part.startsWith("`") && part.endsWith("`") ? <code key={index}>{part.slice(1, -1)}</code> : part,
+      {text.split(/(`[^`]+`|\*\*[^*]+\*\*)/).map((part, index) =>
+        part.startsWith("`") && part.endsWith("`") ? (
+          <code key={index}>{part.slice(1, -1)}</code>
+        ) : part.startsWith("**") && part.endsWith("**") ? (
+          <strong key={index}>{part.slice(2, -2)}</strong>
+        ) : (
+          part
+        ),
       )}
     </>
   );

@@ -4634,6 +4634,11 @@ section.is-folded .section-toggle svg {
   }
 }
 /* Link from Settings › AI agents to the public setup guide (/docs/mcp). */
+/* The MCP address, in the AI agents intro: allowed to wrap on narrow screens. */
+.agent-url {
+  font-size: 12px;
+  word-break: break-all;
+}
 /* Which workspace a key reaches, under the AI agents intro. */
 .settings-note p.agent-boundary {
   display: flex;

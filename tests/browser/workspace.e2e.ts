@@ -1159,7 +1159,7 @@ test("settings explain AI agent access and offer agent keys", async ({ page }) =
   await expect(agents.getByRole("radio", { name: /Read only/ })).toBeChecked();
   await expect(agents).toContainText("never edit or delete");
   await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
-  await expect(agents).toContainText("No agent keys for this workspace yet.");
+  await expect(agents).toContainText("No apps or agent keys for this workspace yet.");
   await expect(agents).toContainText("A key opens only this workspace.");
   await expect(agents.getByRole("link", { name: /Setup guide/ })).toHaveAttribute("href", "/docs/mcp");
   // About: where to ask about the account and its data.
@@ -1448,8 +1448,8 @@ test("an agent key opens only the workspace it was made in", async ({ page, play
   // Settings here are this workspace's: none of its keys yet, and a word about the other's.
   await settings();
   await expect(agents).toContainText("Let an AI agent use “Side project”");
-  await expect(agents).toContainText("No agent keys for this workspace yet.");
-  await expect(agents).toContainText("1 key belongs to your other workspaces");
+  await expect(agents).toContainText("No apps or agent keys for this workspace yet.");
+  await expect(agents).toContainText("1 app or key belongs to your other workspaces");
   await expect(agents.locator(".agent-keys")).toHaveCount(0);
   await page.keyboard.press("Escape");
   const side = await makeKey("Side agent");

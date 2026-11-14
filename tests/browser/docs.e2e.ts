@@ -18,13 +18,15 @@ test("the MCP guide is public and documents every tool", async ({ page, baseURL 
 test("setup tabs switch by click and arrow keys, and remember the choice", async ({ page }) => {
   await page.goto("/docs/mcp#setup");
   const tabs = page.getByRole("tablist", { name: "AI client" });
-  await expect(tabs.getByRole("tab", { name: "Claude Code" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toContainText("claude mcp add --transport http slate");
+  // Signing in comes first: Claude takes just the address.
+  await expect(tabs.getByRole("tab", { name: "Claude", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel")).toContainText("Add custom connector");
+  await expect(page.getByRole("tabpanel")).not.toContainText("slate_YOUR_KEY");
   await tabs.getByRole("tab", { name: "Cursor" }).click();
   await expect(page.getByRole("tabpanel")).toContainText("mcp.json");
   await page.keyboard.press("ArrowRight");
   await expect(tabs.getByRole("tab", { name: "VS Code" })).toBeFocused();
-  await expect(page.getByRole("tabpanel")).toContainText(".mcp.json");
+  await expect(page.getByRole("tabpanel")).toContainText(".vscode/mcp.json");
   await page.reload();
   await expect(tabs.getByRole("tab", { name: "VS Code" })).toHaveAttribute("aria-selected", "true");
 });
