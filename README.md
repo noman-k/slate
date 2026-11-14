@@ -205,6 +205,8 @@ Other mentions of slate.noman.io (this README, `package.json`'s `homepage`, `SEC
 
 ## Contributing
 
+Slate is built and maintained by one person, so issues and pull requests are reviewed when time allows, and not everything can be answered quickly. For anything bigger than a small fix, please open an issue to discuss it first.
+
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the checks to run, and the rules for database migrations. Please report security problems privately as described in [SECURITY.md](SECURITY.md), and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
