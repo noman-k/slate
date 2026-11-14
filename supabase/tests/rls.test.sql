@@ -1,12 +1,14 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
-select plan(10);
+select plan(12);
 insert into auth.users(id,email,raw_user_meta_data) values
  ('a0000000-0000-4000-8000-000000000001','owner-a@example.test','{"display_name":"Owner A"}'),
  ('a0000000-0000-4000-8000-000000000002','owner-b@example.test','{"display_name":"Owner B"}');
 select is((select count(*)::integer from public.workspaces where owner_id in ('a0000000-0000-4000-8000-000000000001','a0000000-0000-4000-8000-000000000002')),2,'Registration creates one workspace per user');
 select is((select display_name from public.profiles where id='a0000000-0000-4000-8000-000000000001'),'Owner A','Registration creates a profile');
+select is((select string_agg(p.title,',') from public.pages p join public.workspaces w on w.id=p.workspace_id where w.owner_id='a0000000-0000-4000-8000-000000000001'),'Getting started','Registration starts the workspace with a Getting started page');
+select ok((select d.markdown like '%## Try these first%' from public.documents d join public.pages p on p.id=d.page_id join public.workspaces w on w.id=p.workspace_id where w.owner_id='a0000000-0000-4000-8000-000000000001'),'The Getting started page has its content');
 create temporary table other_workspace as select id from public.workspaces where owner_id='a0000000-0000-4000-8000-000000000002';
 grant select on other_workspace to authenticated;
 set local role authenticated;

@@ -92,12 +92,29 @@ export async function deleteAccount(account: TestAccount | undefined) {
   if (account) await call(`/auth/v1/admin/users/${account.userId}`, { method: "DELETE", admin: true }).catch(() => {});
 }
 
+/** Removes an account a test registered through the sign-up form (if it exists). */
+export async function deleteRegisteredAccount(email: string, password: string) {
+  const session = await call<{ user: { id: string } }>("/auth/v1/token?grant_type=password", {
+    method: "POST",
+    body: { email, password },
+  }).catch(() => null);
+  if (session) await call(`/auth/v1/admin/users/${session.user.id}`, { method: "DELETE", admin: true }).catch(() => {});
+}
+
+/** A fresh, unused address and password for a sign-up test. */
+export function newCredentials() {
+  return {
+    email: `slate-e2e-signup-${Date.now()}-${randomUUID().slice(0, 8)}@example.test`,
+    password: `Slate-e2e-${randomUUID()}-Aa9!`,
+  };
+}
+
 /** Signs in through the login form and lands in the app. */
 export async function signIn(page: Page, account: TestAccount) {
   await page.goto("/auth/login");
   await page.getByLabel("Email address").fill(account.email);
   await page.locator('input[autocomplete="current-password"]').fill(account.password);
-  await page.getByRole("button", { name: "Continue with email" }).click();
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(page).toHaveURL(/\/app$/);
 }
 
@@ -122,4 +139,16 @@ export async function mockApi(
       body: JSON.stringify({ status, ok: status >= 200 && status < 300, body }),
     });
   });
+}
+
+/** A real one-time email link token, as Supabase would put in an email (hashed_token). */
+export async function emailLinkToken(type: "signup" | "recovery", email: string, password?: string) {
+  const link = await call<{ hashed_token?: string; properties?: { hashed_token: string } }>("/auth/v1/admin/generate_link", {
+    method: "POST",
+    admin: true,
+    body: { type, email, ...(password ? { password } : {}) },
+  });
+  const token = link.properties?.hashed_token || link.hashed_token;
+  if (!token) throw new Error("Supabase did not return an email link token.");
+  return token;
 }

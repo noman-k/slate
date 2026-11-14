@@ -8,7 +8,7 @@ Built with Next.js 16 (App Router), React 19, TypeScript, Tiptap, CodeMirror, Ta
 
 ## What's in it
 
-- **Accounts, no demo.** Everyone registers or logs in with Supabase Auth; each account gets an empty private workspace. Supabase is the only store.
+- **Accounts, no demo.** Sign-up asks only for an email and a password, then opens the new private workspace on a short *Getting started* page with a checklist of first steps. Errors say what to do next (an existing account points to Log in; an unconfirmed email can get a new link). Supabase is the only store.
 - **Pages.** A Notion-style editor: `/` commands, Markdown shortcuts, to-dos, tables, code blocks, callouts, images (private uploads) and nested subpages that appear as blocks in their parent. Every page can switch to a Markdown source view; Markdown is the stored format.
 - **Databases.** Table, board and list views with filters, sorts, hidden and reordered properties. Property types include status, select, date, currency, relation, rollup and formula. Records open as a side peek or a full page. Databases can live inside pages, and linked views of a database keep views of their own. Export to CSV.
 - **Playbooks.** Checklists you can run. Steps are Check, Ask, Say, Decide (branch on an answer), Call (an HTTP API) and Finish, grouped into sections, with typed inputs filled in when a run starts. About 15 templates cover home & property, support, operations and automations. Runs can pause and resume, and every run is saved as a record in the playbook's own Runs database. The builder points out mistakes (a jump to a missing section, a value that doesn't exist, a run that never finishes).
@@ -73,7 +73,7 @@ Every application table has owner-scoped Row Level Security. Composite foreign k
 
 `load_workspace_state` assembles a consistent snapshot from the normalized tables. `save_workspace_state` applies a whole snapshot in one transaction and bumps a revision under a row lock, so a stale tab gets a conflict instead of overwriting another tab's changes. The client keeps unsynced changes in a per-account local outbox and warns before closing a tab with unsaved edits. On reload it replays that draft only if its base revision still matches the server; otherwise the draft is offered as a download rather than overwriting newer data. Snapshot sync is deliberately simple; incremental sync is future work for very large workspaces.
 
-Session cookies use `@supabase/ssr`. Middleware refreshes the session and sends signed-out visitors to the login page (or answers `401` for `/api/*`); RLS stays the real authorization boundary. Registration, login, logout and password recovery use Supabase Auth.
+Session cookies use `@supabase/ssr`. Middleware refreshes the session and sends signed-out visitors to the login page (or answers `401` for `/api/*`); RLS stays the real authorization boundary. Registration, login, logout and password recovery use Supabase Auth. Links in sign-up and password-reset emails land on `/auth/confirm`: a page with a button that posts the token to `/auth/confirm/verify`, which calls `verifyOtp` on the server and sets the session. Auth redirects are relative, so they stay on the address the visitor is using (under `next dev --hostname 0.0.0.0`, absolute redirects would jump to `0.0.0.0` and drop the cookies). Open the dev server at `http://localhost:3000`.
 
 **Attachments.** The private `attachments` bucket takes images, PDFs and text files up to 20 MB, under keys that start with the owning workspace id. Documents keep stable `/api/attachments/:id` URLs; that endpoint checks ownership, the parent page and the object path, then redirects to a short-lived signed URL with private, no-store headers. A failed metadata insert rolls the upload back.
 
@@ -101,8 +101,8 @@ npm run test:auth
 
 - **Unit tests** (`npm test`, Vitest): Markdown and editor round trips, page blocks, databases and formulas, page duplication and the page tree, playbook model, checks and runner, API request rules, agent tools, attachments, and the deploy configuration check.
 - **Database tests** (`supabase test db`, pgTAP): registration bootstrap, RLS isolation, unauthorized inserts, snapshot ownership, stale-save rejection and relation rules.
-- **HTTP auth test** (`npm run test:auth`): against local Supabase only. Creates temporary accounts and checks registration, login, session refresh, workspace bootstrap, nested-page and relational persistence, per-view column order, cross-account isolation, stale revisions, password changes, reauthentication and logout, then removes the accounts.
-- **Browser tests** (`npm run test:e2e`, Playwright): need `supabase start`. Each test creates a throwaway account holding the example rental workspace (`tests/fixtures/seed.ts`), signs in through the login form, and deletes the account afterwards. The suite starts its own dev server on port 3100 wired to `supabase status`, so stop any other `next dev` in this folder first (Next allows one per project). Set `PLAYWRIGHT_BASE_URL` to test a server you run yourself. API steps are stubbed at `/api/run-request`.
+- **HTTP auth test** (`npm run test:auth`): against local Supabase only. Creates temporary accounts and checks registration (and the starting Getting started page), login, session refresh, workspace bootstrap, nested-page and relational persistence, per-view column order, cross-account isolation, stale revisions, password changes, reauthentication and logout, then removes the accounts.
+- **Browser tests** (`npm run test:e2e`, Playwright): need `supabase start`. Each workspace test creates a throwaway account holding the example rental workspace (`tests/fixtures/seed.ts`), signs in through the login form, and deletes the account afterwards. `onboarding.e2e.ts` signs up through the real form, checks the Getting started page and the error messages, and fakes a confirm-your-email answer to cover the "Check your inbox" screen. The suite starts its own dev server on port 3100 wired to `supabase status`, so stop any other `next dev` in this folder first (Next allows one per project). Set `PLAYWRIGHT_BASE_URL` to test a server you run yourself. API steps are stubbed at `/api/run-request`.
 
 Database, auth and browser tests need Docker. Set `SUPABASE_TEST_WORKDIR` to use an isolated Supabase CLI checkout. In CI, `.github/workflows/ci.yml` runs typecheck, lint, unit tests, the Worker build, database tests and the HTTP auth test; `.github/workflows/browser.yml` starts Supabase and runs the Playwright suite.
 
@@ -126,10 +126,12 @@ The Supabase URL and publishable key must be present at build time, because Next
 
 1. **Cloudflare:** `noman.io` must be a zone in the same Cloudflare account as the Worker, with no existing DNS record for `slate`. `CLOUDFLARE_API_TOKEN` needs Workers Scripts edit, plus Workers Routes and DNS edit on the `noman.io` zone.
 2. **GitHub:** in the `production` environment, set `NEXT_PUBLIC_APP_URL` to `https://slate.noman.io`.
-3. **Supabase Auth → URL Configuration:** set the Site URL to `https://slate.noman.io` and add these redirect URLs:
+3. **Supabase Auth → URL Configuration:** set the Site URL to `https://slate.noman.io` and add these redirect URLs (the `localhost` one lets `npm run dev` use this project too):
+   - `https://slate.noman.io/auth/confirm`
    - `https://slate.noman.io/auth/callback`
-   - `https://slate.noman.io/auth/callback?next=/auth/reset`
-4. **Deploy:** run the *Deploy production* workflow (or `npm run deploy`), then open https://slate.noman.io and register to confirm sign-in works.
+   - `http://localhost:3000/auth/confirm`
+4. **Supabase Auth → Email Templates:** paste `supabase/templates/confirmation.html` into *Confirm signup* and `supabase/templates/recovery.html` into *Reset password*. Their links go to `/auth/confirm`, which uses the one-time token only when its button is pressed (mail scanners such as Outlook Safe Links open every link and would otherwise use it up) and verifies it on the server, so the link works in any browser or device.
+5. **Deploy:** run the *Deploy production* workflow (or `npm run deploy`), then open https://slate.noman.io and register to confirm sign-in works.
 
 ### GitHub deployment
 

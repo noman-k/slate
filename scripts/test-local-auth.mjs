@@ -94,7 +94,7 @@ try {
   assert.equal(foreignWrite.status,403);
   const other=(await rpc('load_workspace_state',b.token)).data;
   assert.equal(other.state.workspaces.length,1);
-  assert.equal(other.state.pages.length,0);
+  assert.deepEqual(other.state.pages.map(p=>p.title),['Getting started'],'A new account starts with only its own Getting started page');
   const stale=await request('/rest/v1/rpc/save_workspace_state',{token:a.token,method:'POST',body:{p_state:state,p_expected_revision:initial.revision},allowError:true});
   assert.equal(stale.status,400);assert.match(stale.data.message,/conflict/);
   console.log('PASS cross-account read/write isolation and stale-save protection');
