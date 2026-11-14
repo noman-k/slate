@@ -1987,6 +1987,8 @@ section.is-folded .section-toggle svg {
 .shortcuts > div {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: 12px;
@@ -1998,6 +2000,24 @@ section.is-folded .section-toggle svg {
   padding: 2px 4px;
   border-radius: 3px;
   color: var(--text);
+}
+.shortcuts-keys {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+/* Touch tips: the "how" reads as plain text, right-aligned like the keys. */
+.shortcuts-how {
+  text-align: right;
+  color: var(--text);
+}
+@media (hover: none) and (pointer: coarse) {
+  .shortcuts {
+    width: min(300px, calc(100vw - 32px));
+  }
+  .shortcuts > div {
+    font-size: 13px;
+  }
 }
 .shortcuts p {
   font-size: 11px;

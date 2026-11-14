@@ -85,6 +85,7 @@ import { setRunFrom } from "./procedure-nodes";
 import { EditorUrlPopover } from "./EditorUrlPopover";
 import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
+import { useKeys } from "../keys";
 
 export interface DocumentEditorProps {
   pageId: string;
@@ -196,18 +197,18 @@ const MARKDOWN_TOOLS: { action: MarkdownAction; label: string; icon: typeof File
     { action: "h3", label: "Heading 3", icon: Heading3 },
   ],
   [
-    { action: "bold", label: "Bold", icon: Bold, keys: "⌘B" },
-    { action: "italic", label: "Italic", icon: Italic, keys: "⌘I" },
-    { action: "strike", label: "Strikethrough", icon: Strikethrough, keys: "⇧⌘X" },
+    { action: "bold", label: "Bold", icon: Bold, keys: "Mod+B" },
+    { action: "italic", label: "Italic", icon: Italic, keys: "Mod+I" },
+    { action: "strike", label: "Strikethrough", icon: Strikethrough, keys: "Shift+Mod+X" },
   ],
   [
-    { action: "quote", label: "Quote", icon: Quote, keys: "⇧⌘." },
-    { action: "code", label: "Code", icon: Code, keys: "⌘E" },
-    { action: "link", label: "Link", icon: Link2, keys: "⌘K" },
+    { action: "quote", label: "Quote", icon: Quote, keys: "Shift+Mod+." },
+    { action: "code", label: "Code", icon: Code, keys: "Mod+E" },
+    { action: "link", label: "Link", icon: Link2, keys: "Mod+K" },
   ],
   [
-    { action: "bullet", label: "Bulleted list", icon: List, keys: "⇧⌘8" },
-    { action: "numbered", label: "Numbered list", icon: ListOrdered, keys: "⇧⌘7" },
+    { action: "bullet", label: "Bulleted list", icon: List, keys: "Shift+Mod+8" },
+    { action: "numbered", label: "Numbered list", icon: ListOrdered, keys: "Shift+Mod+7" },
     { action: "task", label: "Task list", icon: CheckSquare },
   ],
 ];
@@ -317,6 +318,7 @@ function placeBubble(editor: Editor, wrapper: HTMLElement | null) {
 }
 
 export function DocumentEditor(props: DocumentEditorProps) {
+  const shortcut = useKeys();
   const {
     pageId,
     markdown,
@@ -1531,7 +1533,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
         ) : null}
         <div className="editor-history">
           <button
-            title="Undo (⌘Z)"
+            title={shortcut.withKeys("Undo", "Mod+Z")}
             aria-label="Undo"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => runHistory("undo")}
@@ -1542,7 +1544,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             <Undo2 size={16} />
           </button>
           <button
-            title="Redo (⇧⌘Z)"
+            title={shortcut.withKeys("Redo", "Shift+Mod+Z")}
             aria-label="Redo"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => runHistory("redo")}
@@ -1591,7 +1593,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
                       key={tool.action}
                       type="button"
                       aria-label={tool.label}
-                      title={tool.keys ? `${tool.label} (${tool.keys})` : tool.label}
+                      title={tool.keys ? shortcut.withKeys(tool.label, tool.keys) : tool.label}
                       // Keep the editor's selection while clicking the toolbar.
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => {
@@ -1708,11 +1710,11 @@ export function DocumentEditor(props: DocumentEditorProps) {
           { name: "Code", action: "code", icon: Code2 },
         ];
         const actions: { name: string; action: BlockActionName; icon: typeof FileText; keys?: string }[] = [
-          { name: "Duplicate", action: "duplicate", icon: Copy, keys: "⌘D" },
+          { name: "Duplicate", action: "duplicate", icon: Copy, keys: "Mod+D" },
           { name: "Copy as Markdown", action: "copy", icon: ClipboardCopy },
           { name: "Copy link to block", action: "link", icon: Link2 },
-          { name: "Move up", action: "up", icon: ArrowUp, keys: "⇧⌘↑" },
-          { name: "Move down", action: "down", icon: ArrowDown, keys: "⇧⌘↓" },
+          { name: "Move up", action: "up", icon: ArrowUp, keys: "Shift+Mod+ArrowUp" },
+          { name: "Move down", action: "down", icon: ArrowDown, keys: "Shift+Mod+ArrowDown" },
         ];
         const close = () => {
           setBlockMenu(false);
@@ -1797,7 +1799,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
                 <button role="menuitem" key={item.action} onClick={() => void blockAction(item.action)}>
                   <item.icon size={16} />
                   <span>{item.name}</span>
-                  {item.keys && <kbd>{item.keys}</kbd>}
+                  {item.keys && <kbd>{shortcut.keys(item.keys)}</kbd>}
                 </button>
               ))}
               <div className="editor-menu-divider" />
@@ -1822,13 +1824,13 @@ export function DocumentEditor(props: DocumentEditorProps) {
               { name: "Heading 3", icon: Heading3, active: editor?.isActive("heading", { level: 3 }), run: () => editor?.chain().focus().toggleHeading({ level: 3 }).run() },
             ],
             [
-              { name: "Bold (⌘B)", icon: Bold, active: editor?.isActive("bold"), run: () => editor?.chain().focus().toggleBold().run() },
-              { name: "Italic (⌘I)", icon: Italic, active: editor?.isActive("italic"), run: () => editor?.chain().focus().toggleItalic().run() },
+              { name: shortcut.withKeys("Bold", "Mod+B"), icon: Bold, active: editor?.isActive("bold"), run: () => editor?.chain().focus().toggleBold().run() },
+              { name: shortcut.withKeys("Italic", "Mod+I"), icon: Italic, active: editor?.isActive("italic"), run: () => editor?.chain().focus().toggleItalic().run() },
               { name: "Strikethrough", icon: Strikethrough, active: editor?.isActive("strike"), run: () => editor?.chain().focus().toggleStrike().run() },
-              { name: "Inline code (⌘E)", icon: Code, active: editor?.isActive("code"), run: () => editor?.chain().focus().toggleCode().run() },
+              { name: shortcut.withKeys("Inline code", "Mod+E"), icon: Code, active: editor?.isActive("code"), run: () => editor?.chain().focus().toggleCode().run() },
             ],
             [
-              { name: "Link (⌘K)", icon: Link2, active: editor?.isActive("link"), run: setLink },
+              { name: shortcut.withKeys("Link", "Mod+K"), icon: Link2, active: editor?.isActive("link"), run: setLink },
               { name: "Quote", icon: Quote, active: editor?.isActive("blockquote"), run: () => editor?.chain().focus().toggleBlockquote().run() },
             ],
           ].map((group, index) => (

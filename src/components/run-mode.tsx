@@ -51,6 +51,7 @@ import {
   type ApiRequest,
 } from "@/lib/api-request";
 import type { Page } from "@/lib/types";
+import { useKeys, useTouchOnly } from "./keys";
 
 export { humanize };
 
@@ -557,6 +558,8 @@ export function RunView({
   onOpenLog: () => void;
   sendRequest: (request: ApiRequest) => Promise<ApiResponse>;
 }) {
+  const shortcut = useKeys();
+  const touchOnly = useTouchOnly();
   const finished = run.status !== "running";
   const started = useRef(new Date());
   const [elapsed, setElapsed] = useState(0);
@@ -666,13 +669,15 @@ export function RunView({
                     className="run-back"
                     onClick={onBack}
                     disabled={!run.trail.length}
-                    title="Back (⌥←)"
+                    title={shortcut.withKeys("Back", "Alt+ArrowLeft")}
                   >
                     <ArrowLeft size={15} /> Back
                   </button>
-                  <span className="run-hint">
-                    <kbd>↵</kbd> continue · <kbd>⌥←</kbd> back · <kbd>esc</kbd> pause
-                  </span>
+                  {!touchOnly && (
+                    <span className="run-hint">
+                      <kbd>↵</kbd> continue · <kbd>{shortcut.keys("Alt+ArrowLeft")}</kbd> back · <kbd>esc</kbd> pause
+                    </span>
+                  )}
                 </div>
               )}
             </main>

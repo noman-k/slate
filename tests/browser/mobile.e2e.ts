@@ -172,3 +172,18 @@ test("while editing, tapping text or a link just moves the cursor", async ({ pag
   expect(page.url()).toBe(before);
   expect(await editorHasFocus(page)).toBe(true);
 });
+
+test("on a touch screen, help shows touch tips instead of keyboard shortcuts", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  // The floating help button (the sidebar's own copy is off-screen while it's closed).
+  await page.locator("button.help-button").tap();
+  const help = page.locator(".shortcuts");
+  await expect(help).toContainText("A few helpful tips");
+  await expect(help).toContainText("Tap Search in the sidebar");
+  await expect(help.locator("kbd")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  // No key hint on the sidebar's Search either.
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await expect(page.locator("aside.sidebar .sidebar-search")).toBeVisible();
+  await expect(page.locator("aside.sidebar .sidebar-search kbd")).toHaveCount(0);
+});

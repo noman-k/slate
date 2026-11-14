@@ -1322,3 +1322,25 @@ test("ticking a to-do doesn't move focus into the page", async ({ page }) => {
   await page.reload();
   await expect(page.locator('ul[data-type="taskList"] > li input[type="checkbox"]')).toBeChecked();
 });
+test("shortcuts are shown the way each computer names them", async ({ page }) => {
+  for (const [platform, search, toggle, back] of [
+    ["MacIntel", "⌘K", "⌘\\", "⌘[ · ⌘]"],
+    ["Win32", "Ctrl+K", "Ctrl+\\", "Ctrl+[ · Ctrl+]"],
+  ] as const) {
+    await page.addInitScript((name) => {
+      Object.defineProperty(navigator, "platform", { get: () => name, configurable: true });
+      Object.defineProperty(navigator, "userAgentData", { get: () => undefined, configurable: true });
+    }, platform);
+    await page.reload();
+    await expect(page.getByLabel("Page title", { exact: true })).toBeVisible();
+    const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+    await expect(sidebar.locator(".sidebar-search kbd")).toHaveText(search);
+    await page.getByRole("button", { name: "Help and keyboard shortcuts" }).click();
+    const help = page.locator(".shortcuts");
+    await expect(help).toContainText("A few helpful shortcuts");
+    await expect(help.locator("div", { hasText: "Find anything" }).locator("kbd")).toHaveText(search);
+    await expect(help.locator("div", { hasText: "Toggle sidebar" }).locator("kbd")).toHaveText(toggle);
+    await expect(help.locator("div", { hasText: "Back / forward" }).locator("kbd")).toHaveText(back.split(" · "));
+    await page.keyboard.press("Escape");
+  }
+});

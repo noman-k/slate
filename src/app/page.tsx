@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Brand, BrandMark } from '@/components/brand';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { Keys } from '@/components/keys';
 import { createClient } from '@/lib/supabase/server';
 import { LICENSE_NAME, REPOSITORY_URL } from '@/lib/project';
 import './landing.css';
@@ -129,7 +130,7 @@ function HeroShot() {
           <div className="shot-body">
             <aside className="shot-sidebar">
               <div className="shot-brand"><Brand size={14} /></div>
-              <div className="shot-search"><Search size={11} /> Search <kbd>⌘K</kbd></div>
+              <div className="shot-search"><Search size={11} /> Search <Keys combo="Mod+K" /></div>
               <div className="shot-row"><House size={12} /> Home</div>
               <div className="shot-row"><Compass size={12} /> Playbooks <i>5</i></div>
               <div className="shot-heading">Private</div>
@@ -350,7 +351,7 @@ export default async function Home() {
               </article>
               <article className="bento-card">
                 <span className="bento-icon"><Command size={18} /></span>
-                <h3>Find anything with ⌘K</h3>
+                <h3>Find anything with <Keys combo="Mod+K" /></h3>
                 <p>Every title and every line you’ve written, a keystroke away.</p>
               </article>
               <article className="bento-card">

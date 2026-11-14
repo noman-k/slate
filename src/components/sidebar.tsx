@@ -45,6 +45,7 @@ import type { Page, WorkspaceState } from "@/lib/types";
 import { Menu, MenuItem, MenuSeparator } from "./ui/menu";
 import { ShortcutsPopover } from "./shortcuts";
 import { PageIcon } from "./page-icon";
+import { Keys, useKeys, useTouchOnly } from "./keys";
 export type PageAction =
   | "rename"
   | "duplicate"
@@ -311,6 +312,8 @@ function SidebarSection({
 }
 
 export function Sidebar(p: Props) {
+  const shortcut = useKeys();
+  const touchOnly = useTouchOnly();
   const [folded, setFolded] = useState<Set<SectionId>>(new Set());
   useEffect(() => {
     try {
@@ -517,7 +520,7 @@ export function Sidebar(p: Props) {
             </button>
             <button
               className="sidebar-icon"
-              title="Close sidebar (⌘ \)"
+              title={shortcut.withKeys("Close sidebar", "Mod+\\")}
               aria-label="Collapse sidebar"
               onClick={p.onToggle}
             >
@@ -528,7 +531,7 @@ export function Sidebar(p: Props) {
         <button className="sidebar-search" onClick={p.onSearch}>
           <Search size={16} />
           <span>Search</span>
-          <kbd>⌘K</kbd>
+          {!touchOnly && <Keys combo="Mod+K" />}
         </button>
         <nav className="sidebar-primary" aria-label="Quick actions">
           <button
