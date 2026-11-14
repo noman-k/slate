@@ -7,6 +7,7 @@ import {
   CloudOff,
   Copy,
   Download,
+  CircleHelp,
   ClipboardList,
   Compass,
   FileText,
@@ -1278,6 +1279,38 @@ export function WorkspaceApp() {
                               {runs.length} {runs.length === 1 ? "run" : "runs"}
                             </button>
                           )}
+                          <Popup
+                            align="end"
+                            trigger={
+                              <button className="run-bar-link run-help" aria-label="How playbooks work">
+                                <CircleHelp size={15} />
+                                How it works
+                              </button>
+                            }
+                          >
+                            <div className="run-help-card">
+                              <strong>How playbooks work</strong>
+                              <ol>
+                                <li>
+                                  <b>Inputs</b> are what you need to know before starting, like an order
+                                  number. They&apos;re asked for when someone presses Run.
+                                </li>
+                                <li>
+                                  <b>Steps</b> say what to do: Say, Ask, Check, Decide, Call an app, or
+                                  Finish. Add one with <kbd>/</kbd> or “Add a step”, and use{" "}
+                                  <b>Value</b> to fill in an input or an earlier answer.
+                                </li>
+                                <li>
+                                  <b>Headings</b> split it into sections. A Decide or Check step can jump
+                                  to a section, like “Roll back”.
+                                </li>
+                                <li>
+                                  Press <b>Run</b> to go through it one step at a time. Every run is kept
+                                  in <b>Runs</b>, and you can pause and pick up later.
+                                </li>
+                              </ol>
+                            </div>
+                          </Popup>
                         </div>
                       );
                     })()}

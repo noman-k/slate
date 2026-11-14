@@ -11,51 +11,61 @@ import {
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
-import { Extension, Node, mergeAttributes, type Editor } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Extension, InputRule, Node, mergeAttributes, type Editor } from "@tiptap/core";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { Node as PMNode } from "@tiptap/pm/model";
-import { Plus, SlidersHorizontal, X } from "lucide-react";
+import { Braces, Plus, SlidersHorizontal, X } from "lucide-react";
 import {
   END,
   OP_LABELS,
   STEP_LABELS,
+  humanize,
+  keyFor,
+  labelOf,
+  valuesOf,
   type ConditionOp,
   type Param,
   type ParamType,
+  type Step,
   type StepType,
 } from "../../lib/runner";
+import { Menu, MenuItem } from "../ui/menu";
 import { EmbedContext } from "./embed-context";
 import { HTTP_METHODS } from "../../lib/api-request";
 
 const STEP_HINTS: Record<StepType, string> = {
-  send: "What to say or do — use {{name}} to fill in a value",
+  send: "What to say or do",
   ask: "The question to ask",
-  check: "What to do and check",
-  if: "Optional note on this decision",
-  api: "What this request does, e.g. Look up the order",
-  end: "Closing note (optional)",
+  check: "What to do — then check it worked",
+  if: "Why this decision (optional)",
+  api: "What this does, e.g. Look up the order",
+  end: "How it ended, e.g. Refund sent (optional)",
+};
+/** What each step type is for, in the type menu. */
+export const STEP_PURPOSE: Record<StepType, string> = {
+  send: "Say something or give an instruction",
+  ask: "Ask a question and remember the answer",
+  check: "Do something and confirm it worked",
+  if: "Go a different way depending on a value",
+  api: "Look something up or update another app (API)",
+  end: "End the run here",
 };
 
-/** Section titles (headings) and variable names in the document, kept up to date. */
+/** Section titles (headings) and the values steps can use, kept up to date. */
 function useDocumentInfo(editor: Editor) {
   const read = () => {
     const sections: string[] = [];
-    const variables: string[] = [];
-    editor.state.doc.descendants((node) => {
+    const params: Param[] = [];
+    const steps: { step: StepType; variable?: string }[] = [];
+    editor.state.doc.forEach((node) => {
       if (node.type.name === "heading" && node.attrs.level <= 2 && node.textContent.trim())
         sections.push(node.textContent.trim());
-      if (node.type.name === "procedureParams")
-        for (const param of (node.attrs.params as Param[]) || [])
-          if (param.name && !variables.includes(param.name)) variables.push(param.name);
-      if (node.type.name === "procedureStep" && node.attrs.step === "ask" && node.attrs.variable)
-        if (!variables.includes(node.attrs.variable)) variables.push(node.attrs.variable);
-      if (node.type.name === "procedureStep" && node.attrs.step === "api" && node.attrs.variable)
-        for (const name of [node.attrs.variable, `${node.attrs.variable}_status`])
-          if (!variables.includes(name)) variables.push(name);
-      return node.type.name !== "procedureStep";
+      if (node.type.name === "procedureParams") params.push(...((node.attrs.params as Param[]) || []));
+      if (node.type.name === "procedureStep")
+        steps.push({ step: node.attrs.step, variable: node.attrs.variable || undefined });
     });
-    return { sections, variables };
+    return { sections, values: valuesOf({ params: params.filter((p) => p.name), steps: steps as Step[] }) };
   };
   const [info, setInfo] = useState(read);
   useEffect(() => {
@@ -69,10 +79,6 @@ function useDocumentInfo(editor: Editor) {
   return info;
 }
 
-/** A variable name people can type into {{…}}: letters, digits and underscores. */
-const cleanName = (value: string) => value.replace(/\s+/g, "_").replace(/[^\w]/g, "");
-/** A variable to check, which may read a field of a response: "order.status". */
-const cleanPath = (value: string) => value.replace(/\s+/g, "_").replace(/[^\w.]/g, "");
 
 function TargetSelect({
   label,
@@ -94,39 +100,235 @@ function TargetSelect({
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >
-      <option value="">Next step</option>
+      <option value="">Continue to the next step</option>
       {sections.map((section) => (
         <option key={section} value={section}>
-          Go to {section}
+          Jump to “{section}”
         </option>
       ))}
-      {missing && <option value={value}>Go to {value} (missing)</option>}
-      <option value={END}>End the run</option>
+      {missing && <option value={value}>Jump to “{value}” (deleted section)</option>}
+      <option value={END}>Finish the run</option>
     </select>
   );
 }
 
-function StepView({ node, updateAttributes, editor }: NodeViewProps) {
+/**
+ * Renames a value everywhere it's used: {{old}} and {{old.field}} in step text and
+ * settings, Decide steps that check it, and a Call step's {{old_status}}.
+ */
+export function renameValue(editor: Editor, from: string, to: string) {
+  if (!from || !to || from === to) return;
+  const pattern = new RegExp(`\\{\\{(\\s*)${from}((?:_status)?)(?=[\\s.}])`, "g");
+  const swap = (text: string) => text.replace(pattern, (_m, space: string, suffix: string) => `{{${space}${to}${suffix}`);
+  const { state } = editor;
+  const tr = state.tr;
+  const edits: { from: number; to: number; text: string }[] = [];
+  state.doc.descendants((node, pos) => {
+    if (node.isText && node.text) {
+      const next = swap(node.text);
+      if (next !== node.text) edits.push({ from: pos, to: pos + node.nodeSize, text: next });
+    }
+    if (node.type.name === "valueRef" && (node.attrs.key === from || node.attrs.key === `${from}_status`)) {
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, key: to + String(node.attrs.key).slice(from.length) });
+    }
+    if (node.type.name === "procedureStep") {
+      const attrs = { ...node.attrs };
+      let changed = false;
+      for (const key of ["url", "headers", "body", "value", "expected"] as const)
+        if (typeof attrs[key] === "string" && swap(attrs[key]) !== attrs[key]) {
+          attrs[key] = swap(attrs[key]);
+          changed = true;
+        }
+      const variable = String(attrs.variable || "");
+      if (node.attrs.step === "if" && (variable === from || variable.startsWith(`${from}.`) || variable === `${from}_status`)) {
+        attrs.variable = to + variable.slice(from.length);
+        changed = true;
+      }
+      if (changed) tr.setNodeMarkup(pos, undefined, attrs);
+    }
+  });
+  // Text last, from the end, so earlier positions stay valid.
+  for (const edit of edits.reverse()) tr.insertText(edit.text, edit.from, edit.to);
+  if (tr.docChanged) editor.view.dispatch(tr);
+}
+
+/** A name field people type in words ("Accepts credit"); the key follows it. */
+function NameField({
+  label,
+  value,
+  placeholder,
+  taken,
+  onRename,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  taken: string[];
+  onRename: (key: string) => void;
+}) {
+  const [draft, setDraft] = useState(value ? humanize(value) : "");
+  return (
+    <input
+      className="proc-name-input"
+      aria-label={label}
+      placeholder={placeholder}
+      value={draft}
+      title={value ? `Use it in steps as {{${value}}}` : undefined}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        const base = keyFor(event.target.value);
+        if (!base) return;
+        let key = base;
+        for (let n = 2; taken.includes(key) && key !== value; n++) key = `${base}_${n}`;
+        if (key !== value) onRename(key);
+      }}
+    />
+  );
+}
+
+/** "+ Value": inserts an input or earlier answer into the step text, by name. */
+function ValuePicker({ values, onPick }: { values: ReturnType<typeof valuesOf>; onPick: (key: string) => void }) {
+  const groups: [string, typeof values][] = [
+    ["Inputs", values.filter((v) => v.kind === "input")],
+    ["Answers", values.filter((v) => v.kind === "answer")],
+    ["From other apps", values.filter((v) => v.kind === "response" || v.kind === "status")],
+  ];
+  return (
+    <Menu
+      align="end"
+      returnFocus={false}
+      trigger={
+        <button className="proc-value-button" aria-label="Insert a value" title="Insert an input or an earlier answer">
+          <Braces size={13} /> Value
+        </button>
+      }
+    >
+      {values.length === 0 ? (
+        <div className="menu-empty">Add inputs at the top of the page, or Ask steps, to use their values here.</div>
+      ) : (
+        groups
+          .filter(([, list]) => list.length)
+          .map(([title, list]) => (
+            <div key={title}>
+              <div className="menu-label">{title}</div>
+              {list.map((value) => (
+                <MenuItem key={value.key} onClick={() => onPick(value.key)}>
+                  {value.label}
+                </MenuItem>
+              ))}
+            </div>
+          ))
+      )}
+    </Menu>
+  );
+}
+
+/** Decide: "When [value] [is] [x], jump to … otherwise …" — values picked by name. */
+function ValueSelect({
+  variable,
+  values,
+  onChange,
+}: {
+  variable: string;
+  values: ReturnType<typeof valuesOf>;
+  onChange: (variable: string) => void;
+}) {
+  const dot = variable.indexOf(".");
+  const base = dot < 0 ? variable : variable.slice(0, dot);
+  const field = dot < 0 ? "" : variable.slice(dot + 1);
+  const known = values.find((v) => v.key === base);
+  const groups: [string, typeof values][] = [
+    ["Inputs", values.filter((v) => v.kind === "input")],
+    ["Answers", values.filter((v) => v.kind === "answer")],
+    ["From other apps", values.filter((v) => v.kind === "response" || v.kind === "status")],
+  ];
+  return (
+    <>
+      <select
+        aria-label="Value to check"
+        className={variable && !known ? "is-missing" : ""}
+        value={known ? base : variable ? variable : ""}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">Choose a value…</option>
+        {groups
+          .filter(([, list]) => list.length)
+          .map(([title, list]) => (
+            <optgroup key={title} label={title}>
+              {list.map((value) => (
+                <option key={value.key} value={value.key}>
+                  {value.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        {variable && !known && <option value={variable}>{humanize(variable)} (not found)</option>}
+      </select>
+      {known?.kind === "response" && (
+        <input
+          className="proc-field-input"
+          aria-label="Field in the response"
+          placeholder="field, e.g. status"
+          title="Which part of the response to check, e.g. status or customer.email"
+          value={field}
+          onChange={(event) => {
+            const path = event.target.value.replace(/\s+/g, "_").replace(/[^\w.]/g, "");
+            onChange(path ? `${base}.${path}` : base);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function StepView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const step = (node.attrs.step as StepType) || "send";
-  const { sections, variables } = useDocumentInfo(editor);
-  const listId = `vars-${node.attrs.variable || "x"}-${step}`;
+  const { sections, values } = useDocumentInfo(editor);
   const set = (attrs: Record<string, unknown>) => updateAttributes(attrs);
   const op = (node.attrs.op as ConditionOp) || "is";
+  const variable = String(node.attrs.variable || "");
+  const taken = values.map((v) => v.key);
+  const rename = (key: string) => {
+    const old = variable;
+    set({ variable: key });
+    if (old) renameValue(editor, old, key);
+  };
+  /** Puts {{key}} at the cursor if it's in this step, otherwise at the end of it. */
+  const insertValue = (key: string) => {
+    const pos = getPos();
+    if (typeof pos !== "number") return;
+    const start = pos + 1;
+    const end = pos + node.nodeSize - 1;
+    const { from, to } = editor.state.selection;
+    const inside = from >= start && to <= end;
+    // After the menu has closed and handed focus back.
+    window.requestAnimationFrame(() =>
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(inside ? { from, to } : end, { type: "valueRef", attrs: { key } })
+        .run(),
+    );
+  };
   return (
     <NodeViewWrapper className={`proc-step is-${step}`}>
       <div className="proc-step-row">
         <span className="proc-step-badge" contentEditable={false}>
           <select
             aria-label="Step type"
+            title={STEP_PURPOSE[step]}
             value={step}
             onChange={(event) => set({ step: event.target.value })}
           >
             {(Object.keys(STEP_LABELS) as StepType[]).map((type) => (
               <option key={type} value={type}>
-                {STEP_LABELS[type]}
+                {STEP_LABELS[type]} — {STEP_PURPOSE[type]}
               </option>
             ))}
           </select>
+          <span className="proc-step-badge-label" aria-hidden>
+            {STEP_LABELS[step]}
+          </span>
         </span>
         {/* The hint lives inside the text area (the editor's own placeholder would be
             drawn on the whole block, over the badge). */}
@@ -138,24 +340,24 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
           )}
           <NodeViewContent className="proc-step-text" />
         </div>
+        {step !== "if" && (
+          <span className="proc-step-tools" contentEditable={false}>
+            <ValuePicker values={values} onPick={insertValue} />
+          </span>
+        )}
       </div>
       {step !== "send" && step !== "end" && (
         <div className="proc-step-config" contentEditable={false}>
-          <datalist id={listId}>
-            {variables.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
           {step === "ask" && (
             <>
               <label>
-                Save answer as
-                <input
-                  className="proc-var-input"
-                  aria-label="Save answer as"
-                  placeholder="answer"
-                  value={String(node.attrs.variable || "")}
-                  onChange={(event) => set({ variable: cleanName(event.target.value) })}
+                Remember the answer as
+                <NameField
+                  label="Remember the answer as"
+                  value={variable}
+                  placeholder="e.g. Payment method"
+                  taken={taken}
+                  onRename={rename}
                 />
               </label>
               <select
@@ -163,15 +365,15 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
                 value={String(node.attrs.answer || "text")}
                 onChange={(event) => set({ answer: event.target.value })}
               >
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="yesno">Yes / No</option>
-                <option value="choice">Choice</option>
+                <option value="text">Any text</option>
+                <option value="number">A number</option>
+                <option value="yesno">Yes or no</option>
+                <option value="choice">Pick from a list</option>
               </select>
               {node.attrs.answer === "choice" && (
                 <input
                   aria-label="Choices"
-                  placeholder="Choices, comma-separated"
+                  placeholder="Choices, separated by commas"
                   value={String(node.attrs.options || "")}
                   onChange={(event) => set({ options: event.target.value })}
                 />
@@ -181,16 +383,16 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
           {step === "check" && (
             <>
               <label className="proc-grow">
-                Expect
+                It worked if
                 <input
                   aria-label="Expected result"
-                  placeholder="What you should see when it worked"
+                  placeholder="e.g. The refund shows as pending"
                   value={String(node.attrs.expected || "")}
                   onChange={(event) => set({ expected: event.target.value })}
                 />
               </label>
               <label>
-                If it fails
+                If not
                 <TargetSelect
                   label="If it fails"
                   value={String(node.attrs.else || "")}
@@ -206,6 +408,7 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
                 <select
                   className="proc-method"
                   aria-label="Method"
+                  title="GET looks something up; POST, PUT and PATCH send or change data; DELETE removes it"
                   value={String(node.attrs.method || "GET")}
                   onChange={(event) => set({ method: event.target.value })}
                 >
@@ -218,7 +421,7 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
                 <input
                   className="proc-url"
                   aria-label="URL"
-                  placeholder="https://api.example.com/orders/{{order_number}}"
+                  placeholder="Web address, e.g. https://api.example.com/orders/{{order_number}}"
                   spellCheck={false}
                   value={String(node.attrs.url || "")}
                   onChange={(event) => set({ url: event.target.value })}
@@ -226,13 +429,13 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
               </span>
               <span className="proc-config-line">
                 <label>
-                  Save response as
-                  <input
-                    className="proc-var-input"
-                    aria-label="Save response as"
-                    placeholder="response"
-                    value={String(node.attrs.variable || "")}
-                    onChange={(event) => set({ variable: cleanName(event.target.value) })}
+                  Remember the reply as
+                  <NameField
+                    label="Save response as"
+                    value={variable}
+                    placeholder="e.g. Order"
+                    taken={taken}
+                    onRename={rename}
                   />
                 </label>
                 <label>
@@ -246,7 +449,7 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
                 </label>
               </span>
               <details className="proc-request-more" open={!!(node.attrs.headers || node.attrs.body) || undefined}>
-                <summary>Headers and body</summary>
+                <summary>Advanced: headers and body</summary>
                 <label className="proc-block-field">
                   <span>Headers — one per line</span>
                   <textarea
@@ -281,14 +484,7 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
             <>
               <span className="proc-config-line">
                 <span className="proc-config-word">When</span>
-                <input
-                  className="proc-var-input"
-                  aria-label="Variable to check"
-                  placeholder="variable"
-                  list={listId}
-                  value={String(node.attrs.variable || "")}
-                  onChange={(event) => set({ variable: cleanPath(event.target.value) })}
-                />
+                <ValueSelect variable={variable} values={values} onChange={(next) => set({ variable: next })} />
                 <select
                   aria-label="Condition"
                   value={op}
@@ -303,7 +499,7 @@ function StepView({ node, updateAttributes, editor }: NodeViewProps) {
                 {op !== "set" && op !== "not_set" && (
                   <input
                     aria-label="Value to compare"
-                    placeholder="value"
+                    placeholder="e.g. Yes, or 30"
                     value={String(node.attrs.value || "")}
                     onChange={(event) => set({ value: event.target.value })}
                   />
@@ -378,11 +574,12 @@ export const ProcedureStep = Node.create({
     return ["div", mergeAttributes(HTMLAttributes, { "data-procedure-step": "" }), 0];
   },
   renderMarkdown(node) {
-    // Only the settings in use, so the saved line stays short.
+    // Only the settings in use, so the saved line stays short; value chips are saved
+    // as {{key}} text.
     const attrs = Object.fromEntries(
       Object.entries(node.attrs || {}).filter(([, value]) => value !== null && value !== ""),
     );
-    return `:::slate-node ${JSON.stringify({ ...node, attrs })}`;
+    return `:::slate-node ${JSON.stringify({ ...chipsToText(node as JsonContent), attrs })}`;
   },
   addNodeView() {
     return ReactNodeViewRenderer(StepView, { stopEvent: stopFormEvents });
@@ -393,45 +590,62 @@ const PARAM_TYPES: { value: ParamType; label: string }[] = [
   { value: "text", label: "Text" },
   { value: "number", label: "Number" },
   { value: "date", label: "Date" },
-  { value: "yesno", label: "Yes / No" },
-  { value: "choice", label: "Choice" },
-  { value: "record", label: "Database record" },
+  { value: "yesno", label: "Yes or no" },
+  { value: "choice", label: "Pick from a list" },
+  { value: "record", label: "A record from a database" },
 ];
 
-function ParamsView({ node, updateAttributes }: NodeViewProps) {
+function ParamsView({ node, updateAttributes, editor }: NodeViewProps) {
   const params = (node.attrs.params as Param[]) || [];
   const { listDatabases } = useContext(EmbedContext);
   const databases = listDatabases?.() ?? [];
+  const { values } = useDocumentInfo(editor);
   const save = (next: Param[]) => updateAttributes({ params: next });
   const edit = (index: number, patch: Partial<Param>) =>
     save(params.map((param, i) => (i === index ? { ...param, ...patch } : param)));
+  /** The label is what people see; its key follows it, and steps using it are updated. */
+  const relabel = (index: number, label: string) => {
+    const param = params[index];
+    const base = keyFor(label);
+    let key = base || param.name;
+    const taken = values.map((v) => v.key).filter((k) => k !== param.name);
+    for (let n = 2; base && taken.includes(key); n++) key = `${base}_${n}`;
+    edit(index, { label, name: key });
+    if (param.name && key !== param.name) renameValue(editor, param.name, key);
+  };
   return (
     <NodeViewWrapper className="proc-params" contentEditable={false}>
       <div className="proc-params-head">
         <SlidersHorizontal size={15} />
-        <strong>Parameters</strong>
-        <span>Asked for when this runs · use {"{{name}}"} in steps</span>
+        <strong>Inputs</strong>
+        <span>What you need to know before starting · add them to steps with Value</span>
       </div>
+      {params.length === 0 && (
+        <p className="proc-params-empty">
+          Inputs are asked for when someone presses Run — like an order number or a customer&apos;s name.
+        </p>
+      )}
       {params.length > 0 && (
-        <div className="proc-params-table" role="table" aria-label="Parameters">
+        <div className="proc-params-table" role="table" aria-label="Inputs">
           <div className="proc-params-row is-head" role="row">
-            <span role="columnheader">Name</span>
+            <span role="columnheader">Input</span>
             <span role="columnheader">Type</span>
-            <span role="columnheader">Default or options</span>
+            <span role="columnheader">Default or choices</span>
             <span role="columnheader">Required</span>
             <span aria-hidden />
           </div>
           {params.map((param, index) => (
             <div className="proc-params-row" role="row" key={index}>
               <input
-                className="proc-var-input"
-                aria-label="Parameter name"
-                placeholder="name"
-                value={param.name}
-                onChange={(event) => edit(index, { name: cleanName(event.target.value) })}
+                className="proc-name-input"
+                aria-label="Input name"
+                placeholder="e.g. Order number"
+                title={param.name ? `Use it in steps as {{${param.name}}}` : undefined}
+                value={param.label ?? (param.name ? labelOf(param) : "")}
+                onChange={(event) => relabel(index, event.target.value)}
               />
               <select
-                aria-label={`Type of ${param.name || "parameter"}`}
+                aria-label={`Type of ${labelOf(param) || "input"}`}
                 value={param.type}
                 onChange={(event) => edit(index, { type: event.target.value as ParamType })}
               >
@@ -443,7 +657,7 @@ function ParamsView({ node, updateAttributes }: NodeViewProps) {
               </select>
               {param.type === "record" ? (
                 <select
-                  aria-label={`Database for ${param.name || "parameter"}`}
+                  aria-label={`Database for ${labelOf(param) || "input"}`}
                   value={param.databaseId || ""}
                   onChange={(event) => edit(index, { databaseId: event.target.value })}
                 >
@@ -456,8 +670,8 @@ function ParamsView({ node, updateAttributes }: NodeViewProps) {
                 </select>
               ) : param.type === "choice" ? (
                 <input
-                  aria-label={`Choices for ${param.name || "parameter"}`}
-                  placeholder="Choices, comma-separated"
+                  aria-label={`Choices for ${labelOf(param) || "input"}`}
+                  placeholder="Choices, separated by commas"
                   value={(param.options || []).join(", ")}
                   onChange={(event) =>
                     edit(index, {
@@ -467,7 +681,7 @@ function ParamsView({ node, updateAttributes }: NodeViewProps) {
                 />
               ) : (
                 <input
-                  aria-label={`Default for ${param.name || "parameter"}`}
+                  aria-label={`Default for ${labelOf(param) || "input"}`}
                   placeholder="No default"
                   type={param.type === "date" ? "date" : param.type === "number" ? "number" : "text"}
                   value={param.default || ""}
@@ -477,14 +691,14 @@ function ParamsView({ node, updateAttributes }: NodeViewProps) {
               <label className="proc-required">
                 <input
                   type="checkbox"
-                  aria-label={`${param.name || "Parameter"} is required`}
+                  aria-label={`${labelOf(param) || "Input"} is required`}
                   checked={param.required}
                   onChange={(event) => edit(index, { required: event.target.checked })}
                 />
               </label>
               <button
                 className="proc-remove"
-                aria-label={`Remove ${param.name || "parameter"}`}
+                aria-label={`Remove ${labelOf(param) || "input"}`}
                 title="Remove"
                 onClick={() => save(params.filter((_, i) => i !== index))}
               >
@@ -499,7 +713,7 @@ function ParamsView({ node, updateAttributes }: NodeViewProps) {
         onClick={() => save([...params, { name: "", type: "text", required: true }])}
       >
         <Plus size={14} />
-        Add parameter
+        Add an input
       </button>
     </NodeViewWrapper>
   );
@@ -527,34 +741,146 @@ export const ProcedureParams = Node.create({
   },
 });
 
-/** Shows {{name}} references in the text as chips, so they read as values to fill in. */
-export const VariableChips = Extension.create({
-  name: "variableChips",
-  addProseMirrorPlugins() {
-    const build = (doc: PMNode) => {
-      const decorations: Decoration[] = [];
-      doc.descendants((node, pos) => {
-        if (!node.isText || !node.text) return;
-        for (const match of node.text.matchAll(/\{\{\s*[A-Za-z_][\w]*(?:\.[^}]+?)?\s*\}\}/g))
-          decorations.push(
-            Decoration.inline(pos + match.index!, pos + match.index! + match[0].length, {
-              class: "var-chip",
-            }),
-          );
-      });
-      return DecorationSet.create(doc, decorations);
-    };
+/** {{key}} or {{key.path}} in saved text. */
+const VALUE_TEXT = /\{\{\s*([A-Za-z_][\w]*)(?:\.([^}]+?))?\s*\}\}/g;
+const refText = (attrs: { key?: string; path?: string | null }) =>
+  `{{${attrs.key || ""}${attrs.path ? `.${attrs.path}` : ""}}}`;
+
+type JsonContent = { type?: string; text?: string; marks?: unknown[]; attrs?: Record<string, unknown>; content?: JsonContent[] };
+
+/** Saved step JSON → editor JSON: "{{order_number}}" text becomes value chips. */
+export function chipsFromText(node: JsonContent): JsonContent {
+  if (node.type !== "procedureStep" || !node.content) return node;
+  const content: JsonContent[] = [];
+  for (const child of node.content) {
+    if (child.type !== "text" || !child.text) {
+      content.push(child);
+      continue;
+    }
+    let last = 0;
+    for (const match of child.text.matchAll(VALUE_TEXT)) {
+      if (match.index! > last) content.push({ ...child, text: child.text.slice(last, match.index) });
+      content.push({ type: "valueRef", attrs: { key: match[1], path: match[2]?.trim() || null } });
+      last = match.index! + match[0].length;
+    }
+    if (last < child.text.length) content.push({ ...child, text: child.text.slice(last) });
+  }
+  return { ...node, content };
+}
+
+/** Editor JSON → saved step JSON: chips go back to "{{order_number}}" text. */
+export function chipsToText(node: JsonContent): JsonContent {
+  if (!node.content) return node;
+  const content: JsonContent[] = [];
+  for (const child of node.content) {
+    const piece: JsonContent =
+      child.type === "valueRef" ? { type: "text", text: refText(child.attrs || {}) } : child;
+    const previous = content[content.length - 1];
+    // Plain text next to plain text joins up again, as it was typed.
+    if (piece.type === "text" && previous?.type === "text" && !piece.marks?.length && !previous.marks?.length)
+      previous.text = (previous.text || "") + (piece.text || "");
+    else content.push(piece.type === "text" ? { ...piece } : piece);
+  }
+  return { ...node, content };
+}
+
+/** A value in a step, shown by its name ("Order number"). */
+function ValueChipView({ node, editor, getPos }: NodeViewProps) {
+  const { values } = useDocumentInfo(editor);
+  const key = String(node.attrs.key || "");
+  const path = node.attrs.path ? String(node.attrs.path) : "";
+  const value = values.find((v) => v.key === key);
+  const name = value ? (value.kind === "response" ? humanize(key) : value.label) : humanize(key);
+  const label = path ? `${name} → ${path.replace(/\./g, " → ")}` : name;
+  return (
+    <NodeViewWrapper
+      as="span"
+      className={value ? "var-chip" : "var-chip is-missing"}
+      data-key={refText({ key, path })}
+      title={value ? `Filled in when the page runs` : `There's no value called “${key}” on this page`}
+      // A click puts the caret just after the chip (on the side clicked), like a character.
+      onMouseDown={(event: React.MouseEvent<HTMLElement>) => {
+        const pos = getPos();
+        if (typeof pos !== "number") return;
+        event.preventDefault();
+        const box = event.currentTarget.getBoundingClientRect();
+        const after = event.clientX > box.left + box.width / 2;
+        editor.chain().focus().setTextSelection(after ? pos + node.nodeSize : pos).run();
+      }}
+    >
+      {label}
+    </NodeViewWrapper>
+  );
+}
+
+/**
+ * A value chip inside a step. It's one character to the caret (arrows, End, Backspace
+ * treat it as a unit) and is saved as plain {{key}} text, so Markdown and runs are
+ * unchanged. Typing {{name}} turns into a chip.
+ */
+export const ValueRef = Node.create({
+  name: "valueRef",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: false,
+  addAttributes() {
+    return { key: { default: "" }, path: { default: null } };
+  },
+  parseHTML() {
     return [
-      new Plugin({
-        key: new PluginKey("variableChips"),
-        state: {
-          init: (_, state) => build(state.doc),
-          apply: (tr, old) => (tr.docChanged ? build(tr.doc) : old),
-        },
-        props: {
-          decorations(state) {
-            return this.getState(state);
-          },
+      {
+        tag: "span[data-value-ref]",
+        getAttrs: (element) => ({
+          key: (element as HTMLElement).getAttribute("data-value-ref") || "",
+          path: (element as HTMLElement).getAttribute("data-path") || null,
+        }),
+      },
+    ];
+  },
+  renderHTML({ node }) {
+    return [
+      "span",
+      mergeAttributes({ "data-value-ref": node.attrs.key, ...(node.attrs.path ? { "data-path": node.attrs.path } : {}) }),
+      refText(node.attrs),
+    ];
+  },
+  renderText({ node }) {
+    return refText(node.attrs);
+  },
+  renderMarkdown(node) {
+    return refText((node.attrs || {}) as { key?: string; path?: string | null });
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ValueChipView, { as: "span" });
+  },
+  // Browsers can't always put the caret after a chip that ends a line (or before one
+  // that starts it), so Home / End are handled here when a chip is at that end.
+  addKeyboardShortcuts() {
+    const jump = (toEnd: boolean) => () => {
+      const { state, view } = this.editor;
+      const { $from, empty } = state.selection;
+      if (!empty || $from.parent.type.name !== "procedureStep") return false;
+      const edge = toEnd ? $from.end() : $from.start();
+      const chip = toEnd ? $from.parent.lastChild : $from.parent.firstChild;
+      if ($from.pos === edge || chip?.type.name !== "valueRef") return false;
+      // Only on the same visual line as that end (a wrapped step keeps native Home / End).
+      const here = view.coordsAtPos($from.pos);
+      const there = view.coordsAtPos(edge, toEnd ? -1 : 1);
+      if (Math.abs(here.bottom - there.bottom) > 4) return false;
+      return this.editor.commands.setTextSelection(edge);
+    };
+    return { End: jump(true), Home: jump(false) };
+  },
+  addInputRules() {
+    return [
+      new InputRule({
+        // Backspace after a chip removes it, rather than turning it back into {{text}}.
+        undoable: false,
+        find: /\{\{\s*([A-Za-z_][\w]*)(?:\.([^}]+?))?\s*\}\}$/,
+        handler: ({ state, range, match }) => {
+          if (state.doc.resolve(range.from).parent.type.name !== "procedureStep") return null;
+          state.tr.replaceWith(range.from, range.to, this.type.create({ key: match[1], path: match[2]?.trim() || null }));
         },
       }),
     ];
@@ -627,6 +953,71 @@ function sectionTools(title: string, count: number, collapsed: boolean, storage:
   };
 }
 
+const STEP_ORDER: StepType[] = ["send", "ask", "check", "if", "api", "end"];
+
+/** Below a section's last step: "+ Add a step", which opens the step types in words. */
+function addStepWidget(at: number) {
+  return Decoration.widget(
+    at,
+    (view) => {
+      const row = document.createElement("div");
+      row.className = "proc-add-step";
+      row.contentEditable = "false";
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "proc-add-step-button";
+      add.innerHTML = `${icon('<path d="M12 5v14M5 12h14"/>')}<span>Add a step</span>`;
+      const choices = document.createElement("div");
+      choices.className = "proc-add-step-choices";
+      choices.setAttribute("role", "group");
+      choices.setAttribute("aria-label", "Choose a step");
+      choices.hidden = true;
+      for (const type of STEP_ORDER) {
+        const choice = document.createElement("button");
+        choice.type = "button";
+        choice.className = `proc-add-choice is-${type}`;
+        choice.title = STEP_PURPOSE[type];
+        choice.innerHTML = `<strong>${STEP_LABELS[type]}</strong><span>${STEP_PURPOSE[type]}</span>`;
+        choice.addEventListener("mousedown", (event) => event.preventDefault());
+        choice.addEventListener("click", () => {
+          const stepType = view.state.schema.nodes.procedureStep;
+          const attrs = {
+            step: type,
+            ...(type === "ask" ? { answer: "text" } : {}),
+            ...(type === "if" ? { op: "is" } : {}),
+            ...(type === "api" ? { method: "GET" } : {}),
+          };
+          const tr = view.state.tr.insert(at, stepType.create(attrs));
+          view.dispatch(tr.setSelection(TextSelection.create(tr.doc, at + 1)).scrollIntoView());
+          view.focus();
+        });
+        choices.append(choice);
+      }
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "proc-add-step-close";
+      close.setAttribute("aria-label", "Cancel");
+      close.innerHTML = icon('<path d="M18 6 6 18M6 6l12 12"/>');
+      choices.append(close);
+      const toggle = (open: boolean) => {
+        choices.hidden = !open;
+        add.hidden = open;
+        if (open) (choices.querySelector("button") as HTMLButtonElement | null)?.focus();
+        else add.focus();
+      };
+      add.addEventListener("mousedown", (event) => event.preventDefault());
+      add.addEventListener("click", () => toggle(true));
+      close.addEventListener("click", () => toggle(false));
+      choices.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") toggle(false);
+      });
+      row.append(add, choices);
+      return row;
+    },
+    { side: 1, ignoreSelection: true, stopEvent: () => true, key: `add-step:${at}` },
+  );
+}
+
 /**
  * Sections of a runnable page: a heading and the steps under it read as one group (a
  * step count on the heading, a rail beside its steps), can be folded or run from, and
@@ -668,6 +1059,17 @@ export const ProcedureSections = Extension.create<object, SectionStorage>({
           ),
         );
       }
+      // "+ Add a step" after the last step of each group of steps.
+      let lastStepEnd = -1;
+      let collapsedGroup = false;
+      doc.forEach((node, pos) => {
+        if (node.type.name === "heading" && node.attrs.level <= 2) {
+          if (lastStepEnd >= 0 && !collapsedGroup) decorations.push(addStepWidget(lastStepEnd));
+          lastStepEnd = -1;
+          collapsedGroup = storage.collapsed.has(node.textContent.trim());
+        } else if (node.type.name === "procedureStep") lastStepEnd = pos + node.nodeSize;
+      });
+      if (lastStepEnd >= 0 && !collapsedGroup) decorations.push(addStepWidget(lastStepEnd));
       return DecorationSet.create(doc, decorations);
     };
     return [

@@ -10,7 +10,10 @@ import { splitMarkdown } from "./markdown";
 
 export type ParamType = "text" | "number" | "date" | "yesno" | "choice" | "record";
 export interface Param {
+  /** The key used in {{…}}; made from the label and kept stable once steps use it. */
   name: string;
+  /** What people see, e.g. "Order number". */
+  label?: string;
   type: ParamType;
   required: boolean;
   default?: string;
@@ -65,13 +68,14 @@ export interface Procedure {
   steps: Step[];
 }
 
+/** Step names in plain words (the stored keys stay send / ask / check / if / api / end). */
 export const STEP_LABELS: Record<StepType, string> = {
-  send: "Send",
+  send: "Say",
   ask: "Ask",
   check: "Check",
-  if: "If",
-  api: "API",
-  end: "End",
+  if: "Decide",
+  api: "Call",
+  end: "Finish",
 };
 export const OP_LABELS: Record<ConditionOp, string> = {
   is: "is",
@@ -79,9 +83,45 @@ export const OP_LABELS: Record<ConditionOp, string> = {
   contains: "contains",
   gt: "is more than",
   lt: "is less than",
-  set: "is filled in",
+  set: "has a value",
   not_set: "is empty",
 };
+
+/** "amount_due" → "Amount due". */
+export const humanize = (name: string) => {
+  const text = name.replace(/_/g, " ").trim();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+/** "Order number" → "order_number": a key that can go in {{…}}. */
+export const keyFor = (label: string) =>
+  label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/^(\d)/, "_$1");
+/** What an input is called on screen. */
+export const labelOf = (param: Param) => param.label?.trim() || humanize(param.name);
+
+/**
+ * Every value a step can use, with a friendly name: inputs, answers to Ask steps, and
+ * responses (and their status codes) from Call steps.
+ */
+export function valuesOf(p: Pick<Procedure, "params" | "steps">) {
+  const values: { key: string; label: string; kind: "input" | "answer" | "response" | "status" }[] = [];
+  const add = (key: string, label: string, kind: (typeof values)[number]["kind"]) => {
+    if (key && !values.some((v) => v.key === key)) values.push({ key, label, kind });
+  };
+  for (const param of p.params) add(param.name, labelOf(param), "input");
+  for (const step of p.steps) {
+    if (step.step === "ask" && step.variable) add(step.variable, humanize(step.variable), "answer");
+    if (step.step === "api" && step.variable) {
+      add(step.variable, `${humanize(step.variable)} (response)`, "response");
+      add(`${step.variable}_status`, `${humanize(step.variable)} status code`, "status");
+    }
+  }
+  return values;
+}
 
 type JsonNode = { type?: string; text?: string; attrs?: Record<string, unknown>; content?: JsonNode[] };
 const textOf = (node: JsonNode): string =>
@@ -121,15 +161,7 @@ export const isRunnable = (p: Procedure) => p.steps.length > 0;
 
 /** Every variable a run can have: parameters, then answers to Ask steps. */
 export function variablesOf(p: Procedure) {
-  const names = p.params.map((param) => param.name);
-  for (const step of p.steps) {
-    if (step.step === "ask" && step.variable && !names.includes(step.variable))
-      names.push(step.variable);
-    if (step.step === "api" && step.variable)
-      for (const name of [step.variable, `${step.variable}_status`])
-        if (!names.includes(name)) names.push(name);
-  }
-  return names;
+  return valuesOf(p).map((value) => value.key);
 }
 
 /** `{{name}}` and `{{name.Property}}` references in a text. */
@@ -221,10 +253,11 @@ export function evaluate(
   else if (op === "set") holds = a !== "";
   else if (op === "not_set") holds = a === "";
   const shown = actual === "" ? "empty" : `“${actual}”`;
+  const label = humanize(name.replace(/\./g, " → "));
   const reason =
     op === "set" || op === "not_set"
-      ? `${name || "The value"} is ${actual === "" ? "empty" : "filled in"}`
-      : `${name || "The value"} is ${shown}, so “${OP_LABELS[op]} ${expected}” is ${holds ? "true" : "false"}`;
+      ? `${label || "The value"} ${actual === "" ? "is empty" : "has a value"}`
+      : `${label || "The value"} is ${shown}, so “${OP_LABELS[op]} ${expected}” is ${holds ? "true" : "false"}`;
   return { holds, reason };
 }
 
@@ -258,8 +291,8 @@ function resolveTarget(p: Procedure, from: number, target: Target | undefined) {
 }
 export function targetLabel(target: Target | undefined) {
   if (!target) return "the next step";
-  if (target === END) return "the end";
-  return target;
+  if (target === END) return "the finish";
+  return `“${target}”`;
 }
 
 /** Starts a run at the first step, or at the first step of section `from`. */
@@ -361,7 +394,7 @@ export function runLogMarkdown(p: Procedure, state: RunState, lookup?: Lookup) {
   if (p.params.length) {
     lines.push("## Inputs", "");
     for (const param of p.params)
-      lines.push(`- **${param.name}:** ${displayValue(p, state.vars, param.name, lookup) || "—"}`);
+      lines.push(`- **${labelOf(param)}:** ${displayValue(p, state.vars, param.name, lookup) || "—"}`);
     lines.push("");
   }
   lines.push("## Steps", "");

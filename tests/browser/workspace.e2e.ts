@@ -774,20 +774,21 @@ test("step blocks and parameters can be added with slash commands", async ({ pag
   await page.getByLabel("Page title", { exact: true }).press("Enter");
   await page.keyboard.type("/parameters");
   await page.keyboard.press("Enter");
-  await page.getByLabel("Parameter name").fill("tenant name");
-  await expect(page.getByLabel("Parameter name")).toHaveValue("tenant_name");
+  await page.getByLabel("Input name").fill("Tenant name");
+  await expect(page.getByLabel("Input name")).toHaveAttribute("title", "Use it in steps as {{tenant_name}}");
   await page.locator(".slate-prose > p").last().click();
   await page.keyboard.type("/ask");
   await page.keyboard.press("Enter");
   await page.keyboard.type("How did {{tenant_name}} pay?");
-  await expect(page.locator(".proc-step.is-ask .var-chip")).toHaveText("{{tenant_name}}");
-  await page.getByLabel("Save answer as").fill("method");
+  await expect(page.locator(".proc-step.is-ask .var-chip")).toHaveText("Tenant name");
+  await expect(page.locator(".proc-step.is-ask .var-chip")).toHaveAttribute("data-key", "{{tenant_name}}");
+  await page.getByLabel("Remember the answer as").fill("Method");
   await expect(page.getByRole("button", { name: "Run", exact: true })).toBeVisible();
   await expect(page.locator(".run-bar-meta")).toHaveText("1 step · 1 input");
   // Saved as blocks and read back after a reload.
   await page.reload();
-  await expect(page.locator(".proc-step.is-ask")).toContainText("How did {{tenant_name}} pay?");
-  await expect(page.getByLabel("Save answer as")).toHaveValue("method");
+  await expect(page.locator(".proc-step.is-ask")).toContainText("How did Tenant name pay?");
+  await expect(page.getByLabel("Remember the answer as")).toHaveValue("Method");
 });
 test("an API step calls an endpoint, saves the response and branches on it", async ({ page }) => {
   let calls = 0;
@@ -834,7 +835,7 @@ test("an API step calls an endpoint, saves the response and branches on it", asy
   await expect(run.locator(".run-response")).toContainText('"carrier"');
   expect(lastAuth).toBe("Bearer sk_test_abcdef123456");
   await page.keyboard.press("Enter");
-  await expect(run.locator(".run-decision")).toContainText("order.status is “shipped”");
+  await expect(run.locator(".run-decision")).toContainText("Order → status is “shipped”");
   await page.keyboard.press("Enter");
   await expect(run.locator(".run-card-text")).toHaveText("Shipped by UPS");
   await page.keyboard.press("Enter");
@@ -847,7 +848,7 @@ test("an API step calls an endpoint, saves the response and branches on it", asy
   await expect(run.locator(".run-response.is-failed")).toContainText("404");
   await run.getByRole("button", { name: "Retry" }).click();
   await expect(run.locator(".run-response.is-failed")).toContainText("404");
-  await run.getByRole("button", { name: "Continue to Not found" }).click();
+  await run.getByRole("button", { name: "Continue to “Not found”" }).click();
   await expect(run.locator(".run-card-text")).toHaveText("No order BAD");
 });
 test("sections show their steps, fold, follow renames and can be run from", async ({ page }) => {
@@ -868,7 +869,7 @@ test("sections show their steps, fold, follow renames and can be run from", asyn
   await page.keyboard.press("End");
   await page.keyboard.type(" the restore");
   await expect(failTarget).toHaveValue("Roll back the restore");
-  await expect(failTarget.locator("option:checked")).toHaveText("Go to Roll back the restore");
+  await expect(failTarget.locator("option:checked")).toHaveText("Jump to “Roll back the restore”");
   // Run from here starts the run at that section.
   await heading("Roll back the restore").hover();
   await heading("Roll back the restore").getByRole("button", { name: "Run from Roll back the restore" }).click();
@@ -878,4 +879,101 @@ test("sections show their steps, fold, follow renames and can be run from", asyn
   await form.getByLabel("Restore point").fill("2026-11-01");
   await form.getByRole("button", { name: "Start run" }).click();
   await expect(page.locator(".run-card-text")).toHaveText("Point the app back at the original orders and tell the team.");
+});
+
+test("steps are built with plain words: values by name, renames follow, add a step", async ({ page }) => {
+  await createPage(page, "Late rent");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("/inputs");
+  await page.keyboard.press("Enter");
+  await page.getByLabel("Input name").fill("Tenant name");
+  await page.locator(".slate-prose > p").last().click();
+  await page.keyboard.type("## Remind");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/say");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Send a reminder to ");
+  // + Value inserts the input by its name, no braces to type.
+  const say = page.locator(".proc-step.is-send");
+  await say.getByRole("button", { name: "Insert a value" }).click();
+  await page.getByRole("menuitem", { name: "Tenant name" }).click();
+  await expect(say.locator(".var-chip")).toHaveAttribute("data-key", "{{tenant_name}}");
+  // It reads as the input's name; Backspace removes it whole, and it can be put back.
+  await expect(say.locator(".var-chip")).toHaveText("Tenant name");
+  await page.keyboard.press("Backspace");
+  await expect(say.locator(".var-chip")).toHaveCount(0);
+  await expect(say).toContainText("Send a reminder to");
+  await say.getByRole("button", { name: "Insert a value" }).click();
+  await page.getByRole("menuitem", { name: "Tenant name" }).click();
+  await expect(say.locator(".var-chip")).toHaveText("Tenant name");
+  // Add a step below the section's last step, choosing the type in words.
+  await page.getByRole("button", { name: "Add a step" }).click();
+  await page.getByRole("group", { name: "Choose a step" }).getByRole("button", { name: /Ask/ }).click();
+  await page.keyboard.type("Did they pay?");
+  await page.getByLabel("Remember the answer as").fill("Paid");
+  await page.locator(".proc-step.is-ask").getByLabel("Answer type").selectOption("yesno");
+  await page.getByRole("button", { name: "Add a step" }).click();
+  await page.getByRole("group", { name: "Choose a step" }).getByRole("button", { name: /Decide/ }).click();
+  // A decision picks the value from a list, by name.
+  const decide = page.locator(".proc-step.is-if");
+  await decide.getByLabel("Value to check").selectOption({ label: "Paid" });
+  await decide.getByLabel("Value to compare").fill("No");
+  await expect(decide.getByLabel("Value to check")).toHaveValue("paid");
+  // Renaming the input renames it everywhere it's used.
+  await page.getByLabel("Input name").fill("Renter");
+  await expect(say.locator(".var-chip")).toHaveAttribute("data-key", "{{renter}}");
+  await expect(say.locator(".var-chip")).toHaveText("Renter");
+  await page.getByLabel("Remember the answer as").fill("Has paid");
+  await expect(decide.getByLabel("Value to check")).toHaveValue("has_paid");
+  await expect(page.locator(".proc-section-count")).toHaveText("3 steps");
+  // How it works is one click away.
+  await page.getByRole("button", { name: "How playbooks work" }).click();
+  await expect(page.getByText("How playbooks work", { exact: true })).toBeVisible();
+});
+
+test("values in steps are chips that behave like one character", async ({ page }) => {
+  await createPage(page, "Chips");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await expect(page.getByLabel("Page content", { exact: true })).toBeFocused();
+  await page.keyboard.type("/say");
+  await page.keyboard.press("Enter");
+  const step = page.locator(".proc-step").first();
+  const text = step.locator(".proc-step-text");
+  // Typing {{name}} becomes a chip, and typing continues after it.
+  await page.keyboard.type("Hi {{customer_name}}");
+  await expect(step.locator(".var-chip")).toHaveText("Customer name");
+  await page.keyboard.type(" there");
+  await expect(text).toHaveText("Hi Customer name there");
+  // Home / End jump to the ends of the line, past the chip.
+  await page.keyboard.press("Home");
+  await page.keyboard.type(">");
+  await page.keyboard.press("End");
+  await page.keyboard.type("!");
+  await expect(text).toHaveText(">Hi Customer name there!");
+  // Arrow keys step over the chip as one character.
+  for (let i = 0; i < 7; i++) await page.keyboard.press("ArrowLeft"); // "there!" and the space
+  await page.keyboard.press("ArrowLeft"); // over the chip
+  await page.keyboard.type("·");
+  await expect(text).toHaveText(">Hi ·Customer name there!");
+  // Backspace right after a chip removes it whole.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Backspace");
+  await expect(step.locator(".var-chip")).toHaveCount(0);
+  await expect(text).toHaveText(">Hi · there!");
+  // A chip at the very end: End then Backspace removes it.
+  await page.keyboard.press("End");
+  await page.keyboard.type(" {{order_total}}");
+  await expect(step.locator(".var-chip")).toHaveText("Order total");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Backspace");
+  await expect(step.locator(".var-chip")).toHaveCount(0);
+  await expect(text).toHaveText(">Hi · there! ");
+  // Clicking the right half of a chip puts the caret after it.
+  await page.keyboard.type("{{order_total}}");
+  const chip = step.locator(".var-chip");
+  const box = (await chip.boundingBox())!;
+  await page.mouse.click(box.x + box.width - 3, box.y + box.height / 2);
+  await page.keyboard.type("?");
+  await expect(text).toHaveText(">Hi · there! Order total?");
 });

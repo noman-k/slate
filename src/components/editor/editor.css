@@ -1408,26 +1408,41 @@
   flex-shrink: 0;
   margin-top: 1px;
 }
-.proc-step-badge select {
-  appearance: none;
-  width: 60px;
+/* The badge shows the short name; the menu behind it says what each type is for. */
+.proc-step-badge {
+  position: relative;
+  display: inline-flex;
+}
+.proc-step-badge-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
   height: 22px;
-  padding: 0 6px;
-  text-align: center;
-  text-align-last: center;
-  border: 0;
+  padding: 0 7px;
   border-radius: 5px;
   background: color-mix(in srgb, var(--step-color) 18%, transparent);
   color: var(--step-color);
-  font: inherit;
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  cursor: pointer;
+  pointer-events: none;
 }
-.proc-step-badge select:hover {
+.proc-step-badge select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.proc-step-badge:hover .proc-step-badge-label {
   background: color-mix(in srgb, var(--step-color) 26%, transparent);
+}
+.proc-step-badge:has(select:focus-visible) .proc-step-badge-label {
+  box-shadow: 0 0 0 2px var(--accent-soft), inset 0 0 0 1px var(--accent-border);
 }
 .proc-step-body {
   position: relative;
@@ -1525,14 +1540,27 @@
   min-width: 34px;
   color: var(--text-tertiary);
 }
+/* A value in a step: saved as {{order_number}}, shown as "Order number". */
 .var-chip {
-  padding: 1px 5px;
-  border-radius: 4px;
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 6px;
+  border-radius: 5px;
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-family: var(--mono);
-  font-size: 0.86em;
+  font-size: 0.875em;
+  font-weight: 500;
+  line-height: 1.55;
   white-space: nowrap;
+  vertical-align: 1px;
+  cursor: default;
+  user-select: none;
+}
+.var-chip.is-missing {
+  background: color-mix(in srgb, var(--icon-red) 14%, transparent);
+  color: var(--icon-red);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }
 .proc-params {
   margin: 8px 0 14px;
@@ -1742,4 +1770,143 @@
 }
 .slate-prose .proc-collapsed {
   display: none;
+}
+
+/* Friendly names and the value picker */
+.proc-step-config .proc-name-input,
+.proc-params .proc-name-input {
+  min-width: 150px;
+}
+.proc-step-config .proc-field-input {
+  width: 150px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.proc-step-tools {
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.proc-step:hover .proc-step-tools,
+.proc-step:focus-within .proc-step-tools,
+.proc-step-tools:has([data-state="open"]) {
+  opacity: 1;
+}
+@media (hover: none) {
+  .proc-step-tools {
+    opacity: 1;
+  }
+}
+.proc-value-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px 0 6px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.proc-value-button:hover,
+.proc-value-button[data-state="open"] {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+.menu-empty {
+  max-width: 240px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.proc-params-empty {
+  margin: -2px 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* "+ Add a step" below a section's steps */
+.proc-add-step {
+  margin: 2px 0 10px;
+}
+.proc-add-step-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.proc-add-step-button:hover,
+.proc-add-step-button:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+}
+.proc-add-step-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 28px;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--bg);
+}
+.proc-add-step-choices[hidden] {
+  display: none;
+}
+.proc-add-choice {
+  --step-color: var(--icon-blue);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  text-align: left;
+}
+.proc-add-choice.is-ask { --step-color: var(--icon-purple); }
+.proc-add-choice.is-check { --step-color: var(--icon-green); }
+.proc-add-choice.is-if { --step-color: var(--icon-orange); }
+.proc-add-choice.is-api { --step-color: var(--icon-pink); }
+.proc-add-choice.is-end { --step-color: var(--icon-gray); }
+.proc-add-choice strong {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--step-color);
+}
+.proc-add-choice span {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+.proc-add-choice:hover,
+.proc-add-choice:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--step-color) 10%, transparent);
+}
+.proc-add-step-close {
+  grid-row: 1;
+  grid-column: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--icon);
+}
+.proc-add-step-close:hover {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+@media (max-width: 760px) {
+  .proc-add-step-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 28px;
+  }
 }

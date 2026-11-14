@@ -3623,3 +3623,45 @@ section.is-folded .section-toggle svg {
     transform: rotate(360deg);
   }
 }
+
+/* "How it works" next to Run */
+.run-help {
+  margin-left: auto;
+}
+.run-help-card {
+  max-width: 360px;
+  padding: 10px 12px 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.run-help-card > strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+.run-help-card ol {
+  margin: 0;
+  padding-left: 18px;
+  list-style: decimal;
+}
+.run-help-card li::marker {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+.run-help-card li {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+.run-help-card b {
+  color: var(--text);
+  font-weight: 600;
+}
+.run-help-card kbd {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--hover);
+}

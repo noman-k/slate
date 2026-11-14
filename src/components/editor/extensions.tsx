@@ -39,7 +39,7 @@ import { encodeDirective, fencedCode, splitMarkdown } from "../../lib/markdown";
 import { PageIcon } from "../page-icon";
 
 import { EmbedContext, type EmbedOptions } from "./embed-context";
-import { ProcedureParams, ProcedureSections, ProcedureStep, VariableChips } from "./procedure-nodes";
+import { ProcedureParams, ProcedureSections, ProcedureStep, ValueRef, chipsFromText } from "./procedure-nodes";
 export { EmbedContext, type EmbedOptions };
 function EmbedView({ node, extension }: NodeViewProps) {
   const context = useContext(EmbedContext);
@@ -411,7 +411,7 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
     Toggle,
     ProcedureParams,
     ProcedureStep,
-    VariableChips,
+    ValueRef,
     ProcedureSections,
   ];
 }
@@ -429,7 +429,8 @@ export function parseDocument(
       content.push({ type: "preservedSource", attrs: { source: part.source } });
     else if (part.kind === "rich") {
       try {
-        const node = editor.schema.nodeFromJSON(part.node);
+        // Steps keep values as {{key}} text; the editor shows them as chips.
+        const node = editor.schema.nodeFromJSON(chipsFromText(part.node));
         node.check();
         content.push(node.toJSON() as JSONContent);
       } catch {

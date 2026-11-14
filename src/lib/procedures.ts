@@ -29,12 +29,12 @@ export const PROCEDURE_KINDS: Record<ProcedureKind, { label: string; plural: str
   playbook: {
     label: "Playbook",
     plural: "Playbooks",
-    blurb: "A guided procedure you can run: inputs, then Send, Ask, Check and If steps in phases.",
+    blurb: "A step-by-step guide for handling a situation, like a refund or a late order. Press Run to be walked through it.",
   },
   runbook: {
     label: "Runbook",
     plural: "Runbooks",
-    blurb: "A repeatable operation you can run: checks with expected results and a way to roll back.",
+    blurb: "A checklist for a task you do the same way every time, like a release or a backup, with a way back if something fails.",
   },
 };
 

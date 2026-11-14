@@ -902,10 +902,10 @@ export function DocumentEditor(props: DocumentEditorProps) {
         },
       },
       {
-        name: "Parameters",
+        name: "Inputs",
         group: "Playbook steps",
-        keywords: "inputs variables params fields playbook runbook run",
-        description: "Inputs asked for when this page runs",
+        keywords: "parameters variables params fields form playbook runbook run",
+        description: "What to ask for when someone presses Run",
         icon: SlidersHorizontal,
         run: (e) => {
           e.chain()
@@ -919,12 +919,12 @@ export function DocumentEditor(props: DocumentEditorProps) {
       },
       ...(
         [
-          ["send", "Send step", MessageSquare, "Say or do something; {{name}} fills in values", "message say tell reply instruction"],
-          ["ask", "Ask step", CircleHelp, "Ask a question and save the answer", "question collect input prompt"],
-          ["check", "Check step", ListChecks, "Do something and confirm the expected result", "verify expected test runbook"],
-          ["if", "If / Else", Split, "Branch on a value: go to a section or continue", "condition branch decide when else"],
-          ["api", "API request", Globe, "Call an API and save the response", "http request webhook fetch call endpoint get post rest json"],
-          ["end", "End step", Flag, "Finish the run here", "stop finish done exit"],
+          ["send", "Say something", MessageSquare, "Say something or give an instruction", "send message tell reply instruction step"],
+          ["ask", "Ask a question", CircleHelp, "Ask, and remember the answer", "question collect input prompt step"],
+          ["check", "Check something", ListChecks, "Do something and confirm it worked", "verify expected test runbook step"],
+          ["if", "Make a decision", Split, "Go a different way depending on a value", "if else condition branch decide when"],
+          ["api", "Call an app (API)", Globe, "Look something up or update another app", "api request http webhook fetch call endpoint get post rest json"],
+          ["end", "Finish", Flag, "End the run here", "end stop done exit step"],
         ] as const
       ).map(
         ([step, name, icon, description, keywords]) =>

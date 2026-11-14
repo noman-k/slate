@@ -30,6 +30,8 @@ import {
   evaluate,
   interpolate,
   targetLabel,
+  humanize,
+  labelOf,
   displayValue,
   type Lookup,
   type Param,
@@ -50,11 +52,7 @@ import {
 } from "@/lib/api-request";
 import type { Page } from "@/lib/types";
 
-/** "amount_due" → "Amount due". */
-export const humanize = (name: string) => {
-  const text = name.replace(/_/g, " ").trim();
-  return text.charAt(0).toUpperCase() + text.slice(1);
-};
+export { humanize };
 
 const STEP_ICONS: Record<StepType, typeof Check> = {
   send: MessageSquare,
@@ -230,7 +228,7 @@ export function RunStartDialog({
             return (
               <div className={`run-field ${invalid ? "is-invalid" : ""}`} key={param.name}>
                 <label htmlFor={id}>
-                  {humanize(param.name)}
+                  {labelOf(param)}
                   {!param.required && <span>Optional</span>}
                 </label>
                 {param.type === "yesno" ? (
@@ -277,7 +275,7 @@ export function RunStartDialog({
                     onChange={(event) => set(param.name, event.target.value)}
                   />
                 )}
-                {invalid && <small role="alert">{humanize(param.name)} is required</small>}
+                {invalid && <small role="alert">{labelOf(param)} is required</small>}
               </div>
             );
           })}
@@ -304,7 +302,7 @@ export function RunStartDialog({
 function outlineText(step: Step, procedure: Procedure, run: RunState, lookup?: Lookup) {
   if (step.text) return interpolate(step.text, procedure, run.vars, lookup);
   if (step.step === "if" && step.variable)
-    return `If ${humanize(step.variable).toLowerCase()} ${OP_LABELS[step.op || "is"]}${step.value ? ` ${step.value}` : ""}`;
+    return `If ${humanize(step.variable.replace(/\./g, " → ")).toLowerCase()} ${OP_LABELS[step.op || "is"]}${step.value ? ` ${step.value}` : ""}`;
   return STEP_LABELS[step.step];
 }
 
@@ -578,8 +576,8 @@ export function RunView({
               {procedure.params.map((param) => {
                 const value = displayValue(procedure, run.vars, param.name, lookup);
                 return value ? (
-                  <span key={param.name} className="run-input-chip" title={humanize(param.name)}>
-                    <small>{humanize(param.name)}</small>
+                  <span key={param.name} className="run-input-chip" title={labelOf(param)}>
+                    <small>{labelOf(param)}</small>
                     {value}
                   </span>
                 ) : null;

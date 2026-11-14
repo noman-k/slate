@@ -16,12 +16,15 @@ export function Menu({
   align = "start",
   side = "bottom",
   onOpenChange,
+  returnFocus = true,
 }: {
   trigger: ReactNode;
   children: ReactNode;
   align?: "start" | "end";
   side?: Side;
   onOpenChange?: (open: boolean) => void;
+  /** False when choosing an item moves focus somewhere else (e.g. into the editor). */
+  returnFocus?: boolean;
 }) {
   return (
     <Dropdown.Root onOpenChange={onOpenChange}>
@@ -33,6 +36,7 @@ export function Menu({
           sideOffset={6}
           align={align}
           collisionPadding={12}
+          onCloseAutoFocus={returnFocus ? undefined : (event) => event.preventDefault()}
         >
           {children}
         </Dropdown.Content>
