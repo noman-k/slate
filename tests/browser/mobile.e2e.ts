@@ -232,6 +232,7 @@ test("swiping the sidebar scrolls it; only a long press picks a page up", async 
   await page.getByRole("button", { name: "Show sidebar" }).tap();
   const sidebar = page.locator("aside.sidebar");
   const order = () => sidebar.locator(".tree-page .tree-title").allTextContents();
+  await expect(sidebar.locator(".tree-page").nth(1)).toBeVisible();
   const before = await order();
   const row = sidebar.locator(".tree-page").nth(1);
   const box = (await row.boundingBox())!;

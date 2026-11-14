@@ -35,7 +35,7 @@ import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@
 import { templateMarkdown, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
 import { PlaybookBuilder } from "./playbook-builder";
-import { PLAYBOOKS_VIEW, PlaybooksView, isPlaybookPage } from "./playbooks-view";
+import { PLAYBOOKS_VIEW, PlaybooksView, playbookPages } from "./playbooks-view";
 import { serializePlaybook } from "@/lib/playbook-model";
 import { RunStartDialog, RunView } from "./run-mode";
 import {
@@ -591,12 +591,12 @@ export function WorkspaceApp() {
     toast(`“${title}” created`, { action: { label: "Open", onClick: () => open(made.pageId) } });
     return made.pageId;
   };
-  /** Every playbook page, for the sidebar's Playbooks entry and Run buttons. */
+  /** The open workspace's playbooks, for the sidebar's Playbooks entry (and count) and Run buttons. */
   const playbookIds = useMemo(
-    () => new Set(state.pages.filter((p) => isPlaybookPage(state, p)).map((p) => p.id)),
-    // Only pages, documents and records decide what's a playbook.
+    () => new Set(playbookPages(state).map((p) => p.id)),
+    // Only the workspace, pages, documents and records decide what's a playbook here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.pages, state.documents, state.records],
+    [state.active_workspace_id, state.pages, state.documents, state.records],
   );
   /** A playbook or runbook: has steps or inputs, so it's edited as blocks only. */
   const isStructured = (pageId: string) => {

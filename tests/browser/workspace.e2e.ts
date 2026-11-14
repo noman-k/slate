@@ -1471,3 +1471,22 @@ test("an agent key opens only the workspace it was made in", async ({ page, play
   expect(await found(side, "Rent Ledger")).toBe(0);
   await agent.dispose();
 });
+test("each workspace lists only its own playbooks", async ({ page }) => {
+  const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+  await startFromTemplate(page, "Playbook", /Monthly rent check/);
+  await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toContainText("1");
+  // A second workspace has none: no entry, and the Playbooks view is empty.
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: "Create workspace" }).click();
+  await page.getByLabel("Workspace name").fill("Side project");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await expect(sidebar.getByRole("button", { name: "Workspace: Side project" })).toBeVisible();
+  await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toHaveCount(0);
+  await page.goto("/p/playbooks");
+  await expect(page.getByRole("heading", { name: "Playbooks", level: 1 })).toBeVisible();
+  await expect(page.locator(".playbook-row")).toHaveCount(0);
+  // Back in the first workspace, it's still there.
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: /Home|My workspace|Rental/ }).first().click();
+  await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toContainText("1");
+});

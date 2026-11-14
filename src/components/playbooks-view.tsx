@@ -1,6 +1,6 @@
 "use client";
 /**
- * Playbooks: one place to see and run every playbook in the workspace, without moving
+ * Playbooks: one place to see and run every playbook in the open workspace, without moving
  * them out of the pages they belong to. Each row shows when to use it, where it lives,
  * its last run, and any run still in progress.
  */
@@ -20,8 +20,11 @@ export function isPlaybookPage(state: WorkspaceState, page: Page) {
   return procedure.steps.length > 0 || procedure.params.length > 0;
 }
 
+/** The open workspace's playbooks (never another workspace's). */
 export function playbookPages(state: WorkspaceState) {
-  return state.pages.filter((page) => isPlaybookPage(state, page));
+  return state.pages.filter(
+    (page) => page.workspace_id === state.active_workspace_id && isPlaybookPage(state, page),
+  );
 }
 
 export const PLAYBOOKS_VIEW = "playbooks";
