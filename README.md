@@ -138,10 +138,9 @@ In Supabase, **slate-production → Project Settings → Integrations → GitHub
 
 | Setting | Value |
 | --- | --- |
-| Supabase directory | `supabase` |
-| Production branch | `main` |
-| Deploy to production | on: new migrations are applied on every push to `main` |
-| Automatic branching | off: otherwise each pull request gets its own billed database |
+| Working directory | `.` (the folder that contains `supabase/`, here the repo root) |
+| Deploy to production | on, production branch `main`: new migrations are applied on every push to `main` |
+| Automatic branching | off (it needs the Pro plan): otherwise each pull request gets its own billed database |
 
 The integration only applies migrations. The `[auth]` settings in `supabase/config.toml` (such as the raised local sign-in limit) stay local; production auth is configured in the dashboard.
 
