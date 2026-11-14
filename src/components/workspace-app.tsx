@@ -35,6 +35,7 @@ import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@
 import { templateMarkdown, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
 import { PlaybookBuilder } from "./playbook-builder";
+import { serializePlaybook } from "@/lib/playbook-model";
 import { RunStartDialog, RunView } from "./run-mode";
 import {
   advance as advanceRun,
@@ -141,6 +142,22 @@ function withDatabase(
     properties: [...s.properties, ...made.properties],
     views: [...s.views, made.view],
   };
+}
+
+/** "just now", "3 hours ago", "yesterday", "12 days ago". */
+function timeAgo(iso: string, now = Date.now()) {
+  const seconds = Math.round((new Date(iso).getTime() - now) / 1000);
+  const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31536000],
+    ["month", 2592000],
+    ["week", 604800],
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+  ];
+  for (const [unit, size] of units) if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+  return "just now";
 }
 
 export function WorkspaceApp() {
@@ -540,6 +557,44 @@ export function WorkspaceApp() {
   /** A page's parameters, sections and steps, read from its Markdown. */
   const procedureOf = (pageId: string) =>
     parseProcedure(state.documents.find((d) => d.page_id === pageId)?.markdown || "");
+  /**
+   * A to-do list becomes a checklist you can run: a page inside this one, one Check step
+   * per to-do, ending in Finish. The list stays where it was.
+   */
+  const makeChecklist = (parent: Page, items: string[]) => {
+    if (!items.length) return;
+    const title = `${parent.title || "Untitled"} checklist`;
+    const made = createPage(parent.id, title);
+    const markdown = serializePlaybook({
+      details: null,
+      params: [],
+      guidelines: [],
+      notes: "",
+      sections: [
+        {
+          id: id(),
+          title: "Steps",
+          description: "",
+          steps: [
+            ...items.map((text) => ({ id: id(), attrs: { step: "check" as const }, content: [{ type: "text", text }] })),
+            { id: id(), attrs: { step: "end" as const }, content: [{ type: "text", text: "All done" }] },
+          ],
+        },
+      ],
+    });
+    const now = new Date().toISOString();
+    change((s) => ({
+      ...s,
+      pages: s.pages.map((pg) =>
+        pg.id === made.pageId
+          ? { ...pg, icon: "icon:check:green", description: "Run it each time — every run is remembered.", updated_at: now }
+          : pg,
+      ),
+      documents: s.documents.map((d) => (d.page_id === made.pageId ? { ...d, markdown, updated_at: now } : d)),
+    }));
+    toast(`“${title}” created`, { action: { label: "Open", onClick: () => open(made.pageId) } });
+    return made.pageId;
+  };
   /** A playbook or runbook: has steps or inputs, so it's edited as blocks only. */
   const isStructured = (pageId: string) => {
     const procedure = procedureOf(pageId);
@@ -814,6 +869,7 @@ export function WorkspaceApp() {
       onLinkDatabase={linkDatabase}
       onInsertProcedure={insertProcedure}
       onRunFrom={(section) => openRunStart(p.id, {}, section)}
+      onMakeChecklist={(items) => makeChecklist(p, items)}
       runnable={isStructured(p.id)}
       editSource={sourceEdit === p.id}
       onEditSourceChange={(on) => setSourceEdit(on ? p.id : null)}
@@ -1297,6 +1353,7 @@ export function WorkspaceApp() {
                               title="See every run of this page"
                             >
                               {runs.length} {runs.length === 1 ? "run" : "runs"}
+                              {runs[0] && <span className="run-bar-when">· last {timeAgo(runs[0].record.created_at)}</span>}
                             </button>
                           )}
                           <Popup

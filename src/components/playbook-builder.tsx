@@ -80,7 +80,7 @@ import { localDate } from "@/lib/procedures";
 // only when a normal page opens, so a playbook opened directly needs them here too.
 import "./editor/editor.css";
 
-const STEP_TYPES: StepType[] = ["send", "ask", "check", "if", "api", "end"];
+const STEP_TYPES: StepType[] = ["check", "ask", "send", "if", "api", "end"];
 
 /** One step's text: a small editor where values show as chips. */
 function StepText({
@@ -188,7 +188,9 @@ function StepText({
 function ValuePickerFor({ editor }: { editor: Editor | null }) {
   return (
     <ProcedureValuesContext.Consumer>
-      {(values) => (
+      {(values) =>
+        // Nothing to insert yet (no inputs or answers): no button, less clutter.
+        !values?.length ? null : (
         <ValuePicker
           values={values || []}
           onPick={(key) =>
@@ -197,7 +199,8 @@ function ValuePickerFor({ editor }: { editor: Editor | null }) {
             )
           }
         />
-      )}
+        )
+      }
     </ProcedureValuesContext.Consumer>
   );
 }
@@ -355,7 +358,21 @@ function IssueList({ issues }: { issues?: Issue[] }) {
 }
 
 /** "+ Add step": the step types, each said in words. */
+/** The everyday steps first; decisions, calls and Finish are under "More". */
+const BASIC_STEPS: StepType[] = ["check", "ask", "send"];
+const MORE_STEPS: StepType[] = ["if", "api", "end"];
+
+/** "+ Add step": the step types, each said in words. */
 function AddStep({ onAdd, label = "Add step" }: { onAdd: (type: StepType) => void; label?: string }) {
+  const choice = (type: StepType) => (
+    <MenuItem key={type} onClick={() => onAdd(type)}>
+      <span className={`pb-type-dot is-${type}`} aria-hidden />
+      <span className="pb-type-choice">
+        <strong>{STEP_LABELS[type]}</strong>
+        <small>{STEP_PURPOSE[type]}</small>
+      </span>
+    </MenuItem>
+  );
   return (
     <Menu
       returnFocus={false}
@@ -366,15 +383,10 @@ function AddStep({ onAdd, label = "Add step" }: { onAdd: (type: StepType) => voi
         </button>
       }
     >
-      {STEP_TYPES.map((type) => (
-        <MenuItem key={type} onClick={() => onAdd(type)}>
-          <span className={`pb-type-dot is-${type}`} aria-hidden />
-          <span className="pb-type-choice">
-            <strong>{STEP_LABELS[type]}</strong>
-            <small>{STEP_PURPOSE[type]}</small>
-          </span>
-        </MenuItem>
-      ))}
+      {BASIC_STEPS.map(choice)}
+      <MenuSeparator />
+      <div className="menu-label">More</div>
+      {MORE_STEPS.map(choice)}
     </Menu>
   );
 }
@@ -457,6 +469,8 @@ export function PlaybookBuilder({
   const lastSaved = useRef(markdown);
   const [focusStep, setFocusStep] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  /** Side panels opened on request (they also show whenever they have content). */
+  const [openPanels, setOpenPanels] = useState<Set<"inputs" | "guidelines">>(new Set());
   // Changes made elsewhere (e.g. a page link added by the sidebar) are picked up.
   useEffect(() => {
     if (markdown === lastSaved.current) return;
@@ -511,7 +525,10 @@ export function PlaybookBuilder({
   const addStep = (sectionId: string, type: StepType, after?: string) => {
     const step = newStep(type);
     editSection(sectionId, (s) => {
-      const at = after ? s.steps.findIndex((x) => x.id === after) + 1 : s.steps.length;
+      // At the end of the section — but before a closing Finish step, which ends the run.
+      const last = s.steps[s.steps.length - 1];
+      const end = last && last.attrs.step === "end" && type !== "end" ? s.steps.length - 1 : s.steps.length;
+      const at = after ? s.steps.findIndex((x) => x.id === after) + 1 : end;
       const steps = [...s.steps];
       steps.splice(at, 0, step);
       return { ...s, steps };
@@ -519,7 +536,7 @@ export function PlaybookBuilder({
     setFocusStep(step.id);
   };
   const addSection = () => {
-    const section: BuilderSection = { id: id(), title: "", description: "", steps: [newStep("send")] };
+    const section: BuilderSection = { id: id(), title: "", description: "", steps: [newStep("check")] };
     update((m) => ({ ...m, sections: [...m.sections, section] }));
     window.requestAnimationFrame(() =>
       document.querySelector<HTMLInputElement>(`[data-section-id="${section.id}"] .pb-section-title`)?.focus(),
@@ -610,6 +627,7 @@ export function PlaybookBuilder({
               </div>
             </Panel>
           ) : null}
+          {(model.params.length > 0 || openPanels.has("inputs")) && (
           <Panel title="Inputs">
             <div className="proc-params pb-inputs">
               <InputsEditor
@@ -621,25 +639,46 @@ export function PlaybookBuilder({
               />
             </div>
           </Panel>
+          )}
+          {(model.guidelines.some((g) => g.trim()) || openPanels.has("guidelines")) && (
           <Panel title="Guidelines">
             <GrowingText
               aria-label="Guidelines"
               rows={Math.max(3, model.guidelines.length + 1)}
               placeholder={"Rules for every step, one per line — e.g.\nKeep a friendly tone"}
               value={model.guidelines.join("\n")}
+              autoFocus={openPanels.has("guidelines") && !model.guidelines.some((g) => g.trim())}
               onChange={(event) => update((m) => ({ ...m, guidelines: event.target.value.split("\n") }))}
             />
           </Panel>
-          {model.details === null && (
-            <button
-              className="pb-link"
-              onClick={() =>
-                update((m) => ({ ...m, details: { owner: "", time: "", lastReviewed: localDate(), reviewEvery: "90 days" } }))
-              }
-            >
-              <Plus size={13} /> Add owner and review dates
-            </button>
           )}
+          {/* More, only when it's wanted: a plain checklist needs none of it. */}
+          {(!model.params.length && !openPanels.has("inputs")) ||
+          (!model.guidelines.some((g) => g.trim()) && !openPanels.has("guidelines")) ||
+          model.details === null ? (
+            <div className="pb-more" aria-label="Add more">
+              {!model.params.length && !openPanels.has("inputs") && (
+                <button className="pb-link" onClick={() => setOpenPanels((o) => new Set(o).add("inputs"))}>
+                  <Plus size={13} /> Ask for details before starting
+                </button>
+              )}
+              {!model.guidelines.some((g) => g.trim()) && !openPanels.has("guidelines") && (
+                <button className="pb-link" onClick={() => setOpenPanels((o) => new Set(o).add("guidelines"))}>
+                  <Plus size={13} /> Add guidelines
+                </button>
+              )}
+              {model.details === null && (
+                <button
+                  className="pb-link"
+                  onClick={() =>
+                    update((m) => ({ ...m, details: { owner: "", time: "", lastReviewed: localDate(), reviewEvery: "90 days" } }))
+                  }
+                >
+                  <Plus size={13} /> Add owner and review dates
+                </button>
+              )}
+            </div>
+          ) : null}
           {model.notes ? (
             <Panel title="Notes">
               <GrowingText
@@ -787,7 +826,14 @@ export function PlaybookBuilder({
                             otherSections={model.sections.filter((s) => s.id !== section.id)}
                             onChange={(next) => editStep(step.id, next)}
                             onRename={(from, to) => update((m) => renameInModel(m, from, to))}
-                            onAddAfter={() => addStep(section.id, "send", step.id)}
+                            // Enter adds another step of the same everyday kind (a list keeps going).
+                            onAddAfter={() =>
+                              addStep(
+                                section.id,
+                                BASIC_STEPS.includes(step.attrs.step as StepType) ? (step.attrs.step as StepType) : "check",
+                                step.id,
+                              )
+                            }
                             onMove={(by) =>
                               editSection(section.id, (s) => ({ ...s, steps: arrayMove(s.steps, stepIndex, stepIndex + by) }))
                             }

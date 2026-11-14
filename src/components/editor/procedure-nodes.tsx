@@ -281,6 +281,56 @@ function ValueSelect({
   );
 }
 
+/**
+ * A Check step's extras. In a plain checklist they're out of the way: "+ Expected result"
+ * until one is written, and "If not" only when there's another section to jump to.
+ */
+function CheckSettings({
+  attrs,
+  set,
+  sections,
+}: {
+  attrs: Record<string, string | null | undefined>;
+  set: (attrs: Record<string, unknown>) => void;
+  sections: string[];
+}) {
+  const [adding, setAdding] = useState(false);
+  const showExpected = adding || !!attrs.expected;
+  const showFail = sections.length > 1 || !!attrs.else;
+  return (
+    <>
+      {showExpected ? (
+        <label className="proc-grow">
+          It worked if
+          <input
+            aria-label="Expected result"
+            autoFocus={adding && !attrs.expected}
+            placeholder="What you should see when it's done"
+            value={String(attrs.expected || "")}
+            onChange={(event) => set({ expected: event.target.value })}
+            onBlur={() => setAdding(false)}
+          />
+        </label>
+      ) : (
+        <button type="button" className="proc-add-detail" onClick={() => setAdding(true)}>
+          <Plus size={12} /> Expected result
+        </button>
+      )}
+      {showFail && (
+        <label>
+          If not
+          <TargetSelect
+            label="If it fails"
+            value={String(attrs.else || "")}
+            sections={sections}
+            onChange={(value) => set({ else: value })}
+          />
+        </label>
+      )}
+    </>
+  );
+}
+
 /** A step's settings (what it remembers, where it jumps, the request it makes). */
 export function StepSettings({
   attrs,
@@ -339,26 +389,7 @@ export function StepSettings({
             </>
           )}
           {step === "check" && (
-            <>
-              <label className="proc-grow">
-                It worked if
-                <input
-                  aria-label="Expected result"
-                  placeholder="e.g. The refund shows as pending"
-                  value={String(node.attrs.expected || "")}
-                  onChange={(event) => set({ expected: event.target.value })}
-                />
-              </label>
-              <label>
-                If not
-                <TargetSelect
-                  label="If it fails"
-                  value={String(node.attrs.else || "")}
-                  sections={sections}
-                  onChange={(value) => set({ else: value })}
-                />
-              </label>
-            </>
+            <CheckSettings attrs={node.attrs} set={set} sections={sections} />
           )}
           {step === "api" && (
             <>

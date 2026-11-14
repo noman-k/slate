@@ -11,12 +11,20 @@ async function createPage(page: Page, name: string) {
   await title.fill(name);
   await expect(page.getByLabel("Page content", { exact: true })).toBeVisible();
 }
+/** Picks a template in the gallery, opening "More templates" if it's in there. */
+async function openTemplate(page: Page, template: RegExp) {
+  const gallery = page.locator(".procedure-gallery");
+  await expect(gallery).toBeVisible();
+  if (!(await gallery.getByRole("option", { name: template }).count()))
+    await gallery.getByRole("button", { name: /^More templates/ }).click();
+  await gallery.getByRole("option", { name: template }).click();
+}
 /** A new page from a playbook template (`kind` only says what the template is for). */
 async function startFromTemplate(page: Page, kind: "Playbook" | "Runbook", template: RegExp) {
   void kind;
   await page.getByRole("button", { name: "New page", exact: true }).first().click();
   await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).click();
-  await page.locator(".procedure-gallery").getByRole("option", { name: template }).click();
+  await openTemplate(page, template);
   await page.keyboard.press("Enter");
   await expect(page.locator(".procedure-gallery")).toBeHidden();
 }
@@ -619,12 +627,16 @@ test("a new page can start from a playbook template", async ({ page }) => {
   // One gallery: a blank playbook first, then templates grouped by what they're for.
   const gallery = page.locator(".procedure-gallery");
   await expect(page.getByRole("dialog", { name: "New playbook" })).toBeVisible();
-  await expect(gallery.locator(".procedure-group")).toHaveText(["Start fresh", "Support", "Operations", "Notes & automations"]);
+  // Everyday templates first; the more technical ones are behind "More templates".
+  await expect(gallery.locator(".procedure-group")).toHaveText(["Start fresh", "Home & property"]);
   await expect(gallery.getByRole("tab")).toHaveCount(0);
-  await expect(gallery.getByRole("option", { name: /Blank playbook/ })).toHaveAttribute("aria-selected", "true");
+  await expect(gallery.getByRole("option", { name: /Blank checklist/ })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowDown");
+  await expect(gallery.getByRole("region", { name: "Monthly rent check preview" })).toContainText("Chase late rent");
+  await gallery.getByRole("button", { name: /^More templates — support, operations, notes & automations/ }).click();
+  await expect(gallery.locator(".procedure-group")).toHaveText(["Start fresh", "Home & property", "Support", "Operations", "Notes & automations"]);
+  await gallery.getByRole("option", { name: /Refund request/ }).click();
   await expect(gallery.getByRole("region", { name: "Refund request preview" })).toContainText("Check eligibility");
-  await expect(gallery.getByRole("option", { name: /Incident response/ })).toBeVisible();
   await gallery.getByRole("button", { name: "Use template" }).click();
   await expect(gallery).toBeHidden();
   // The page takes the template's name and "when to use", and opens in the builder.
@@ -639,7 +651,7 @@ test("a new page can start from a playbook template", async ({ page }) => {
   // An operations template keeps a title you already typed, and dates its review.
   await page.getByLabel("Page title", { exact: true }).fill("Ship v2");
   await starter.getByRole("button", { name: "Playbook", exact: true }).click();
-  await page.getByRole("dialog", { name: "New playbook" }).getByRole("option", { name: /Deploy a release/ }).click();
+  await openTemplate(page, /Deploy a release/);
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Ship v2");
   await expect(page.getByLabel("Section name").last()).toHaveValue("Roll back");
@@ -659,7 +671,7 @@ test("/runbook in a page creates a runbook page and links it there", async ({ pa
   await page.keyboard.press("Enter");
   // "/runbook" still finds it: there's one kind of playbook now.
   const gallery = page.getByRole("dialog", { name: "New playbook" });
-  await gallery.getByRole("option", { name: /Deploy a release/ }).click();
+  await openTemplate(page, /Deploy a release/);
   await page.keyboard.press("Enter");
   await expect(gallery).toBeHidden();
   // The page keeps its own content; the runbook is a page of its own, linked here.
@@ -757,9 +769,11 @@ test("a run can be paused, picked up after a reload, and started from a run link
   await expect(page).toHaveURL(url);
 });
 test("a playbook is built from inputs, sections and steps", async ({ page }) => {
-  await startFromTemplate(page, "Playbook", /Blank playbook/);
-  // An input, named in words.
+  await startFromTemplate(page, "Playbook", /Blank checklist/);
+  // A plain checklist has no inputs panel until you ask for one.
   const inputs = page.getByRole("region", { name: "Inputs" });
+  await expect(inputs).toHaveCount(0);
+  await page.getByRole("button", { name: "Ask for details before starting" }).click();
   await inputs.getByRole("button", { name: "Add an input" }).click();
   await inputs.getByLabel("Input name").last().fill("Tenant name");
   // A new section, named in its card.
@@ -931,12 +945,13 @@ test("steps can be reordered, moved between sections, duplicated and deleted wit
   await expect(section("Roll back").locator(".pb-step")).toHaveCount(3);
 });
 test("values in steps are chips that behave like one character", async ({ page }) => {
-  await startFromTemplate(page, "Playbook", /Blank playbook/);
+  await startFromTemplate(page, "Playbook", /Blank checklist/);
   // A new step at the end of the first section.
   const first = page.locator(".pb-section").first();
   await first.getByRole("button", { name: "Add step" }).click();
   await page.getByRole("menuitem", { name: /Say/ }).click();
-  const step = first.locator(".pb-step").last();
+  // (It goes in before the section's closing Finish step.)
+  const step = first.locator(".pb-step.is-send");
   const text = step.locator(".pb-step-text");
   await expect(text).toBeFocused();
   // Typing {{name}} becomes a chip, and typing continues after it.
@@ -1057,6 +1072,7 @@ test("automation templates call other apps and keep secrets out of run history",
   await page.getByRole("button", { name: "New page", exact: true }).first().click();
   await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).click();
   const gallery = page.locator(".procedure-gallery");
+  await gallery.getByRole("button", { name: /^More templates/ }).click();
   await expect(gallery.locator(".procedure-group").last()).toHaveText("Notes & automations");
   // Daily standup: answers are posted to the team webhook, and kept as the run's note.
   let posted = "";
@@ -1119,4 +1135,63 @@ test("a playbook opened directly (hard reload) has its styles", async ({ page })
   await expect.poll(() => badge.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
   const radius = await page.locator(".pb-step").first().evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
   expect(radius).not.toBe("0px");
+});
+test("settings explain AI agent access (keys need a synced workspace)", async ({ page }) => {
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const agents = page.getByRole("region", { name: "AI agents" });
+  await expect(agents).toContainText("Let an AI agent read this workspace");
+  await expect(agents).toContainText("can't change anything");
+  // The local demo lives only in the browser, so there's nothing for an agent to reach.
+  await expect(agents).toContainText("Connect Supabase to use agent keys");
+  await expect(agents.getByRole("button", { name: "Create key" })).toHaveCount(0);
+});
+test("checklists first: a plain list, advanced steps on request, and to-do lists that become runnable", async ({ page }) => {
+  await startFromTemplate(page, "Playbook", /Blank checklist/);
+  // A blank checklist is just steps: no inputs or guidelines panels, they're offered instead.
+  await expect(page.getByRole("region", { name: "Inputs" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Guidelines" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ask for details before starting" })).toBeVisible();
+  await expect(page.locator(".pb-step.is-check")).toHaveCount(3);
+  // With no values to insert, steps have no Value button.
+  await expect(page.locator(".pb-step").first().getByRole("button", { name: "Insert a value" })).toHaveCount(0);
+  // Everyday steps first; decisions, calls and Finish under More.
+  await page.locator(".pb-section").first().getByRole("button", { name: "Add step" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveText([/^Check/, /^Ask/, /^Say/, /^Decide/, /^Call/, /^Finish/]);
+  await expect(menu).toContainText("More");
+  await menu.getByRole("menuitem", { name: /^Check/ }).click();
+  // It goes in before the closing Finish step (a step after Finish would never run).
+  const steps = page.locator(".pb-section").first().locator(".pb-step");
+  await expect(steps).toHaveCount(5);
+  await expect(steps.nth(3).locator(".pb-step-text")).toBeFocused();
+  await expect(steps.last()).toHaveClass(/is-end/);
+  await page.keyboard.type("Lock the door");
+  // Enter keeps the list going with another of the same.
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".pb-step.is-check")).toHaveCount(5);
+  await expect(steps.nth(3).locator(".pb-step-text")).toHaveText("Lock the door");
+  await expect(steps.last()).toHaveClass(/is-end/);
+  // Run it once: the run bar remembers.
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await page.locator(".run-surface").getByRole("button", { name: "Stop" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: /1 run · last just now/ })).toBeVisible();
+  // A to-do list on an ordinary page becomes a runnable checklist from its block menu.
+  await createPage(page, "Weekend jobs");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("[] Mow the lawn");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Fix the gate");
+  const list = page.locator(".slate-prose ul[data-type='taskList']");
+  const box = (await list.boundingBox())!;
+  await page.mouse.move(box.x + 40, box.y + 12);
+  await page.getByRole("button", { name: "Block actions" }).click();
+  await page.getByRole("menuitem", { name: "Make a runnable checklist" }).click();
+  // The list stays; a checklist page is linked below it.
+  await expect(list).toContainText("Fix the gate");
+  const link = page.locator(".editor-page-reference", { hasText: "Weekend jobs checklist" });
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page.locator(".pb-step-text")).toHaveText(["Mow the lawn", "Fix the gate", "All done"]);
+  await expect(page.getByRole("region", { name: "Outline" })).toContainText("Ready to run");
 });

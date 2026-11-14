@@ -110,6 +110,8 @@ export interface DocumentEditorProps {
   onInsertProcedure?: (insert: (pageId: string) => void) => void;
   /** Starts a run of this page at a section (from the section heading). */
   onRunFrom?: (section: string) => void;
+  /** Turns a to-do list's items into a runnable checklist page; returns its id. */
+  onMakeChecklist?: (items: string[]) => string | void;
   /**
    * A playbook or runbook: its steps are structured blocks, so the page is edited in
    * the editor only (like a database page) unless `editSource` is on.
@@ -329,6 +331,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
     resolvePage,
     onInsertProcedure,
     onRunFrom,
+    onMakeChecklist,
     runnable,
     editSource,
     onEditSourceChange,
@@ -1732,6 +1735,36 @@ export function DocumentEditor(props: DocumentEditorProps) {
                       {current === item.action && <Check size={14} className="menu-check" />}
                     </button>
                   ))}
+                  <div className="editor-menu-divider" />
+                </>
+              )}
+              {node?.type.name === "taskList" && onMakeChecklist && (
+                <>
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      // Each to-do (its first line) becomes a step; the list itself stays.
+                      const items: string[] = [];
+                      node.forEach((item) => {
+                        const text = (item.firstChild?.textContent || "").trim();
+                        if (text) items.push(text);
+                      });
+                      const pageId = onMakeChecklist(items);
+                      setBlockMenu(false);
+                      if (pageId && editor)
+                        editor
+                          .chain()
+                          .focus()
+                          .insertContentAt(hover.position + node.nodeSize, {
+                            type: "workspaceEmbed",
+                            attrs: { kind: "page", id: pageId },
+                          })
+                          .run();
+                    }}
+                  >
+                    <ListChecks size={16} />
+                    <span>Make a runnable checklist</span>
+                  </button>
                   <div className="editor-menu-divider" />
                 </>
               )}

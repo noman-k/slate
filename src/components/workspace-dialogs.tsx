@@ -20,6 +20,7 @@ import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
 import { IconPicker } from "./icon-picker";
 import { ThemeSwitcher } from "./theme-switcher";
+import { AgentKeysSection } from "./agent-keys-section";
 import { RecordProperties } from "./database/DatabaseView";
 import { breadcrumbs, canMovePage, purgePage, trashPage } from "@/lib/tree";
 import { id, timeAgo } from "@/lib/utils";
@@ -670,6 +671,7 @@ function SettingsDialog({
             <ThemeSwitcher />
           </div>
         </section>
+        <AgentKeysSection isDemo={isDemo} />
         <section className="settings-section">
           <h3>Account</h3>
           {isDemo ? (

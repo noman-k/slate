@@ -8,10 +8,11 @@
  */
 import { END, NEXT, parseProcedure, type Param, type StepAttrs, type StepType } from "./runner";
 
-export type TemplateCategory = "start" | "support" | "operations" | "automation";
+export type TemplateCategory = "start" | "property" | "support" | "operations" | "automation";
 /** Gallery order and headings. */
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
   { id: "start", label: "Start fresh" },
+  { id: "property", label: "Home & property" },
   { id: "support", label: "Support" },
   { id: "operations", label: "Operations" },
   { id: "automation", label: "Notes & automations" },
@@ -33,7 +34,9 @@ export type ProcedureTemplate = {
 
 /** What a playbook is, in one line (the gallery's description). */
 export const PLAYBOOK_BLURB =
-  "A step-by-step guide you can run — for a situation like a refund, or a task like a release. Press Run to be walked through it.";
+  "A checklist you can run: go through it step by step, and every run is remembered.";
+/** Shown first in the gallery; the rest are behind "More templates". */
+export const FEATURED_CATEGORIES: TemplateCategory[] = ["start", "property"];
 
 const playbookIcon = "icon:compass:blue";
 
@@ -49,8 +52,8 @@ const step = (type: StepType, text: string, attrs: StepOptions = {}) =>
 const send = (text: string) => step("send", text);
 const ask = (text: string, variable: string, answer: StepOptions["answer"] = "text", options?: string) =>
   step("ask", text, { variable, answer, ...(options ? { options } : {}) });
-const check = (text: string, expected: string, onFail?: string) =>
-  step("check", text, { expected, ...(onFail ? { else: onFail } : {}) });
+const check = (text: string, expected = "", onFail?: string) =>
+  step("check", text, { ...(expected ? { expected } : {}), ...(onFail ? { else: onFail } : {}) });
 const when = (variable: string, op: StepOptions["op"], value: string, then: string, otherwise: string, note = "") =>
   // An empty target means "the next step"; it's left out, as the editor saves it.
   step("if", note, {
@@ -79,22 +82,135 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
   {
     id: "playbook-blank",
     category: "start",
-    name: "Blank playbook",
-    summary: "Inputs, guidelines and three phases",
-    whenToUse: "When to use: describe the situation this playbook handles.",
+    name: "Blank checklist",
+    summary: "A list of things to do, in order",
+    whenToUse: "When to use: describe when this checklist applies.",
     icon: playbookIcon,
     markdown: lines(
-      params([{ name: "customer_name", type: "text", required: true }]),
-      "## Guidelines",
-      "- Keep a calm, friendly tone and use the customer's name.\n- Never promise what the policy doesn't allow.",
-      "## Understand the request",
-      ask("What does {{customer_name}} need help with?", "request"),
-      "## Resolve",
-      send("Thanks {{customer_name}} — here's what I've done: …"),
-      "## Wrap up",
-      ask("Is there anything else?", "anything_else", "yesno"),
-      when("anything_else", "is", "Yes", "Understand the request", NEXT),
-      end("Resolved"),
+      "## Steps",
+      check("The first thing to do"),
+      check("The next thing to do"),
+      check("The last thing to do"),
+      end("All done"),
+    ),
+  },
+  /* ---------- Home & property: for landlords and small property managers ---------- */
+  {
+    id: "property-monthly-rent",
+    category: "property",
+    name: "Monthly rent check",
+    summary: "Match payments, then chase anyone who's behind",
+    whenToUse: "When to use: at the start of each month, once rent is due.",
+    icon: "icon:receipt:green",
+    markdown: lines(
+      params([{ name: "month", type: "text", required: true, default: "This month" }]),
+      "## Check payments",
+      check("Open the Rent Ledger and look at {{month}}.", "Every unit has an entry for {{month}}"),
+      check("Match each payment against your bank statement.", "Every payment you received is marked"),
+      ask("Did anyone pay late or less than they owe?", "anyone_behind", "yesno"),
+      when("anyone_behind", "is", "Yes", "Chase late rent", NEXT),
+      end("Everyone paid for {{month}}"),
+      "## Chase late rent",
+      send("Send a friendly reminder to each tenant who's behind, with the amount and the due date."),
+      check("Note the reminder in their Rent Ledger entry.", "Each reminder has a date"),
+      end("Reminders sent for {{month}}"),
+    ),
+  },
+  {
+    id: "property-move-in",
+    category: "property",
+    name: "Tenant move-in",
+    summary: "Lease, deposit, keys and a record of the condition",
+    whenToUse: "When to use: a new tenant is moving in.",
+    icon: "icon:house:orange",
+    markdown: lines(
+      params([
+        { name: "tenant_name", type: "text", required: true },
+        { name: "unit", type: "text", required: true },
+      ]),
+      "## Before the move",
+      check("Get the lease signed by {{tenant_name}}.", "You have a signed copy"),
+      check("Collect the deposit and first month's rent.", "Both have arrived in your account"),
+      ask("How much was the deposit?", "deposit", "number"),
+      "## Move-in day",
+      check("Walk through {{unit}} with {{tenant_name}} and take photos of every room.", "Photos are saved with the date"),
+      check("Write down the meter readings.", "Gas, electricity and water are noted"),
+      check("Hand over the keys.", "{{tenant_name}} has every key and fob"),
+      "## Afterwards",
+      check("Add {{tenant_name}} to Tenants and their first rent to the Rent Ledger."),
+      end("{{tenant_name}} moved in to {{unit}}"),
+    ),
+  },
+  {
+    id: "property-move-out",
+    category: "property",
+    name: "Tenant move-out",
+    summary: "Inspection, keys and the deposit back on time",
+    whenToUse: "When to use: a tenant has given notice and is moving out.",
+    icon: "icon:archive:brown",
+    markdown: lines(
+      params([
+        { name: "tenant_name", type: "text", required: true },
+        { name: "unit", type: "text", required: true },
+      ]),
+      "## Inspection",
+      check("Walk through {{unit}} and compare it with the move-in photos.", "Any damage beyond normal wear is noted"),
+      check("Write down the final meter readings.", "Gas, electricity and water are noted"),
+      check("Collect every key and fob from {{tenant_name}}."),
+      ask("Do you need to keep any of the deposit?", "deductions", "yesno"),
+      when("deductions", "is", "Yes", "Deductions", NEXT),
+      "## Return the deposit",
+      check("Return the full deposit to {{tenant_name}}.", "The payment has gone out"),
+      end("Deposit returned in full"),
+      "## Deductions",
+      send("Send {{tenant_name}} a list of the deductions, with photos and costs."),
+      check("Return the rest of the deposit.", "The payment has gone out"),
+      end("Deposit returned, with deductions explained"),
+    ),
+  },
+  {
+    id: "property-late-rent",
+    category: "property",
+    name: "Chase late rent",
+    summary: "A friendly reminder first, a formal notice if needed",
+    whenToUse: "When to use: a tenant's rent is overdue.",
+    icon: "icon:bell:red",
+    markdown: lines(
+      params([
+        { name: "tenant_name", type: "text", required: true },
+        { name: "amount", type: "text", required: true },
+        { name: "days_late", type: "number", required: true },
+      ]),
+      "## Decide how to follow up",
+      when("days_late", "gt", "14", "Formal notice", NEXT, "Two weeks late or more needs a formal notice."),
+      "## Friendly reminder",
+      send("Hi {{tenant_name}}, just a reminder that {{amount}} in rent is now {{days_late}} days overdue. Could you let me know when to expect it?"),
+      check("Note the reminder in the Rent Ledger.", "The entry has today's date"),
+      end("Reminder sent"),
+      "## Formal notice",
+      send("Send {{tenant_name}} a written notice: {{amount}} is {{days_late}} days overdue, with the date it must be paid by."),
+      check("Keep a copy of the notice.", "It's saved with the tenant's records"),
+      check("Note the notice in the Rent Ledger."),
+      end("Formal notice sent"),
+    ),
+  },
+  {
+    id: "property-tax-year",
+    category: "property",
+    name: "Year-end tax prep",
+    summary: "Everything your accountant needs, in one go",
+    whenToUse: "When to use: once a year, before your tax return is due.",
+    icon: "icon:calculator:blue",
+    markdown: lines(
+      params([{ name: "tax_year", type: "text", required: true }]),
+      "## Gather",
+      check("Export the Rent Ledger for {{tax_year}}.", "A spreadsheet with every month"),
+      check("Collect receipts for repairs and maintenance.", "One folder with every receipt"),
+      check("Download the mortgage interest and insurance statements."),
+      check("List any months a unit was empty."),
+      "## Send",
+      check("Send everything to your accountant.", "They've confirmed they have it all"),
+      end("{{tax_year}} sent to the accountant"),
     ),
   },
   {

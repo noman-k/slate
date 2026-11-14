@@ -3,6 +3,7 @@ import { Fragment, useRef, useState } from "react";
 import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
 import {
+  FEATURED_CATEGORIES,
   PLAYBOOK_BLURB,
   TEMPLATE_CATEGORIES,
   templateInputs,
@@ -30,7 +31,11 @@ export function ProcedureGallery({
   onClose: () => void;
   onUse: (template: ProcedureTemplate) => void;
 }) {
-  const list = templatesInOrder();
+  // Everyday templates first; the more technical ones are a click away.
+  const [showAll, setShowAll] = useState(false);
+  const all = templatesInOrder();
+  const list = showAll ? all : all.filter((t) => FEATURED_CATEGORIES.includes(t.category));
+  const hidden = all.filter((t) => !FEATURED_CATEGORIES.includes(t.category));
   const [index, setIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const chosen = list[Math.min(index, list.length - 1)];
@@ -92,6 +97,21 @@ export function ProcedureGallery({
             </div>
             </Fragment>
           ))}
+          {hidden.length > 0 && (
+            <button
+              type="button"
+              className="procedure-more"
+              aria-expanded={showAll}
+              onClick={() => {
+                setShowAll((v) => !v);
+                listRef.current?.focus();
+              }}
+            >
+              {showAll
+                ? "Fewer templates"
+                : `More templates — ${[...new Set(hidden.map((t) => categoryLabel(t.category)))].join(", ").toLowerCase()}`}
+            </button>
+          )}
         </div>
         {chosen && (
           <section className="procedure-preview" aria-label={`${chosen.name} preview`}>

@@ -1954,3 +1954,47 @@
   margin: -6px 0 6px;
   min-height: 0;
 }
+
+/* "+ Expected result": a quiet way into a Check step's extras */
+.proc-add-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px 0 5px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.proc-step:hover .proc-add-detail,
+.proc-step:focus-within .proc-add-detail,
+.proc-add-detail:focus-visible {
+  opacity: 1;
+}
+.proc-add-detail:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+@media (hover: none) {
+  .proc-add-detail {
+    opacity: 1;
+  }
+}
+/* A Check step with nothing else to set shows "+ Expected result" in its top-right corner
+   on hover, so it takes no room and nothing moves when the pointer passes over. */
+.proc-step {
+  position: relative;
+}
+.proc-step-config:has(> .proc-add-detail:only-child) {
+  height: 0;
+  margin: 0;
+}
+.proc-step-config > .proc-add-detail:only-child {
+  position: absolute;
+  top: 8px;
+  right: 76px;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--divider);
+}
