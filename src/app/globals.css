@@ -287,8 +287,10 @@ button {
     background 0.12s,
     color 0.12s;
 }
-button:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  button:hover {
+    background: var(--hover);
+  }
 }
 svg {
   flex-shrink: 0;
@@ -371,8 +373,10 @@ textarea {
   border: 2px solid var(--bg);
   border-radius: 8px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--hover-strong);
+  }
 }
 .workspace-app {
   height: 100dvh;
@@ -414,8 +418,10 @@ textarea {
   text-decoration: none;
   transition: background 0.12s;
 }
-.sidebar-brand:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .sidebar-brand:hover {
+    background: var(--hover);
+  }
 }
 .sidebar-brand:focus-visible {
   outline: 2px solid var(--accent);
@@ -436,9 +442,11 @@ textarea {
   border-radius: 6px;
   color: var(--text-secondary);
 }
-.sidebar-icon:hover {
-  background: var(--hover);
-  color: var(--text-strong);
+@media (hover: hover) {
+  .sidebar-icon:hover {
+    background: var(--hover);
+    color: var(--text-strong);
+  }
 }
 .sidebar-search {
   display: flex;
@@ -454,10 +462,12 @@ textarea {
   font-size: 14px;
   text-align: left;
 }
-.sidebar-search:hover {
-  background: var(--hover);
-  border-color: var(--border-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .sidebar-search:hover {
+    background: var(--hover);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
 }
 .sidebar-search span {
   flex: 1;
@@ -529,8 +539,10 @@ textarea {
 .nav-row > svg {
   color: var(--text-secondary);
 }
-.nav-row:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .nav-row:hover {
+    background: var(--hover);
+  }
 }
 .nav-row.selected {
   background: var(--selected);
@@ -581,9 +593,11 @@ textarea {
   font: inherit;
   color: inherit;
 }
-.section-toggle:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .section-toggle:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .section-toggle svg {
   opacity: 0;
@@ -593,10 +607,14 @@ textarea {
 .section-toggle svg.rotated {
   transform: rotate(90deg);
 }
-.section-toggle:hover svg,
 .section-toggle:focus-visible svg,
 section.is-folded .section-toggle svg {
   opacity: 1;
+}
+@media (hover: hover) {
+  .section-toggle:hover svg {
+    opacity: 1;
+  }
 }
 .sidebar-footer-nav {
   padding: 4px 8px 6px;
@@ -607,9 +625,13 @@ section.is-folded .section-toggle svg {
   height: 22px;
   opacity: 0;
 }
-.sidebar-scroll section:hover .section-heading .icon-button,
 .section-heading .icon-button:focus-visible {
   opacity: 1;
+}
+@media (hover: hover) {
+  .sidebar-scroll section:hover .section-heading .icon-button {
+    opacity: 1;
+  }
 }
 .tree-row {
   display: flex;
@@ -620,8 +642,10 @@ section.is-folded .section-toggle svg {
   gap: 1px;
   padding-right: 4px;
 }
-.tree-row:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .tree-row:hover {
+    background: var(--hover);
+  }
 }
 .tree-row.selected {
   background: var(--selected);
@@ -646,17 +670,27 @@ section.is-folded .section-toggle svg {
   background: var(--hover);
   opacity: 0;
 }
-.tree-row:hover .tree-expand,
 .tree-expand:focus-visible {
   opacity: 1;
 }
-.tree-expand:hover {
-  color: var(--text-strong);
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .tree-row:hover .tree-expand {
+    opacity: 1;
+  }
 }
-.tree-row:hover:has(.tree-expand) .tree-page .page-icon,
+@media (hover: hover) {
+  .tree-expand:hover {
+    color: var(--text-strong);
+    background: var(--hover-strong);
+  }
+}
 .tree-row:has(.tree-expand:focus-visible) .tree-page .page-icon {
   visibility: hidden;
+}
+@media (hover: hover) {
+  .tree-row:hover:has(.tree-expand) .tree-page .page-icon {
+    visibility: hidden;
+  }
 }
 .tree-expand svg {
   transition: transform 0.13s var(--ease);
@@ -692,8 +726,10 @@ section.is-folded .section-toggle svg {
   padding: 0 2px;
   touch-action: pan-y;
 }
-.tree-page:hover {
-  background: transparent;
+@media (hover: hover) {
+  .tree-page:hover {
+    background: transparent;
+  }
 }
 .tree-page > .tree-title {
   flex: 1;
@@ -716,10 +752,14 @@ section.is-folded .section-toggle svg {
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary);
 }
-.tree-row:hover .tree-count,
 .tree-row:focus-within .tree-count,
 .tree-row.menu-open .tree-count {
   display: none;
+}
+@media (hover: hover) {
+  .tree-row:hover .tree-count {
+    display: none;
+  }
 }
 .tree-page svg {
   color: var(--text-secondary);
@@ -738,14 +778,20 @@ section.is-folded .section-toggle svg {
   padding: 2px;
   border-radius: 4px;
 }
-.tree-actions .icon-button:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .tree-actions .icon-button:hover {
+    background: var(--hover-strong);
+  }
 }
-.tree-row:hover .tree-actions,
 .tree-row:focus-within .tree-actions,
 .tree-row.menu-open .tree-actions,
 .tree-row:has(.tree-actions [data-state="open"]) .tree-actions {
   display: flex;
+}
+@media (hover: hover) {
+  .tree-row:hover .tree-actions {
+    display: flex;
+  }
 }
 /* While a row's menu is open its "…" stays put, so the menu keeps its anchor
    (a hidden trigger has no position, and the menu would jump to the corner). */
@@ -818,9 +864,11 @@ section.is-folded .section-toggle svg {
   border-radius: 5px;
   color: var(--text-secondary);
 }
-.sidebar-card-close:hover {
-  background: var(--hover);
-  color: var(--text-strong);
+@media (hover: hover) {
+  .sidebar-card-close:hover {
+    background: var(--hover);
+    color: var(--text-strong);
+  }
 }
 .sidebar-bottom .sidebar-icon {
   width: 28px;
@@ -847,8 +895,10 @@ section.is-folded .section-toggle svg {
   color: var(--text-strong);
   text-align: left;
 }
-.workspace-switch:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .workspace-switch:hover {
+    background: var(--hover);
+  }
 }
 .workspace-switch > span:nth-child(2) {
   min-width: 0;
@@ -907,8 +957,10 @@ section.is-folded .section-toggle svg {
   max-width: 220px;
   white-space: nowrap;
 }
-.breadcrumbs button:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .breadcrumbs button:hover {
+    color: var(--text);
+  }
 }
 .breadcrumbs button > span:last-child {
   min-width: 0;
@@ -989,9 +1041,13 @@ section.is-folded .section-toggle svg {
   /* Pull back by the buttons' padding so their icons line up with the title. */
   margin-left: -8px;
 }
-.page-content:hover .page-quiet-actions,
 .page-quiet-actions:focus-within {
   opacity: 1;
+}
+@media (hover: hover) {
+  .page-content:hover .page-quiet-actions {
+    opacity: 1;
+  }
 }
 .page-quiet-actions button {
   display: inline-flex;
@@ -1003,9 +1059,11 @@ section.is-folded .section-toggle svg {
   padding: 0 8px;
   border-radius: var(--radius);
 }
-.page-quiet-actions button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .page-quiet-actions button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .page-title {
   display: block;
@@ -1061,9 +1119,13 @@ section.is-folded .section-toggle svg {
   padding: 6px;
   border-radius: var(--radius-lg);
 }
-.document-icon:hover,
 .document-icon.is-open {
   background: var(--hover-strong);
+}
+@media (hover: hover) {
+  .document-icon:hover {
+    background: var(--hover-strong);
+  }
 }
 .help-button {
   position: absolute;
@@ -1189,33 +1251,41 @@ section.is-folded .section-toggle svg {
   border: 1px solid var(--border-strong);
   color: var(--text);
 }
-.secondary-button:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .secondary-button:hover {
+    background: var(--hover-strong);
+  }
 }
 .primary-button {
   background: var(--accent);
   border: 1px solid var(--accent);
   color: var(--on-accent);
 }
-.primary-button:hover {
-  background: var(--accent-hover);
+@media (hover: hover) {
+  .primary-button:hover {
+    background: var(--accent-hover);
+  }
 }
 .danger-button {
   background: var(--danger);
   border: 1px solid var(--danger);
   color: var(--on-accent);
 }
-.danger-button:hover {
-  background: var(--danger-hover);
+@media (hover: hover) {
+  .danger-button:hover {
+    background: var(--danger-hover);
+  }
 }
 .danger-text {
   color: var(--danger-text);
   font-size: 13px;
   padding: 5px 0;
 }
-.danger-text:hover {
-  background: transparent;
-  text-decoration: underline;
+@media (hover: hover) {
+  .danger-text:hover {
+    background: transparent;
+    text-decoration: underline;
+  }
 }
 .modal-backdrop {
   position: fixed;
@@ -1256,10 +1326,12 @@ section.is-folded .section-toggle svg {
   border-radius: var(--radius);
   color: var(--icon);
 }
-.modal-heading .icon-button:hover,
-.peek-heading .icon-button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .modal-heading .icon-button:hover,
+  .peek-heading .icon-button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 /* Side peek: a record slides in from the right, the database stays visible. */
 .peek-backdrop {
@@ -1492,8 +1564,10 @@ section.is-folded .section-toggle svg {
   text-align: left;
   flex-shrink: 0;
 }
-.move-targets button:hover {
-  background: transparent;
+@media (hover: hover) {
+  .move-targets button:hover {
+    background: transparent;
+  }
 }
 .move-targets button.active {
   background: var(--hover-strong);
@@ -1574,8 +1648,10 @@ section.is-folded .section-toggle svg {
   border-radius: var(--radius);
   font-size: 13px;
 }
-.trash-list > div:not(.empty-state):hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .trash-list > div:not(.empty-state):hover {
+    background: var(--hover);
+  }
 }
 .trash-list .trash-title {
   flex: 1;
@@ -1608,9 +1684,11 @@ section.is-folded .section-toggle svg {
 .trash-actions .icon-button {
   color: var(--text-secondary);
 }
-.trash-actions .icon-button:hover {
-  color: var(--danger-text);
-  background: var(--danger-soft, var(--hover-strong));
+@media (hover: hover) {
+  .trash-actions .icon-button:hover {
+    color: var(--danger-text);
+    background: var(--danger-soft, var(--hover-strong));
+  }
 }
 .trash-actions .secondary-button,
 .trash-confirm button {
@@ -1710,9 +1788,11 @@ section.is-folded .section-toggle svg {
 .danger-outline {
   color: var(--danger-text);
 }
-.danger-outline:hover {
-  color: var(--danger-text);
-  border-color: var(--danger);
+@media (hover: hover) {
+  .danger-outline:hover {
+    color: var(--danger-text);
+    border-color: var(--danger);
+  }
 }
 .danger-confirm {
   display: flex;
@@ -2011,12 +2091,16 @@ section.is-folded .section-toggle svg {
 .page-starter-options button svg {
   color: var(--icon);
 }
-.page-starter-options button:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .page-starter-options button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
-.page-starter-options button:hover svg {
-  color: var(--text);
+@media (hover: hover) {
+  .page-starter-options button:hover svg {
+    color: var(--text);
+  }
 }
 .page-starter-group {
   display: inline-flex;
@@ -2066,7 +2150,7 @@ section.is-folded .section-toggle svg {
   padding: 24px 0;
 }
 .app-error {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2278,8 +2362,10 @@ section.is-folded .section-toggle svg {
   background: var(--backdrop);
   animation: appear 0.16s ease;
 }
-.sidebar-scrim:hover {
-  background: var(--backdrop);
+@media (hover: hover) {
+  .sidebar-scrim:hover {
+    background: var(--backdrop);
+  }
 }/* Touch screens have no hover: keep hover-only controls reachable. */
 
 
@@ -2435,15 +2521,19 @@ section.is-folded .section-toggle svg {
   color: var(--icon);
   font-size: 13px;
 }
-.icon-tool:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .icon-tool:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .icon-remove {
   color: var(--text-secondary);
 }
-.icon-remove:hover {
-  color: var(--danger-text);
+@media (hover: hover) {
+  .icon-remove:hover {
+    color: var(--danger-text);
+  }
 }
 .icon-colors {
   display: flex;
@@ -2464,8 +2554,10 @@ section.is-folded .section-toggle svg {
   box-shadow: inset 0 0 0 1px var(--swatch-ring);
   transition: transform 0.12s var(--ease);
 }
-.icon-swatch:hover {
-  transform: scale(1.12);
+@media (hover: hover) {
+  .icon-swatch:hover {
+    transform: scale(1.12);
+  }
 }
 .icon-swatch.active {
   box-shadow:
@@ -2510,10 +2602,15 @@ section.is-folded .section-toggle svg {
   border-radius: var(--radius);
   transition: background 0.08s;
 }
-.icon-grid > button:hover,
 .icon-grid > button:focus-visible {
   background: var(--hover-strong);
   outline: none;
+}
+@media (hover: hover) {
+  .icon-grid > button:hover {
+    background: var(--hover-strong);
+    outline: none;
+  }
 }
 .icon-grid > button:focus-visible {
   box-shadow: inset 0 0 0 1.5px var(--accent-border);
@@ -2657,9 +2754,11 @@ section.is-folded .section-toggle svg {
   width: 28px;
   padding: 0;
 }
-.theme-switcher button:hover {
-  color: var(--text);
-  background: transparent;
+@media (hover: hover) {
+  .theme-switcher button:hover {
+    color: var(--text);
+    background: transparent;
+  }
 }
 .theme-switcher button.active {
   color: var(--text-strong);
@@ -2688,9 +2787,11 @@ section.is-folded .section-toggle svg {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.peek-parent:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .peek-parent:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 
 /* Sidebar drag and drop: the row being dragged dims, a preview follows the pointer,
@@ -2772,9 +2873,11 @@ section.is-folded .section-toggle svg {
   font-weight: 500;
   color: var(--text-secondary);
 }
-.procedure-kinds button:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .procedure-kinds button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .procedure-kinds button.is-active {
   background: var(--bg-strong);
@@ -2941,8 +3044,10 @@ section.is-folded .section-toggle svg {
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
-.run-button:hover {
-  background: color-mix(in srgb, var(--accent) 88%, black);
+@media (hover: hover) {
+  .run-button:hover {
+    background: color-mix(in srgb, var(--accent) 88%, black);
+  }
 }
 .run-bar-meta {
   font-size: 13px;
@@ -2958,17 +3063,21 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.run-bar-link:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .run-bar-link:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .run-bar-link.is-resume {
   background: var(--accent-soft);
   color: var(--accent-text);
   font-weight: 500;
 }
-.run-bar-link.is-resume:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+@media (hover: hover) {
+  .run-bar-link.is-resume:hover {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
 }
 .run-live {
   width: 7px;
@@ -3062,9 +3171,11 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.run-link-button:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .run-link-button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .primary-button svg,
 .secondary-button svg {
@@ -3142,9 +3253,11 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.run-header-button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .run-header-button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .run-progress {
   height: 2px;
@@ -3303,9 +3416,11 @@ section.is-folded .section-toggle svg {
   color: var(--text-secondary);
   box-shadow: inset 0 0 0 1px var(--border);
 }
-.run-copy:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .run-copy:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .run-answer {
   margin-bottom: 22px;
@@ -3350,10 +3465,15 @@ section.is-folded .section-toggle svg {
   color: var(--text);
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
-.run-choices button:hover,
 .run-choices button.is-active {
   background: color-mix(in srgb, var(--step-color) 12%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--step-color) 60%, transparent);
+}
+@media (hover: hover) {
+  .run-choices button:hover {
+    background: color-mix(in srgb, var(--step-color) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--step-color) 60%, transparent);
+  }
 }
 .run-choices button:focus-visible {
   outline: none;
@@ -3399,8 +3519,10 @@ section.is-folded .section-toggle svg {
   display: flex;
   gap: 8px;
 }
-.secondary-button.is-danger:hover {
-  color: var(--icon-red);
+@media (hover: hover) {
+  .secondary-button.is-danger:hover {
+    color: var(--icon-red);
+  }
 }
 .run-card-actions .primary-button,
 .run-card-actions .secondary-button {
@@ -3430,9 +3552,11 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.run-back:hover:not(:disabled) {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .run-back:hover:not(:disabled) {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .run-back:disabled {
   opacity: 0.4;
@@ -3732,11 +3856,15 @@ section.is-folded .section-toggle svg {
   flex-direction: column;
   gap: 10px;
 }
-/* A very long outline scrolls inside itself rather than running off the screen. */
-.pb-outline {
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
-  scrollbar-width: thin;
+/* While the outline is pinned beside the steps (wide windows), a very long one scrolls inside
+   itself rather than running off the screen. Stacked above the steps, it just grows: no second
+   scrollbar inside the page. */
+@media (min-width: 1101px) {
+  .pb-outline {
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
 }
 .pb-panel {
   padding: 12px 12px 10px;
@@ -3881,8 +4009,10 @@ section.is-folded .section-toggle svg {
   color: var(--text);
   text-align: left;
 }
-.pb-outline-link:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .pb-outline-link:hover {
+    background: var(--hover);
+  }
 }
 .pb-outline-number {
   width: 18px;
@@ -3913,14 +4043,20 @@ section.is-folded .section-toggle svg {
   opacity: 0;
   touch-action: none;
 }
-.pb-outline li:hover .pb-grip,
-.pb-step:hover > .proc-step-row > .pb-grip,
 .pb-grip:focus-visible {
   opacity: 1;
 }
-.pb-grip:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .pb-outline li:hover .pb-grip,
+  .pb-step:hover > .proc-step-row > .pb-grip {
+    opacity: 1;
+  }
+}
+@media (hover: hover) {
+  .pb-grip:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 @media (hover: none) {
   .pb-grip {
@@ -3938,9 +4074,11 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.pb-link:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .pb-link:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 
 /* Sections and steps */
@@ -4003,9 +4141,11 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.pb-section-title:hover,
-.pb-section-description:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .pb-section-title:hover,
+  .pb-section-description:hover {
+    background: var(--hover);
+  }
 }
 .pb-section-title:focus,
 .pb-section-description:focus {
@@ -4032,9 +4172,11 @@ section.is-folded .section-toggle svg {
   color: var(--text-tertiary);
   white-space: nowrap;
 }
-.pb-count:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .pb-count:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .pb-icon-button {
   display: flex;
@@ -4046,10 +4188,15 @@ section.is-folded .section-toggle svg {
   border-radius: 6px;
   color: var(--icon);
 }
-.pb-icon-button:hover,
 .pb-icon-button[data-state="open"] {
   background: var(--hover-strong);
   color: var(--text);
+}
+@media (hover: hover) {
+  .pb-icon-button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .pb-steps {
   display: flex;
@@ -4085,10 +4232,14 @@ section.is-folded .section-toggle svg {
   margin-top: -2px;
   opacity: 0;
 }
-.pb-step:hover > .proc-step-row > .pb-icon-button,
 .pb-step:focus-within > .proc-step-row > .pb-icon-button,
 .pb-step > .proc-step-row > .pb-icon-button[data-state="open"] {
   opacity: 1;
+}
+@media (hover: hover) {
+  .pb-step:hover > .proc-step-row > .pb-icon-button {
+    opacity: 1;
+  }
 }
 .pb-step .proc-step-body {
   display: flex;
@@ -4146,10 +4297,15 @@ section.is-folded .section-toggle svg {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.pb-add-step:hover,
 .pb-add-step[data-state="open"] {
   background: var(--hover);
   color: var(--text);
+}
+@media (hover: hover) {
+  .pb-add-step:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .pb-type-dot {
   width: 8px;
@@ -4190,9 +4346,11 @@ section.is-folded .section-toggle svg {
   font-weight: 500;
   color: var(--text-secondary);
 }
-.pb-add-section:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .pb-add-section:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 @media (max-width: 1100px) {
   .pb {
@@ -4266,8 +4424,10 @@ section.is-folded .section-toggle svg {
   font-size: 12px;
   font-weight: 600;
 }
-.pb-issue-summary:hover {
-  background: color-mix(in srgb, var(--icon-orange) 22%, transparent);
+@media (hover: hover) {
+  .pb-issue-summary:hover {
+    background: color-mix(in srgb, var(--icon-orange) 22%, transparent);
+  }
 }
 .pb-all-good {
   font-size: 12px;
@@ -4294,9 +4454,13 @@ section.is-folded .section-toggle svg {
   border-radius: 8px;
   text-align: left;
 }
-.proc-input-summary:hover,
 .proc-input-summary:focus-visible {
   background: var(--hover);
+}
+@media (hover: hover) {
+  .proc-input-summary:hover {
+    background: var(--hover);
+  }
 }
 .proc-input-summary strong {
   font-size: 13.5px;
@@ -4321,9 +4485,11 @@ section.is-folded .section-toggle svg {
   font-weight: 500;
   color: var(--text-secondary);
 }
-.pb-inputs .proc-params-row > .proc-input-done:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .pb-inputs .proc-params-row > .proc-input-done:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 
 .run-field small.run-field-hint {
@@ -4406,9 +4572,11 @@ section.is-folded .section-toggle svg {
   border-radius: 6px;
   color: var(--icon);
 }
-.agent-copy button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .agent-copy button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 /* Link from Settings › AI agents to the public setup guide (/docs/mcp). */
 .agent-guide {
@@ -4421,8 +4589,10 @@ section.is-folded .section-toggle svg {
   color: var(--accent-text);
   text-decoration: none;
 }
-.agent-guide:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .agent-guide:hover {
+    text-decoration: underline;
+  }
 }
 .agent-dismiss {
   align-self: flex-end;
@@ -4434,8 +4604,10 @@ section.is-folded .section-toggle svg {
   color: var(--text);
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
-.agent-dismiss:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .agent-dismiss:hover {
+    background: var(--hover);
+  }
 }
 .agent-keys {
   list-style: none;
@@ -4485,9 +4657,11 @@ section.is-folded .section-toggle svg {
   color: var(--text-secondary);
   text-align: left;
 }
-.procedure-more:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .procedure-more:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 
 .run-bar-when {
@@ -4557,8 +4731,10 @@ section.is-folded .section-toggle svg {
   border-radius: 8px;
   text-align: left;
 }
-.playbook-main:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .playbook-main:hover {
+    background: var(--hover);
+  }
 }
 .playbook-main .page-icon {
   margin-top: 1px;
@@ -4627,6 +4803,111 @@ section.is-folded .section-toggle svg {
   color: var(--accent-text);
   text-decoration: none;
 }
-.settings-link:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .settings-link:hover {
+    text-decoration: underline;
+  }
+}
+
+/* ---------- Touch screens and small windows ----------
+ * Hover styles only apply where there's a real pointer (scripts/hover-media.mjs keeps it that
+ * way), so on touch screens a tap is never "spent" on revealing something. Controls a mouse
+ * reveals by hovering are shown where they matter instead, fields people type in are 16px
+ * (smaller makes iPhone Safari zoom in), and taps get immediate feedback.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+a,
+button,
+input,
+select,
+textarea,
+label,
+summary,
+[role="button"],
+[role="tab"],
+[role="option"],
+[role="menuitem"] {
+  /* No double-tap-to-zoom delay on controls. */
+  touch-action: manipulation;
+}
+@media (hover: none) {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Taps light up while pressed, as hover would with a mouse. */
+  button:active,
+  [role="button"]:active,
+  [role="menuitem"]:active,
+  [role="option"]:active,
+  .tree-page:active,
+  .nav-row:active {
+    background-color: var(--hover-strong);
+  }
+  .primary-button:active,
+  .landing-button:not(.outline):not(.ghost):active,
+  .auth-submit:active {
+    background-color: var(--accent-hover);
+  }
+
+  /* The current page's row keeps its "…" and "+" in the sidebar; the section "+" too. */
+  .tree-row.selected .tree-actions {
+    display: flex;
+  }
+  .section-heading .icon-button {
+    opacity: 1;
+  }
+  .page-quiet-actions {
+    opacity: 1;
+  }
+
+  /* Playbooks: each step's "…" (move, duplicate, delete) is always there; dragging by the
+     grip would fight with scrolling, and the menu moves steps too. */
+  .pb-step > .proc-step-row > .pb-icon-button {
+    opacity: 1;
+  }
+  .pb-grip {
+    display: none;
+  }
+
+  /* Fields people type in: 16px, so iPhone Safari doesn't zoom into them. (`:root` so these
+     win over the components' own styles, which load later.) */
+  :root .search-input-wrap input,
+  :root .run-field input,
+  :root .run-field select,
+  :root .settings-section input,
+  :root .compact-dialog input,
+  :root .pb-step-text,
+  :root .pb-textarea,
+  :root .page-description,
+  :root .pb-section-description,
+  :root .proc-name-input,
+  :root .proc-step-config input,
+  :root .proc-step-config select,
+  :root .pb-side input,
+  :root .pb-side select,
+  :root .proc-step-badge select {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* A step's text gets its own full-width line under its number, type and "…". */
+  .pb-step > .proc-step-row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .pb-step > .proc-step-row > .pb-icon-button {
+    margin-left: auto;
+  }
+  .pb-step > .proc-step-row > .proc-step-body {
+    order: 1;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+  .pb-step .pb-step-text-wrap {
+    flex-basis: 100%;
+  }
 }

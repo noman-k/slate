@@ -1439,7 +1439,15 @@ export function DocumentEditor(props: DocumentEditorProps) {
       ref={wrapperRef}
       data-page-id={pageId}
       data-update={tick}
-      onMouseMove={hoverBlock}
+      // A mouse or pen shows a block's handles as it moves over it. A finger shows them for
+      // the block it tapped, once the tap is done: doing it on the tap's synthetic mouse move
+      // would make Safari treat the first tap as a hover and need a second one.
+      onPointerMove={(event) => {
+        if (event.pointerType !== "touch") hoverBlock(event);
+      }}
+      onPointerUp={(event) => {
+        if (event.pointerType === "touch") hoverBlock(event);
+      }}
       onMouseDown={(event) => {
         if ((event.target as HTMLElement).closest(".ProseMirror"))
           selectingRef.current = true;

@@ -53,6 +53,7 @@ Some `slate` names are part of stored data: the `:::slate` and `:::slate-node` l
 ### Style
 
 - TypeScript, following the existing code. `npm run lint` must pass.
+- Phones count as much as desktops. `:hover` styles only apply on devices that can hover (on touch screens they make Safari need two taps): `npm run lint` fails on a `:hover` rule outside `@media (hover: hover)`, and `node scripts/hover-media.mjs` wraps them for you. Anything revealed on hover needs a touch alternative, and fields people type in should be 16px or larger on touch screens, or iPhone Safari zooms in. `tests/browser/mobile.e2e.ts` checks the main screens at phone size.
 - User-facing text is short, plain and specific. Prefer "Couldn't save. Try again." over technical wording.
 - Commit messages follow the existing style: `feat: …`, `fix: …`, `docs: …`, `style: …`, `chore: …`, written as what the change does for people.
 

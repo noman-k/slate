@@ -19,7 +19,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/hover-media.mjs --check",
     "test": "vitest run",
     "prebuild:worker": "node scripts/check-node.mjs",
     "build:worker": "opennextjs-cloudflare build",

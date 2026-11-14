@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ThemedToaster } from '@/components/theme-switcher';
-import { themeScript } from '@/lib/theme-script';
+import { themeScript, viewportScript } from '@/lib/theme-script';
 import { InlineScript } from '@/components/inline-script';
 import './globals.css';
 // Workspace routes render <title> themselves (page data is client-side); auth routes set metadata.
@@ -19,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
         <InlineScript html={themeScript} />
+        <InlineScript html={viewportScript} />
       </head>
       <body>
         {children}

@@ -20,9 +20,13 @@
   opacity: 0.72;
   transition: opacity 0.15s var(--ease);
 }
-.document-editor:hover .editor-mode-bar,
 .editor-mode-bar:focus-within {
   opacity: 1;
+}
+@media (hover: hover) {
+  .document-editor:hover .editor-mode-bar {
+    opacity: 1;
+  }
 }
 @media (hover: none) {
   .editor-mode-bar {
@@ -49,15 +53,23 @@
   color: var(--text-tertiary);
   transition: background-color 0.12s, color 0.12s;
 }
-.editor-mode-options button:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .editor-mode-options button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
-.editor-mode-options .is-active,
-.editor-mode-options .is-active:hover {
+.editor-mode-options .is-active {
   background: var(--bg-strong);
   color: var(--text-strong);
   box-shadow: var(--shadow-chip);
+}
+@media (hover: hover) {
+  .editor-mode-options .is-active:hover {
+    background: var(--bg-strong);
+    color: var(--text-strong);
+    box-shadow: var(--shadow-chip);
+  }
 }
 .editor-history {
   margin-left: auto;
@@ -73,9 +85,11 @@
   border-radius: var(--radius);
   color: var(--icon);
 }
-.editor-history button:hover:not(:disabled) {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .editor-history button:hover:not(:disabled) {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .editor-history button:disabled {
   opacity: 0.35;
@@ -145,8 +159,10 @@
   cursor: pointer;
   transition: text-decoration-color 0.12s;
 }
-.slate-prose a:hover {
-  text-decoration-color: var(--accent-text);
+@media (hover: hover) {
+  .slate-prose a:hover {
+    text-decoration-color: var(--accent-text);
+  }
 }
 .slate-prose ul,
 .slate-prose ol {
@@ -247,9 +263,11 @@
     border-color 0.12s var(--ease),
     transform 0.08s var(--ease);
 }
-.slate-prose ul[data-type="taskList"] li > label:hover input:not(:checked) {
-  border-color: var(--text-secondary);
-  background-color: var(--hover-strong);
+@media (hover: hover) {
+  .slate-prose ul[data-type="taskList"] li > label:hover input:not(:checked) {
+    border-color: var(--text-secondary);
+    background-color: var(--hover-strong);
+  }
 }
 .slate-prose ul[data-type="taskList"] li > label input:active {
   transform: scale(0.88);
@@ -389,8 +407,10 @@
   color: var(--text-secondary);
   font-weight: 400;
 }
-.slate-prose .tableWrapper tbody tr:hover > td {
-  background: var(--row-hover);
+@media (hover: hover) {
+  .slate-prose .tableWrapper tbody tr:hover > td {
+    background: var(--row-hover);
+  }
 }
 .slate-prose .tableWrapper td p,
 .slate-prose .tableWrapper th p {
@@ -440,9 +460,18 @@
   opacity: 0.6;
   transition: opacity 0.12s;
 }
-.editor-code-block:hover .code-block-bar,
+@media (hover: none) {
+  .code-block-bar {
+    opacity: 1;
+  }
+}
 .code-block-bar:focus-within {
   opacity: 1;
+}
+@media (hover: hover) {
+  .editor-code-block:hover .code-block-bar {
+    opacity: 1;
+  }
 }
 .code-block-bar select {
   height: 24px;
@@ -455,8 +484,10 @@
   outline: none;
   cursor: pointer;
 }
-.code-block-bar select:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .code-block-bar select:hover {
+    background: var(--hover-strong);
+  }
 }
 .code-block-bar select option {
   background: var(--bg-elevated);
@@ -471,9 +502,11 @@
   font-size: 12px;
   color: var(--text-secondary);
 }
-.code-block-bar button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .code-block-bar button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .editor-code-block pre {
   margin: 0;
@@ -558,9 +591,11 @@
   border-radius: var(--radius-sm);
   color: var(--icon);
 }
-.editor-toggle-heading button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .editor-toggle-heading button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .editor-toggle-heading button svg {
   transition: transform 0.15s var(--ease);
@@ -621,11 +656,15 @@
 .editor-page-reference > span.is-untitled {
   color: var(--text-tertiary);
 }
-.editor-page-reference:hover {
-  background: var(--hover);
+@media (hover: hover) {
+  .editor-page-reference:hover {
+    background: var(--hover);
+  }
 }
-.editor-page-reference:hover > span {
-  text-decoration-color: var(--text-secondary);
+@media (hover: hover) {
+  .editor-page-reference:hover > span {
+    text-decoration-color: var(--text-secondary);
+  }
 }
 .editor-page-reference:focus-visible {
   outline: 2px solid var(--accent);
@@ -638,9 +677,13 @@
   opacity: 0;
   transition: opacity 0.12s;
 }
-.editor-page-reference:hover > svg:last-child:not(.page-icon),
 .editor-page-reference:focus-visible > svg:last-child:not(.page-icon) {
   opacity: 1;
+}
+@media (hover: hover) {
+  .editor-page-reference:hover > svg:last-child:not(.page-icon) {
+    opacity: 1;
+  }
 }
 .editor-page-reference.is-missing {
   color: var(--text-tertiary);
@@ -650,8 +693,10 @@
 .editor-page-reference.is-missing > span {
   text-decoration: none;
 }
-.editor-page-reference.is-missing:hover {
-  background: none;
+@media (hover: hover) {
+  .editor-page-reference.is-missing:hover {
+    background: none;
+  }
 }
 /* A document page fills the window: the writing area grows into the spare space
    (so a click anywhere below the text lands in the editor), and "Pages inside"
@@ -747,9 +792,11 @@
   font-size: 12px;
   color: var(--text-secondary);
 }
-.pages-inside-head button:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .pages-inside-head button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .editor-reference {
   display: flex;
@@ -812,10 +859,12 @@
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
 }
-.block-controls button:hover,
-.block-controls .block-grip:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .block-controls button:hover,
+  .block-controls .block-grip:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .block-controls .block-grip {
   width: 18px;
@@ -860,13 +909,21 @@
 /* ---------- Menus ---------- */
 /* Invisible click-outside catcher behind editor menus. It's a <button>, so it must opt
    out of the global button hover fill, or hovering outside a menu tints the page. */
-.editor-menu-scrim,
-.editor-menu-scrim:hover {
+.editor-menu-scrim {
   position: fixed;
   inset: 0;
   z-index: 15;
   cursor: default;
   background: transparent;
+}
+@media (hover: hover) {
+  .editor-menu-scrim:hover {
+    position: fixed;
+    inset: 0;
+    z-index: 15;
+    cursor: default;
+    background: transparent;
+  }
 }
 .editor-context-menu,
 .slash-command-menu,
@@ -904,8 +961,10 @@
   opacity: 0.4;
   cursor: default;
 }
-.editor-context-menu > button:disabled:hover {
-  background: none;
+@media (hover: hover) {
+  .editor-context-menu > button:disabled:hover {
+    background: none;
+  }
 }
 .editor-context-menu kbd {
   font: 11px var(--font);
@@ -921,7 +980,7 @@
 }
 .block-menu {
   width: 260px;
-  max-height: min(460px, calc(100vh - 24px));
+  max-height: min(460px, calc(100dvh - 24px));
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar);
@@ -929,9 +988,13 @@
 .editor-context-menu > button svg {
   color: var(--icon);
 }
-.editor-context-menu > button:hover,
 .editor-context-menu > button:focus-visible {
   background: var(--hover-strong);
+}
+@media (hover: hover) {
+  .editor-context-menu > button:hover {
+    background: var(--hover-strong);
+  }
 }
 .editor-context-menu > button.danger,
 .editor-context-menu > button.danger svg {
@@ -1042,8 +1105,10 @@
   border-radius: var(--radius);
   color: var(--text);
 }
-.editor-bubble button:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .editor-bubble button:hover {
+    background: var(--hover-strong);
+  }
 }
 .editor-bubble button.is-active {
   color: var(--accent-text);
@@ -1100,9 +1165,11 @@
   border-radius: var(--radius);
   color: var(--icon);
 }
-.md-tool-group button:hover {
-  background: var(--hover-strong);
-  color: var(--text-strong);
+@media (hover: hover) {
+  .md-tool-group button:hover {
+    background: var(--hover-strong);
+    color: var(--text-strong);
+  }
 }
 .markdown-source-editor .cm-editor {
   min-height: 220px;
@@ -1112,8 +1179,10 @@
   opacity: 0;
   transition: opacity 0.12s;
 }
-.markdown-source-editor .cm-gutters:hover .cm-foldGutter .cm-gutterElement {
-  opacity: 1;
+@media (hover: hover) {
+  .markdown-source-editor .cm-gutters:hover .cm-foldGutter .cm-gutterElement {
+    opacity: 1;
+  }
 }
 .md-status {
   display: flex;
@@ -1193,8 +1262,10 @@
   font-weight: 500;
   color: var(--on-accent);
 }
-.editor-url-input button:hover {
-  background: var(--accent-hover);
+@media (hover: hover) {
+  .editor-url-input button:hover {
+    background: var(--accent-hover);
+  }
 }
 .editor-url-input .editor-image-upload {
   display: flex;
@@ -1213,8 +1284,10 @@
   box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text);
 }
-.editor-image-upload .editor-upload-button:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .editor-image-upload .editor-upload-button:hover {
+    background: var(--hover-strong);
+  }
 }
 .editor-image-upload .editor-upload-button:disabled {
   cursor: wait;
@@ -1269,9 +1342,6 @@
   }
   .slash-command-menu {
     max-width: calc(100vw - 70px);
-  }
-  .slate-prose {
-    font-size: 15px;
   }
   .md-supported {
     display: none;
@@ -1438,8 +1508,10 @@
   font: inherit;
   font-size: 13px;
 }
-.proc-step-badge:hover .proc-step-badge-label {
-  background: color-mix(in srgb, var(--step-color) 26%, transparent);
+@media (hover: hover) {
+  .proc-step-badge:hover .proc-step-badge-label {
+    background: color-mix(in srgb, var(--step-color) 26%, transparent);
+  }
 }
 .proc-step-badge:has(select:focus-visible) .proc-step-badge-label {
   box-shadow: 0 0 0 2px var(--accent-soft), inset 0 0 0 1px var(--accent-border);
@@ -1636,10 +1708,12 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
-.proc-remove:hover,
-.proc-add:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .proc-remove:hover,
+  .proc-add:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 @media (max-width: 760px) {
   .proc-params-row {
@@ -1675,9 +1749,11 @@
   cursor: pointer;
   user-select: none;
 }
-.proc-request-more summary:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .proc-request-more summary:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .proc-request-more[open] summary {
   margin-bottom: 6px;
@@ -1745,9 +1821,11 @@
   color: var(--text-tertiary);
   cursor: pointer;
 }
-.proc-section-tools button:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .proc-section-tools button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .proc-section-count {
   background: var(--hover);
@@ -1756,12 +1834,18 @@
   opacity: 0;
   transition: opacity 0.12s;
 }
-.proc-section-heading:hover .proc-section-run,
 .proc-section-run:focus-visible {
   opacity: 1;
 }
-.proc-section-run:hover {
-  color: var(--accent-text) !important;
+@media (hover: hover) {
+  .proc-section-heading:hover .proc-section-run {
+    opacity: 1;
+  }
+}
+@media (hover: hover) {
+  .proc-section-run:hover {
+    color: var(--accent-text) !important;
+  }
 }
 @media (hover: none) {
   .proc-section-run {
@@ -1788,10 +1872,14 @@
   opacity: 0;
   transition: opacity 0.12s;
 }
-.proc-step:hover .proc-step-tools,
 .proc-step:focus-within .proc-step-tools,
 .proc-step-tools:has([data-state="open"]) {
   opacity: 1;
+}
+@media (hover: hover) {
+  .proc-step:hover .proc-step-tools {
+    opacity: 1;
+  }
 }
 @media (hover: none) {
   .proc-step-tools {
@@ -1809,10 +1897,15 @@
   font-weight: 500;
   color: var(--text-secondary);
 }
-.proc-value-button:hover,
 .proc-value-button[data-state="open"] {
   background: var(--hover-strong);
   color: var(--text);
+}
+@media (hover: hover) {
+  .proc-value-button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 .menu-empty {
   max-width: 240px;
@@ -1841,10 +1934,15 @@
   font-size: 13px;
   color: var(--text-tertiary);
 }
-.proc-add-step-button:hover,
 .proc-add-step-button:focus-visible {
   background: var(--hover);
   color: var(--text);
+}
+@media (hover: hover) {
+  .proc-add-step-button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 .proc-add-step-choices {
   display: grid;
@@ -1885,10 +1983,15 @@
   line-height: 1.35;
   color: var(--text-secondary);
 }
-.proc-add-choice:hover,
 .proc-add-choice:focus-visible {
   outline: none;
   background: color-mix(in srgb, var(--step-color) 10%, transparent);
+}
+@media (hover: hover) {
+  .proc-add-choice:hover {
+    outline: none;
+    background: color-mix(in srgb, var(--step-color) 10%, transparent);
+  }
 }
 .proc-add-step-close {
   grid-row: 1;
@@ -1901,9 +2004,11 @@
   border-radius: 6px;
   color: var(--icon);
 }
-.proc-add-step-close:hover {
-  background: var(--hover-strong);
-  color: var(--text);
+@media (hover: hover) {
+  .proc-add-step-close:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
 }
 @media (max-width: 760px) {
   .proc-add-step-choices {
@@ -1945,8 +2050,10 @@
   box-shadow: inset 0 0 0 1px var(--border-strong);
   background: var(--bg);
 }
-.source-warning button:hover {
-  background: var(--hover-strong);
+@media (hover: hover) {
+  .source-warning button:hover {
+    background: var(--hover-strong);
+  }
 }
 
 /* A playbook has no mode switch: undo / redo sit in a slim row. */
@@ -1968,14 +2075,20 @@
   opacity: 0;
   transition: opacity 0.12s;
 }
-.proc-step:hover .proc-add-detail,
 .proc-step:focus-within .proc-add-detail,
 .proc-add-detail:focus-visible {
   opacity: 1;
 }
-.proc-add-detail:hover {
-  background: var(--hover);
-  color: var(--text);
+@media (hover: hover) {
+  .proc-step:hover .proc-add-detail {
+    opacity: 1;
+  }
+}
+@media (hover: hover) {
+  .proc-add-detail:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
 @media (hover: none) {
   .proc-add-detail {

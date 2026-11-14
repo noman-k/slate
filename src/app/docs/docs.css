@@ -41,9 +41,11 @@
   color: var(--ink-3);
   transition: color 0.15s, border-color 0.15s;
 }
-.docs-toc a:hover {
-  color: var(--ink);
-  border-left-color: var(--line);
+@media (hover: hover) {
+  .docs-toc a:hover {
+    color: var(--ink);
+    border-left-color: var(--line);
+  }
 }
 .docs-toc a[aria-current="location"] {
   font-weight: 500;
@@ -90,8 +92,10 @@
 .docs-main a:not(.landing-button):not(.docs-inline-link) {
   color: var(--accent-text);
 }
-.docs-main a:not(.landing-button):not(.docs-inline-link):hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .docs-main a:not(.landing-button):not(.docs-inline-link):hover {
+    text-decoration: underline;
+  }
 }
 .docs-main :not(pre) > code {
   padding: 1px 5px;
@@ -180,9 +184,11 @@
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.docs-copy:hover {
-  color: var(--ink);
-  background: var(--hover);
+@media (hover: hover) {
+  .docs-copy:hover {
+    color: var(--ink);
+    background: var(--hover);
+  }
 }
 .docs-code {
   margin: 10px 0 0;
@@ -255,8 +261,10 @@
   font-weight: 500;
   color: var(--accent-text) !important;
 }
-.docs-inline-link:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .docs-inline-link:hover {
+    text-decoration: underline;
+  }
 }
 .docs-prompts {
   display: grid;
@@ -319,9 +327,11 @@
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.docs-tabs button:hover {
-  color: var(--ink);
-  background: var(--hover);
+@media (hover: hover) {
+  .docs-tabs button:hover {
+    color: var(--ink);
+    background: var(--hover);
+  }
 }
 .docs-tabs button[aria-selected="true"] {
   color: var(--ink);
@@ -480,8 +490,10 @@
   color: var(--ink);
   cursor: pointer;
 }
-.docs-faq summary:hover {
-  color: var(--accent-text);
+@media (hover: hover) {
+  .docs-faq summary:hover {
+    color: var(--accent-text);
+  }
 }
 .docs-faq details p {
   padding: 0 4px 16px;
