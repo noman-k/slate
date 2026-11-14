@@ -12,7 +12,7 @@
 import { generateAgentKey } from "./agent-keys";
 
 /** What an app may be allowed to do; the same choices as agent keys. */
-export const OAUTH_SCOPES = ["read", "write"] as const;
+export const OAUTH_SCOPES = ["read", "write", "edit"] as const;
 export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 
 /** Seconds an access token lasts (the database sets the same hour). */

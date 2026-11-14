@@ -10,8 +10,9 @@ import { ArrowUpRight, Bot, Check, Copy, KeyRound, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { agentKeyPrefix, generateAgentKey, hashAgentKey } from "@/lib/agent-keys";
+import { AGENT_SCOPES, scopeLabel, type AgentScope } from "@/lib/agent-scopes";
 
-type Scope = "read" | "write";
+type Scope = AgentScope;
 type AgentKey = {
   id: string;
   name: string;
@@ -23,13 +24,6 @@ type AgentKey = {
   /** Set for an app connected by signing in (OAuth), not with a pasted key. */
   client_id?: string | null;
 };
-
-/** What a key lets its agent do, in the words used in the form and the list. */
-const SCOPES: { value: Scope; label: string; hint: string }[] = [
-  { value: "read", label: "Read only", hint: "Search and read pages, databases and playbooks." },
-  { value: "write", label: "Read and create", hint: "Also add new pages, databases and playbooks. Never edits or deletes." },
-];
-
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "never";
 
@@ -142,8 +136,8 @@ export function AgentKeysSection({
         <div>
           <strong>Let an AI agent use {workspaceCount > 1 ? `“${workspaceName}”` : "this workspace"}</strong>
           <p>
-            Agents like Claude can search your pages, read them, query your databases and look up playbooks, and if you
-            allow it, create new pages, databases and playbooks; agents never edit or delete what&apos;s there. Connect an
+            Agents like Claude can search your pages, read them, query your databases and look up playbooks. If you allow
+            it, they can also create new ones, or edit what&apos;s there; nothing is ever deleted for good. Connect an
             app by adding <code className="agent-url">{endpoint}</code> to it and signing in, or create a key for apps that
             need one. Revoke either at any time.
           </p>
@@ -201,7 +195,7 @@ export function AgentKeysSection({
             </label>
             <fieldset className="agent-scope">
               <legend>What it can do</legend>
-              {SCOPES.map((option) => (
+              {AGENT_SCOPES.map((option) => (
                 <label key={option.value} className={scope === option.value ? "is-on" : undefined}>
                   <input type="radio" name="agent-scope" value={option.value} checked={scope === option.value} onChange={() => setScope(option.value)} />
                   <span>
@@ -219,8 +213,8 @@ export function AgentKeysSection({
                   <div>
                     <strong>
                       {key.name}
-                      <span className={`agent-scope-badge ${key.scope === "write" ? "is-write" : ""}`}>
-                        {key.scope === "write" ? "Read and create" : "Read only"}
+                      <span className={`agent-scope-badge ${key.scope === "write" || key.scope === "edit" ? "is-write" : ""} ${key.scope === "edit" ? "is-edit" : ""}`}>
+                        {scopeLabel(key.scope)}
                       </span>
                     </strong>
                     <small>

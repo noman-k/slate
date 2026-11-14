@@ -27,6 +27,9 @@ export async function loadRemoteState(): Promise<WorkspaceState | null> {
   return state;
 }
 
+/** The workspace was saved elsewhere since this tab loaded it (see mergeStates). */
+export class SyncConflictError extends Error {}
+
 /** Saves all related mutations in one transaction and rejects a stale tab's changes. */
 export async function saveRemoteState(
   state: WorkspaceState,
@@ -53,7 +56,7 @@ export async function saveRemoteState(
   });
   if (error) {
     if (error.message.includes("conflict"))
-      throw new Error(
+      throw new SyncConflictError(
         "This workspace changed in another tab. Your local edits are retained; reload before making further changes.",
       );
     throw new Error(`Your changes could not be synced: ${error.message}`);

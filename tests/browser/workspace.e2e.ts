@@ -1157,7 +1157,8 @@ test("settings explain AI agent access and offer agent keys", async ({ page }) =
   await expect(agents).toContainText("Let an AI agent use this workspace");
   // New keys are read-only unless you choose otherwise.
   await expect(agents.getByRole("radio", { name: /Read only/ })).toBeChecked();
-  await expect(agents).toContainText("never edit or delete");
+  await expect(agents).toContainText("nothing is ever deleted for good");
+  await expect(agents.getByRole("radio")).toHaveCount(3);
   await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
   await expect(agents).toContainText("No apps or agent keys for this workspace yet.");
   await expect(agents).toContainText("A key opens only this workspace.");
@@ -1489,4 +1490,54 @@ test("each workspace lists only its own playbooks", async ({ page }) => {
   await page.getByRole("button", { name: /^Workspace: / }).click();
   await page.getByRole("menuitem", { name: /Home|My workspace|Rental/ }).first().click();
   await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toContainText("1");
+});
+test("an agent allowed to edit changes pages and rows, without losing what you're typing", async ({ page, playwright, baseURL }) => {
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const agents = page.getByRole("region", { name: "AI agents" });
+  await agents.getByRole("textbox").fill("Editor");
+  await agents.getByRole("radio", { name: /Read, create and edit/ }).check();
+  await agents.getByRole("button", { name: "Create key" }).click();
+  const key = (await agents.locator(".agent-created code").first().textContent())!.trim();
+  await expect(agents.locator(".agent-keys li", { hasText: "Editor" })).toContainText("Read, create and edit");
+  await page.keyboard.press("Escape");
+
+  const agent = await playwright.request.newContext({ baseURL });
+  const call = async (name: string, args: object) =>
+    (
+      await (
+        await agent.post("/api/mcp", {
+          headers: { Authorization: `Bearer ${key}` },
+          data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } },
+        })
+      ).json()
+    ).result;
+
+  // You're in the middle of writing on one page…
+  await page.goto(`/p/${account!.ids.guide}`);
+  const editor = page.getByLabel("Page content", { exact: true });
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.type(" My own words.");
+  // …while the agent edits another page and a database row.
+  const edited = await call("update_page", {
+    page_id: account!.ids.log,
+    replace: [{ find: "Review outstanding balances", replace_with: "Review balances with the agent" }],
+  });
+  expect(edited.isError).toBe(false);
+  const rows = await call("query_database", { database: "Rent Ledger", limit: 1 });
+  const row = rows.structuredContent.rows[0];
+  const changed = await call("update_database", { database: "Rent Ledger", update_rows: [{ row_id: row.id, values: { Status: "Overdue" } }] });
+  expect(changed.isError).toBe(false);
+  // Your save merges with the agent's changes instead of failing.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText(/changed in another tab/)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByLabel("Page content", { exact: true })).toContainText("My own words.");
+  await page.goto(`/p/${account!.ids.log}`);
+  await expect(page.getByLabel("Page content", { exact: true })).toContainText("Review balances with the agent");
+
+  // Trash is the furthest it goes, and the page can come back.
+  const trashed = await call("trash_page", { page_id: account!.ids.guide });
+  expect(trashed.content[0].text).toContain("can be restored");
+  await agent.dispose();
 });

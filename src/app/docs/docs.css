@@ -599,6 +599,9 @@
 .docs-badge.is-create {
   background: var(--tag-blue-bg);
 }
+.docs-badge.is-edit {
+  background: var(--tag-orange-bg);
+}
 
 /* A long address inside running text may wrap anywhere. */
 .docs-break {

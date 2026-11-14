@@ -46,6 +46,7 @@
 }
 .oauth-consent .agent-scope {
   margin: 0;
+  grid-template-columns: minmax(0, 1fr);
 }
 .oauth-note {
   margin: 0;

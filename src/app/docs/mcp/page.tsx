@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowRight, BookOpen, Eye, KeyRound, Lock, PlusCircle, ShieldCheck, Sparkles, Wrench } from "lucide-react";
+import { ArrowRight, BookOpen, Eye, KeyRound, Lock, Pencil, PlusCircle, ShieldCheck, Sparkles, Trash2, Wrench } from "lucide-react";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { AGENT_TOOLS, type ToolDefinition } from "@/lib/agent-tools";
 import { WRITE_TOOLS } from "@/lib/agent-writes";
+import { EDIT_TOOLS } from "@/lib/agent-edits";
 import { SUPPORTED_PROTOCOLS } from "@/lib/mcp";
 import { REPOSITORY_URL } from "@/lib/project";
 import { LIMITS } from "@/lib/rate-limit";
@@ -140,8 +141,9 @@ const EXAMPLES = [
   { prompt: "Find my notes about the Q3 launch and summarize them.", how: "Searches the workspace, then reads the pages it finds." },
   { prompt: "What does our refund playbook say to do for an order over 30 days old?", how: "Looks up the playbook and walks through its steps." },
   { prompt: "What databases do I have, and what does each one track?", how: "Lists your databases with their properties." },
-  { prompt: "Turn these meeting notes into a page under Projects.", how: "Creates a page (with a key that can create)." },
+  { prompt: "Turn these meeting notes into a page under Projects.", how: "Creates a page (with create access)." },
   { prompt: "Make a database of my vendors with name, phone and contract end date.", how: "Creates a database with those columns and rows." },
+  { prompt: "Mark Unit 4B as paid for November and fix the typo in my move-in checklist.", how: "Edits a database row and a passage of a page (with edit access)." },
 ];
 
 type Schema = {
@@ -201,6 +203,10 @@ function Tool({ tool }: { tool: ToolDefinition }) {
         <span>{tool.title}</span>
         {tool.annotations.readOnlyHint ? (
           <span className="docs-badge"><Eye size={12} /> Read-only</span>
+        ) : tool.annotations.destructiveHint ? (
+          <span className="docs-badge is-edit"><Trash2 size={12} /> Moves to Trash</span>
+        ) : EDIT_TOOLS.includes(tool) ? (
+          <span className="docs-badge is-edit"><Pencil size={12} /> Edits</span>
         ) : (
           <span className="docs-badge is-create"><PlusCircle size={12} /> Creates</span>
         )}
@@ -242,9 +248,9 @@ export default async function McpDocs() {
               to copy.
             </p>
             <ul className="docs-facts" aria-label="At a glance">
-              <li><Eye size={15} /> <span><strong>Read-only by default.</strong> A key can also create; nothing ever edits or deletes.</span></li>
+              <li><Eye size={15} /> <span><strong>Read-only by default.</strong> You can let an app create, or edit too; nothing is deleted for good.</span></li>
               <li><KeyRound size={15} /> <span><strong>Sign in to connect.</strong> One workspace per app; disconnect any time.</span></li>
-              <li><Wrench size={15} /> <span><strong>{AGENT_TOOLS.length + WRITE_TOOLS.length} tools</strong>: {AGENT_TOOLS.length} to read, {WRITE_TOOLS.length} to create.</span></li>
+              <li><Wrench size={15} /> <span><strong>{AGENT_TOOLS.length + WRITE_TOOLS.length + EDIT_TOOLS.length} tools</strong>: {AGENT_TOOLS.length} to read, {WRITE_TOOLS.length} to create, {EDIT_TOOLS.length} to edit.</span></li>
             </ul>
             <div className="docs-endpoint">
               <span>Endpoint</span>
@@ -262,8 +268,8 @@ export default async function McpDocs() {
               </li>
               <li>
                 <strong>Sign in and allow it.</strong> The app opens Slate. Pick the workspace it should use and what it can
-                do (<em>Read only</em>, or <em>Read and create</em> to let it add pages, databases and playbooks), then choose{" "}
-                <em>Allow access</em>.
+                do (<em>Read only</em>; <em>Read and create</em> to let it add pages, databases and playbooks; or{" "}
+                <em>Read, create and edit</em> to let it change them too), then choose <em>Allow access</em>.
               </li>
               <li>
                 <strong>Ask about your workspace.</strong> For example:
@@ -316,13 +322,25 @@ export default async function McpDocs() {
             <div className="docs-tools">
               {WRITE_TOOLS.map((tool) => <Tool key={tool.name} tool={tool} />)}
             </div>
+            <h3 className="docs-tools-group">Editing (apps and keys allowed to “Read, create and edit”)</h3>
+            <p>
+              These change what&apos;s already there. Text edits replace exact passages or add to the end, and leave embedded
+              subpages and databases where they are. A page is only changed if nobody changed it since the agent read it,
+              so edits you&apos;re making aren&apos;t overwritten. A playbook is checked like a new one, and can&apos;t be
+              changed while a run of it is in progress. Removing moves pages to the Trash, where you can restore them.
+            </p>
+            <div className="docs-tools">
+              {EDIT_TOOLS.map((tool) => <Tool key={tool.name} tool={tool} />)}
+            </div>
           </section>
 
           <section id="security" aria-labelledby="security-title">
             <h2 id="security-title">Security &amp; privacy</h2>
             <ul className="docs-points">
-              <li><Eye size={16} /><span><strong>Read-only unless you choose otherwise.</strong> Apps and keys can only read unless you choose <em>Read and create</em>. Even then, agents only add new pages, databases and playbooks: no tool edits or deletes anything.</span></li>
-              <li><PlusCircle size={16} /><span><strong>Limits on creating.</strong> An app or key can create at most 20 things a minute, and one database at most 200 rows at once. Agent text is kept as text: it can&apos;t embed other pages or databases.</span></li>
+              <li><Eye size={16} /><span><strong>Read-only unless you choose otherwise.</strong> Apps and keys can only read unless you choose <em>Read and create</em> (adds new pages, databases and playbooks) or <em>Read, create and edit</em> (also changes them). Connections and keys you made before keep what they had.</span></li>
+              <li><Trash2 size={16} /><span><strong>Nothing is deleted for good.</strong> The most an agent can do is move pages to the Trash, where you can restore them.</span></li>
+              <li><Pencil size={16} /><span><strong>Your edits win.</strong> An agent can&apos;t overwrite a page that changed since it read it. If it changes something while you&apos;re editing elsewhere in Slate, both sets of changes are kept; if you both changed the same page, yours is.</span></li>
+              <li><PlusCircle size={16} /><span><strong>Limits on creating.</strong> An app or key can create or change at most 20 things a minute, and one database at most 200 rows at once. Agent text is kept as text: it can&apos;t embed other pages or databases.</span></li>
               <li><Lock size={16} /><span><strong>Scoped to one workspace.</strong> An app opens only the workspace you picked when you allowed it, and a key only the workspace it was made in: never your other workspaces or anyone else&apos;s. Pages in Trash aren&apos;t visible.</span></li>
               <li><KeyRound size={16} /><span><strong>Disconnect any time.</strong> Settings › AI agents lists the workspace&apos;s connected apps and keys with when each was last used. Disconnecting an app or revoking a key stops it on its next request.</span></li>
               <li><ShieldCheck size={16} /><span><strong>Signing in, not sharing a secret.</strong> A connected app gets an access token that lasts an hour and is renewed as it&apos;s used; your password never reaches the app. Slate uses OAuth 2.1 with PKCE, and only sends people back to an address the app registered.</span></li>
@@ -343,7 +361,8 @@ export default async function McpDocs() {
                 ["Slate doesn't show up in my client", "Restart the client after editing its config, and check the file is valid JSON (a missing comma is easy to miss). With a key, try the curl check under Other clients: if that lists the tools, the key and endpoint are fine."],
                 ["The agent can't find a page", "Agents see what's in your workspace now, apart from pages in Trash. Ask it to search by a word from the page's title, or give it the page's link."],
                 ["“Unable to read the workspace right now” (503)", "Slate couldn't reach its database for a moment. Try again shortly."],
-                ["“This agent key can only read”", "It was allowed Read only. Disconnect the app (or revoke the key) in Settings › AI agents and connect again choosing Read and create."],
+                ["“This agent key can only read” or “can't change existing pages”", "It was allowed less than that. Disconnect the app (or revoke the key) in Settings › AI agents and connect again choosing Read and create, or Read, create and edit."],
+                ["“Someone changed that page since you read it”", "The page was edited (by you or another tab) after the agent read it, so nothing was changed. Ask the agent to try again: it reads the page and redoes the edit."],
                 ["A new page doesn't show in Slate yet", "Slate checks for changes every few seconds while the tab is open, and right away when you come back to it. If you were in the middle of editing, it waits until your changes are saved."],
                 ["“Too many requests” (429)", `Each app or key can make ${LIMITS.MCP_KEY_LIMITER} requests a minute, and each address ${LIMITS.MCP_IP_LIMITER}. Wait the number of seconds in the \`Retry-After\` header (the message says it too), then carry on. Normal use never gets near this.`],
               ].map(([q, a]) => (
@@ -360,10 +379,10 @@ export default async function McpDocs() {
             <dl className="docs-specs">
               <div><dt>Endpoint</dt><dd><code>{url}</code></dd></div>
               <div><dt>Transport</dt><dd>Streamable HTTP. One JSON-RPC message per <code>POST</code>, answered with JSON; no sessions and no server-sent stream (<code>GET</code> answers 405).</dd></div>
-              <div><dt>Authentication</dt><dd>OAuth 2.1 per the MCP authorization spec: a <code>401</code> carries <code>WWW-Authenticate</code> with <code>resource_metadata</code>; authorization code with PKCE (<code>S256</code>), public clients, Dynamic Client Registration, rotating refresh tokens. Scopes <code>read</code> and <code>write</code>. Or an agent key: <code>Authorization: Bearer slate_…</code>, 43 random characters after the prefix.</dd></div>
+              <div><dt>Authentication</dt><dd>OAuth 2.1 per the MCP authorization spec: a <code>401</code> carries <code>WWW-Authenticate</code> with <code>resource_metadata</code>; authorization code with PKCE (<code>S256</code>), public clients, Dynamic Client Registration, rotating refresh tokens. Scopes <code>read</code>, <code>write</code> and <code>edit</code>. Or an agent key: <code>Authorization: Bearer slate_…</code>, 43 random characters after the prefix.</dd></div>
               <div><dt>Discovery</dt><dd><code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code></dd></div>
               <div><dt>Protocol versions</dt><dd>{SUPPORTED_PROTOCOLS.map((v, i) => <span key={v}>{i ? ", " : ""}<code>{v}</code></span>)}</dd></div>
-              <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. A key sees the reading tools (<code>readOnlyHint</code>), plus the creating ones (<code>readOnlyHint: false</code>, <code>destructiveHint: false</code>) when its scope allows.</dd></div>
+              <div><dt>Capabilities</dt><dd>Tools (<code>tools/list</code>, <code>tools/call</code>) and <code>ping</code>. A key sees the reading tools (<code>readOnlyHint</code>), plus the creating ones with scope <code>write</code>, plus the editing ones with scope <code>edit</code> (<code>trash_page</code> is marked <code>destructiveHint</code>).</dd></div>
               <div><dt>Rate limits</dt><dd>{LIMITS.MCP_KEY_LIMITER} requests a minute per key and {LIMITS.MCP_IP_LIMITER} per IP address; creating, {LIMITS.MCP_WRITE_LIMITER} a minute per key. Over a limit: <code>429</code> with <code>Retry-After</code>.</dd></div>
               <div><dt>Server name</dt><dd><code>slate</code></dd></div>
               <div><dt>Source</dt><dd>The server is <code>src/app/api/mcp</code> and <code>src/lib/mcp.ts</code>; the tools are <code>src/lib/agent-tools.ts</code> in the <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub repository</a>.</dd></div>

@@ -2,14 +2,9 @@
 import { useState } from 'react';
 import { Check, LoaderCircle } from 'lucide-react';
 import { hashAgentKey } from '@/lib/agent-keys';
-import { newAuthorizationCode, redirectWith, type OAuthScope } from '@/lib/oauth';
+import { newAuthorizationCode, redirectWith } from '@/lib/oauth';
+import { AGENT_SCOPES, type AgentScope } from '@/lib/agent-scopes';
 import { getSupabaseClient } from '@/lib/supabase/client';
-
-/** The same choices, in the same words, as making a key in Settings › AI agents. */
-const SCOPES: { value: OAuthScope; label: string; hint: string }[] = [
-  { value: 'read', label: 'Read only', hint: 'Search and read pages, databases and playbooks.' },
-  { value: 'write', label: 'Read and create', hint: 'Also add new pages, databases and playbooks. Never edits or deletes.' },
-];
 
 export function ConsentForm(props: {
   clientId: string;
@@ -22,7 +17,7 @@ export function ConsentForm(props: {
   email: string;
 }) {
   const [workspace, setWorkspace] = useState(props.defaultWorkspace);
-  const [scope, setScope] = useState<OAuthScope>('read');
+  const [scope, setScope] = useState<AgentScope>('read');
   const [status, setStatus] = useState<'idle' | 'busy' | 'done' | 'cancelled'>('idle');
   const [error, setError] = useState('');
 
@@ -88,7 +83,7 @@ export function ConsentForm(props: {
       )}
       <fieldset className="agent-scope">
         <legend>What {props.appName} can do</legend>
-        {SCOPES.map((option) => (
+        {AGENT_SCOPES.map((option) => (
           <label key={option.value} className={scope === option.value ? 'is-on' : undefined}>
             <input type="radio" name="scope" value={option.value} checked={scope === option.value} onChange={() => setScope(option.value)} />
             <span>

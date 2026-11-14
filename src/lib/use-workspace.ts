@@ -2,13 +2,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkspaceState, SaveStatus } from "./types";
 import { normalizePageIcon } from "@/components/page-icon";
+import { toast } from "sonner";
 import {
   isSupabaseConfigured,
   loadRemoteState,
   saveRemoteState,
   getRemoteIdentity,
   loadRemoteRevision,
+  SyncConflictError,
 } from "./persistence";
+import { mergeStates } from "./merge";
 /** How often an idle, visible tab checks for changes made elsewhere. */
 const CHECK_EVERY_MS = 20_000;
 /** Page icons are line icons only: convert emoji (and the old "file" marker). */
@@ -150,10 +153,36 @@ export function useWorkspace() {
     saving.current = true;
     setStatus("saving");
     try {
+      let merges = 0;
       do {
         queued.current = false;
         const snapshot = current.current;
-        await saveRemoteState(snapshot, persisted.current, owner.current);
+        try {
+          await saveRemoteState(snapshot, persisted.current, owner.current);
+        } catch (problem) {
+          // Saved elsewhere meanwhile (another tab, or an AI agent): fold those changes in,
+          // keeping this tab's own, and save again.
+          if (!(problem instanceof SyncConflictError) || merges++ >= 3 || !persisted.current) throw problem;
+          const remote = await loadRemoteState();
+          const identity = getRemoteIdentity();
+          if (!remote || identity.userId !== owner.current) throw problem;
+          const shown = withLineIcons(remote);
+          const { state: merged, overlaps } = mergeStates(persisted.current, current.current, shown);
+          baseRevision.current = identity.revision;
+          persisted.current = shown;
+          current.current = merged;
+          setState(merged);
+          if (overlaps.length) {
+            const names = overlaps
+              .map((pageId) => merged.pages.find((page) => page.id === pageId)?.title || "Untitled")
+              .slice(0, 3)
+              .map((title) => `“${title}”`)
+              .join(", ");
+            toast(`${names} also changed elsewhere (another tab or an AI agent) while you edited. Your version was kept.`);
+          }
+          queued.current = true;
+          continue;
+        }
         const savedIdentity = getRemoteIdentity();
         if (savedIdentity.userId === owner.current)
           baseRevision.current = savedIdentity.revision;
@@ -225,7 +254,7 @@ export function useWorkspace() {
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [save, journal]);
-  // Changes made elsewhere (another tab, or an AI agent creating pages) show up in an idle
+  // Changes made elsewhere (another tab, or an AI agent creating or editing pages) show up in an idle
   // tab: when it's visible, it checks the account's revision now and then and on focus, and
   // loads the workspace again only if it moved and nothing here is waiting to be saved.
   useEffect(() => {

@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic';
 /**
  * Slate's MCP endpoint: an AI agent connects here with an agent key (made in Settings ›
  * AI agents) or an OAuth access token (an app the person connected by signing in; see
- * src/lib/oauth.ts), and gets tools over one of that person's workspaces: reading for every key, and creating
- * pages, databases and playbooks for keys allowed to. Stateless JSON over
+ * src/lib/oauth.ts), and gets tools over one of that person's workspaces: reading for every key, creating
+ * pages, databases and playbooks for keys allowed to, and editing them for keys allowed to edit. Stateless JSON over
  * Streamable HTTP: one JSON-RPC message per POST.
  */
 const headers = { ...CORS_HEADERS, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   try {
     const reply = await handleMcpMessage(message, {
       load: async () => state,
-      scope: agent?.scope === 'write' ? 'write' : 'read',
+      scope: agent?.scope === 'edit' ? 'edit' : agent?.scope === 'write' ? 'write' : 'read',
       create: async (planned) => {
         const limited = await rateLimit('MCP_WRITE_LIMITER', keyHash);
         if (!limited.ok)
@@ -79,6 +79,21 @@ export async function POST(request: Request) {
           if (/invalid agent key/i.test(failed.message)) throw new ToolError('This agent key or token is not valid, has expired, or was revoked.');
           if (/workspace|page|databases can be filled/i.test(failed.message)) throw new ToolError(`That can't be created here: ${failed.message}.`);
           throw new ToolError('Slate couldn’t save that just now. Nothing was created; try again in a moment.');
+        }
+        return `${origin}/p/${planned.pageId}`;
+      },
+      edit: async (planned) => {
+        const limited = await rateLimit('MCP_WRITE_LIMITER', keyHash);
+        if (!limited.ok)
+          throw new ToolError(`This key has made a lot of changes in the last minute (at most ${limited.limit}). Nothing was changed; wait ${limited.retryAfter} seconds, then try again.`);
+        const { error: failed } = await supabase.rpc('agent_update', { p_key_hash: keyHash, p_edit: planned.edit });
+        if (failed) {
+          if (/can't edit/i.test(failed.message)) throw new ToolError('This agent key can’t change existing pages.');
+          if (/invalid agent key/i.test(failed.message)) throw new ToolError('This agent key or token is not valid, has expired, or was revoked.');
+          if (/changed since it was read/i.test(failed.message))
+            throw new ToolError('Someone changed that page since you read it. Nothing was changed; read it again and redo the edit.');
+          if (/workspace/i.test(failed.message)) throw new ToolError(`That can't be changed here: ${failed.message}.`);
+          throw new ToolError('Slate couldn’t save that just now. Nothing was changed; try again in a moment.');
         }
         return `${origin}/p/${planned.pageId}`;
       },

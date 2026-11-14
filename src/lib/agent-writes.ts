@@ -32,16 +32,16 @@ export interface Planned {
   pageId: string;
 }
 
-const CREATES = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const;
-const TITLE_MAX = 200;
-const TEXT_MAX = 100_000;
-const MAX_PROPERTIES = 30;
-const MAX_RECORDS = 200;
+export const CREATES = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const;
+export const TITLE_MAX = 200;
+export const TEXT_MAX = 100_000;
+export const MAX_PROPERTIES = 30;
+export const MAX_RECORDS = 200;
 const MAX_SECTIONS = 30;
 const MAX_STEPS = 100;
 
-const AGENT_PROPERTY_TYPES = ["text", "number", "currency", "checkbox", "date", "select", "multi_select", "status", "url", "email", "phone"] as const;
-type AgentPropertyType = (typeof AGENT_PROPERTY_TYPES)[number];
+export const AGENT_PROPERTY_TYPES = ["text", "number", "currency", "checkbox", "date", "select", "multi_select", "status", "url", "email", "phone"] as const;
+export type AgentPropertyType = (typeof AGENT_PROPERTY_TYPES)[number];
 const STEP_KINDS = ["check", "ask", "say", "decide", "call", "finish"] as const;
 const STEP_TYPE: Record<(typeof STEP_KINDS)[number], StepAttrs["step"]> = {
   check: "check",
@@ -208,7 +208,7 @@ export const isWriteTool = (name: string) => WRITE_TOOLS.some((tool) => tool.nam
 
 /* ---------- Shared checks ---------- */
 
-const text = (value: unknown, what: string, max: number, required = false) => {
+export const text = (value: unknown, what: string, max: number, required = false) => {
   if (value === undefined || value === null || value === "") {
     if (required) throw new ToolError(`Add ${what}.`);
     return "";
@@ -219,13 +219,13 @@ const text = (value: unknown, what: string, max: number, required = false) => {
   if (trimmed.length > max) throw new ToolError(`${capital(what)} is too long (at most ${max.toLocaleString("en")} characters).`);
   return trimmed;
 };
-const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const list = (value: unknown, what: string): unknown[] => {
+export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+export const list = (value: unknown, what: string): unknown[] => {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) throw new ToolError(`${capital(what)} must be a list.`);
   return value;
 };
-const record = (value: unknown, what: string): Record<string, unknown> => {
+export const record = (value: unknown, what: string): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ToolError(`Each of ${what} must be an object.`);
   return value as Record<string, unknown>;
 };
@@ -308,7 +308,7 @@ function createPage(context: Context, args: Record<string, unknown>): Planned {
 
 /* ---------- create_database ---------- */
 
-function cell(type: PropertyType, raw: unknown, column: string, row: number): CellValue {
+export function cell(type: PropertyType, raw: unknown, column: string, row: number): CellValue {
   const where = `“${column}” in row ${row + 1}`;
   if (raw === null || raw === undefined || raw === "") return null;
   switch (type) {
@@ -446,11 +446,16 @@ function target(raw: unknown, sections: string[], what: string) {
   return match;
 }
 
-function createPlaybook(context: Context, args: Record<string, unknown>): Planned {
-  const title = text(args.title, "a title", TITLE_MAX, true);
-  const whenToUse = text(args.when_to_use, "when_to_use", 500);
-  const where = placement(context, args.parent_page_id);
-  const { newId } = context;
+/** A checked playbook from an agent's definition (shared by create_playbook and update_playbook). */
+export interface BuiltPlaybook {
+  model: PlaybookModel;
+  sections: BuilderSection[];
+  params: Param[];
+  tips: string[];
+  stepCount: number;
+}
+
+export function buildPlaybook(args: Record<string, unknown>, newId: () => string, verb: "created" | "changed"): BuiltPlaybook {
 
   const params: Param[] = list(args.inputs, "inputs").map((raw, index) => {
     const input = record(raw, "the inputs");
@@ -545,10 +550,22 @@ function createPlaybook(context: Context, args: Record<string, unknown>): Planne
   const problems = issues.filter((i) => i.level === "warning");
   if (problems.length)
     throw new ToolError(
-      `The playbook wasn't created; please fix:\n${problems.map((p) => `- ${p.at}: ${p.message}`).join("\n")}` +
+      `The playbook wasn't ${verb}; please fix:\n${problems.map((p) => `- ${p.at}: ${p.message}`).join("\n")}` +
         (params.length ? `\nInputs are named: ${params.map((p) => p.name).join(", ")}.` : ""),
     );
   const tips = issues.filter((i) => i.level === "tip").map((t) => `${t.at}: ${t.message}`);
+  return { model, sections, params, tips, stepCount: sections.reduce((n, s) => n + s.steps.length, 0) };
+}
+
+/** The "When to use" line, as the builder writes it. */
+export const whenToUseLine = (value: string) => (value ? (/^when to use/i.test(value) ? value : `When to use: ${value}`) : "");
+
+function createPlaybook(context: Context, args: Record<string, unknown>): Planned {
+  const title = text(args.title, "a title", TITLE_MAX, true);
+  const whenToUse = text(args.when_to_use, "when_to_use", 500);
+  const where = placement(context, args.parent_page_id);
+  const { model, sections, params, tips, stepCount } = buildPlaybook(args, context.newId, "created");
+  const { newId } = context;
 
   const creation = emptyCreation();
   const id = newId();
@@ -557,10 +574,9 @@ function createPlaybook(context: Context, args: Record<string, unknown>): Planne
     title,
     kind: "document",
     icon: "icon:compass:blue",
-    description: whenToUse ? (/^when to use/i.test(whenToUse) ? whenToUse : `When to use: ${whenToUse}`) : "",
+    description: whenToUseLine(whenToUse),
     markdown: serializePlaybook(model),
   });
-  const stepCount = sections.reduce((n, s) => n + s.steps.length, 0);
   return {
     creation,
     pageId: id,
