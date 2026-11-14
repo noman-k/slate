@@ -4634,6 +4634,18 @@ section.is-folded .section-toggle svg {
   }
 }
 /* Link from Settings › AI agents to the public setup guide (/docs/mcp). */
+/* Which workspace a key reaches, under the AI agents intro. */
+.settings-note p.agent-boundary {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+}
+.agent-boundary svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
 .agent-guide {
   display: inline-flex;
   align-items: center;

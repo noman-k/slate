@@ -261,7 +261,8 @@ export default async function McpDocs() {
             <h2 id="quick-start-title">Quick start</h2>
             <ol className="docs-quick">
               <li>
-                <strong>Create a key.</strong> In Slate, open <em>Settings › AI agents</em>, name the key after the agent
+                <strong>Create a key.</strong> In Slate, switch to the workspace the agent should use and open{" "}
+                <em>Settings › AI agents</em>. Name the key after the agent
                 that will use it (say, “Claude on my laptop”), choose what it can do (<em>Read only</em>, or{" "}
                 <em>Read and create</em> to let it add pages, databases and playbooks) and choose <em>Create key</em>. Copy it:
                 it&apos;s shown only once.
@@ -323,8 +324,8 @@ export default async function McpDocs() {
             <ul className="docs-points">
               <li><Eye size={16} /><span><strong>Read-only unless you choose otherwise.</strong> Keys can only read unless created with <em>Read and create</em>. Even then, agents only add new pages, databases and playbooks: no tool edits or deletes anything.</span></li>
               <li><PlusCircle size={16} /><span><strong>Limits on creating.</strong> A key can create at most 20 things a minute, and one database at most 200 rows at once. Agent text is kept as text: it can&apos;t embed other pages or databases.</span></li>
-              <li><Lock size={16} /><span><strong>Scoped to your account.</strong> A key reads every workspace in the account that created it, and nothing else. Pages in Trash aren&apos;t visible.</span></li>
-              <li><KeyRound size={16} /><span><strong>One key per agent, revocable.</strong> Settings › AI agents lists your keys with when each was last used. Revoking one stops it on the agent&apos;s next request.</span></li>
+              <li><Lock size={16} /><span><strong>Scoped to one workspace.</strong> A key opens only the workspace it was made in (in that workspace&apos;s Settings), never your other workspaces or anyone else&apos;s. Pages in Trash aren&apos;t visible.</span></li>
+              <li><KeyRound size={16} /><span><strong>One key per agent, revocable.</strong> Settings › AI agents lists the workspace&apos;s keys with when each was last used. Revoking one stops it on the agent&apos;s next request.</span></li>
               <li><ShieldCheck size={16} /><span><strong>Stored as a hash.</strong> Slate keeps only a fingerprint of each key, which is why it&apos;s shown once. If you lose it, revoke it and create another.</span></li>
               <li><KeyRound size={16} /><span><strong>Treat a key like a password.</strong> Keep it out of shared files and Git; prefer an environment variable where your client supports one.</span></li>
               <li><ShieldCheck size={16} /><span><strong>Your content is data, not instructions.</strong> Slate labels page content that way for the agent, but agents can still be swayed by what they read, so check before acting on anything important.</span></li>

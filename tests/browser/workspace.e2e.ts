@@ -1159,7 +1159,8 @@ test("settings explain AI agent access and offer agent keys", async ({ page }) =
   await expect(agents.getByRole("radio", { name: /Read only/ })).toBeChecked();
   await expect(agents).toContainText("never edit or delete");
   await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
-  await expect(agents).toContainText("No agent keys yet.");
+  await expect(agents).toContainText("No agent keys for this workspace yet.");
+  await expect(agents).toContainText("A key opens only this workspace.");
   await expect(agents.getByRole("link", { name: /Setup guide/ })).toHaveAttribute("href", "/docs/mcp");
   // About: where to ask about the account and its data.
   await expect(page.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact?topic=delete");
@@ -1419,5 +1420,54 @@ test("an agent with a 'Read and create' key adds a page, a database and a playbo
   await page.goto(playbook.structuredContent.url);
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Move-out check");
   await expect(page.getByRole("button", { name: "Run", exact: true })).toBeVisible();
+  await agent.dispose();
+});
+
+test("an agent key opens only the workspace it was made in", async ({ page, playwright, baseURL }) => {
+  const settings = () => page.getByRole("button", { name: "Settings", exact: true }).click();
+  const agents = page.getByRole("region", { name: "AI agents" });
+  const makeKey = async (name: string) => {
+    await settings();
+    await agents.getByRole("textbox").fill(name);
+    await agents.getByRole("button", { name: "Create key" }).click();
+    const key = (await agents.locator(".agent-created code").first().textContent())!.trim();
+    await page.keyboard.press("Escape");
+    return key;
+  };
+  const rental = await makeKey("Rental agent");
+  // A second workspace, with a page of its own.
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: "Create workspace" }).click();
+  await page.getByLabel("Workspace name").fill("Side project");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
+  const start = page.getByLabel("Start this page");
+  if (await start.count()) await start.getByRole("button", { name: /^(Empty|Blank|Page)/ }).first().click().catch(() => {});
+  await page.getByLabel("Page title", { exact: true }).fill("Secret plans");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  // Settings here are this workspace's: none of its keys yet, and a word about the other's.
+  await settings();
+  await expect(agents).toContainText("Let an AI agent use “Side project”");
+  await expect(agents).toContainText("No agent keys for this workspace yet.");
+  await expect(agents).toContainText("1 key belongs to your other workspaces");
+  await expect(agents.locator(".agent-keys")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  const side = await makeKey("Side agent");
+
+  const agent = await playwright.request.newContext({ baseURL });
+  /** How many pages a search with this key finds. */
+  const found = async (key: string, query: string) =>
+    (
+      await (
+        await agent.post("/api/mcp", {
+          headers: { Authorization: `Bearer ${key}` },
+          data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "search_workspace", arguments: { query } } },
+        })
+      ).json()
+    ).result.structuredContent.total as number;
+  expect(await found(rental, "Rent Ledger")).toBeGreaterThan(0);
+  expect(await found(rental, "Secret plans")).toBe(0);
+  expect(await found(side, "Secret plans")).toBe(1);
+  expect(await found(side, "Rent Ledger")).toBe(0);
   await agent.dispose();
 });

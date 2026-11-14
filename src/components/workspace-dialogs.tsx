@@ -668,7 +668,13 @@ function SettingsDialog({
             <ThemeSwitcher />
           </div>
         </section>
-        <AgentKeysSection />
+        {currentWorkspace && (
+          <AgentKeysSection
+            key={currentWorkspace.id}
+            workspace={currentWorkspace}
+            workspaceCount={state.workspaces.length}
+          />
+        )}
         <section className="settings-section">
           <h3>Account</h3>
           <>
@@ -740,8 +746,8 @@ function SettingsDialog({
             <div className="danger-confirm">
               <strong>Delete “{currentWorkspace?.name}”?</strong>
               <p>
-                This permanently removes the workspace and all of its pages. It
-                can’t be undone.
+                This permanently removes the workspace and all of its pages, and
+                stops any AI agent keys made for it. It can’t be undone.
               </p>
               {state.workspaces.length < 2 && (
                 <small>Create another workspace before deleting your last one.</small>

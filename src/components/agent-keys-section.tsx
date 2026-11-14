@@ -1,17 +1,26 @@
 "use client";
 /**
  * Settings › AI agents: keys that let an AI agent (Claude, or anything that speaks MCP)
- * read this workspace. A key is made here, shown once, stored only as a hash, and can be
- * revoked at any time.
+ * use this workspace. Each key belongs to one workspace and can't reach any other, so
+ * the list here is this workspace's keys. A key is made here, shown once, stored only as
+ * a hash, and can be revoked at any time.
  */
 import { useCallback, useEffect, useState } from "react";
-import { ArrowUpRight, Bot, Check, Copy, KeyRound } from "lucide-react";
+import { ArrowUpRight, Bot, Check, Copy, KeyRound, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { agentKeyPrefix, generateAgentKey, hashAgentKey } from "@/lib/agent-keys";
 
 type Scope = "read" | "write";
-type AgentKey = { id: string; name: string; key_prefix: string; created_at: string; last_used_at: string | null; scope?: Scope };
+type AgentKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  scope?: Scope;
+  workspace_id: string;
+};
 
 /** What a key lets its agent do, in the words used in the form and the list. */
 const SCOPES: { value: Scope; label: string; hint: string }[] = [
@@ -49,8 +58,18 @@ function CopyField({ label, value, mono = true }: { label: string; value: string
   );
 }
 
-export function AgentKeysSection() {
-  const [keys, setKeys] = useState<AgentKey[] | null>(null);
+export function AgentKeysSection({
+  workspace,
+  workspaceCount,
+}: {
+  workspace: { id: string; name: string };
+  /** How many workspaces the person has: with more than one, say which this is. */
+  workspaceCount: number;
+}) {
+  const [allKeys, setKeys] = useState<AgentKey[] | null>(null);
+  const keys = allKeys?.filter((key) => key.workspace_id === workspace.id) ?? null;
+  const elsewhere = (allKeys?.length ?? 0) - (keys?.length ?? 0);
+  const workspaceName = workspace.name || "Untitled workspace";
   const [name, setName] = useState("Claude");
   const [scope, setScope] = useState<Scope>("read");
   const [created, setCreated] = useState<{ name: string; key: string } | null>(null);
@@ -62,7 +81,7 @@ export function AgentKeysSection() {
   const refresh = useCallback(async () => {
     const { data, error } = await (await client())
       .from("agent_keys")
-      .select("id,name,key_prefix,created_at,last_used_at,scope")
+      .select("id,name,key_prefix,created_at,last_used_at,scope,workspace_id")
       .is("revoked_at", null)
       .order("created_at", { ascending: false });
     if (error) {
@@ -80,10 +99,21 @@ export function AgentKeysSection() {
     const key = generateAgentKey();
     const { error } = await (await client())
       .from("agent_keys")
-      .insert({ name: name.trim(), key_hash: await hashAgentKey(key), key_prefix: agentKeyPrefix(key), scope });
+      .insert({
+        name: name.trim(),
+        key_hash: await hashAgentKey(key),
+        key_prefix: agentKeyPrefix(key),
+        scope,
+        workspace_id: workspace.id,
+      });
     setBusy(false);
     if (error) {
-      toast.error("Couldn't create the key. Try again.");
+      // A workspace made a moment ago may not have reached the server yet.
+      toast.error(
+        error.code === "23503" || error.code === "42501"
+          ? "This workspace hasn't finished saving. Try again in a moment."
+          : "Couldn't create the key. Try again.",
+      );
       return;
     }
     setCreated({ name: name.trim(), key });
@@ -96,7 +126,7 @@ export function AgentKeysSection() {
     setConfirming(null);
     if (error) toast.error("Couldn't revoke the key. Try again.");
     else {
-      toast("Key revoked — agents using it can no longer read this workspace");
+      toast(`Key revoked — agents using it can no longer use ${workspaceName}`);
       void refresh();
     }
   };
@@ -107,11 +137,17 @@ export function AgentKeysSection() {
       <div className="settings-note">
         <Bot size={16} />
         <div>
-          <strong>Let an AI agent use this workspace</strong>
+          <strong>Let an AI agent use {workspaceCount > 1 ? `“${workspaceName}”` : "this workspace"}</strong>
           <p>
             Agents like Claude can search your pages, read them, query your databases and look up playbooks. A key can
             also let them create new pages, databases and playbooks; agents never edit or delete what&apos;s there. Each
             agent uses its own key, which you can revoke at any time.
+          </p>
+          <p className="agent-boundary">
+            <Lock size={13} aria-hidden />
+            {workspaceCount > 1
+              ? "A key opens only the workspace it was made in. Your other workspaces stay out of its reach."
+              : "A key opens only this workspace. Any workspace you add later stays out of its reach."}
           </p>
           <a className="agent-guide" href="/docs/mcp" target="_blank" rel="noreferrer">
             Setup guide for Claude, Cursor, VS Code and more
@@ -123,7 +159,7 @@ export function AgentKeysSection() {
           {created && (
             <div className="agent-created" role="status">
               <strong>
-                <KeyRound size={15} /> “{created.name}” key — copy it now, it won&apos;t be shown again
+                <KeyRound size={15} /> “{created.name}” key for {workspaceName} — copy it now, it won&apos;t be shown again
               </strong>
               <CopyField label="Key" value={created.key} />
               <CopyField label="Endpoint (MCP)" value={endpoint} />
@@ -205,7 +241,15 @@ export function AgentKeysSection() {
               ))}
             </ul>
           )}
-          {keys && keys.length === 0 && !created && <p className="settings-muted">No agent keys yet.</p>}
+          {keys && keys.length === 0 && !created && (
+            <p className="settings-muted">No agent keys for this workspace yet.</p>
+          )}
+          {elsewhere > 0 && (
+            <p className="settings-muted">
+              {elsewhere === 1 ? "1 key belongs" : `${elsewhere} keys belong`} to your other workspaces. Switch to a
+              workspace to see and revoke its keys.
+            </p>
+          )}
       </>
     </section>
   );
