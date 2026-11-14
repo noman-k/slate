@@ -4,7 +4,7 @@ import type {
   Property,
   DbRecord,
   DatabaseView,
-} from "./types";
+} from "../../src/lib/types";
 const stamp = "2026-11-11T22:00:00.000Z";
 const uid = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;

@@ -16,6 +16,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # Slate has no demo: the tests sign in to accounts on a local Supabase stack.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: supabase start -x studio,imgproxy,logflare,vector,edge-runtime,supavisor,postgres-meta,realtime
       - run: npm run test:e2e
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -23,3 +28,5 @@ jobs:
           name: browser-test-report
           path: playwright-report/
           retention-days: 7
+      - if: always()
+        run: supabase stop --no-backup

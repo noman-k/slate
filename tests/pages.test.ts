@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { duplicatePageSubtree } from "../src/lib/pages";
-import { createSeedState, SEED_IDS } from "../src/lib/seed";
+import { createSeedState, SEED_IDS } from "./fixtures/seed";
 import { encodeDirective } from "../src/lib/markdown";
 import type { WorkspaceState } from "../src/lib/types";
 

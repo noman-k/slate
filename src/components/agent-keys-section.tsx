@@ -42,7 +42,7 @@ function CopyField({ label, value, mono = true }: { label: string; value: string
   );
 }
 
-export function AgentKeysSection({ isDemo }: { isDemo: boolean }) {
+export function AgentKeysSection() {
   const [keys, setKeys] = useState<AgentKey[] | null>(null);
   const [name, setName] = useState("Claude");
   const [created, setCreated] = useState<{ name: string; key: string } | null>(null);
@@ -63,9 +63,8 @@ export function AgentKeysSection({ isDemo }: { isDemo: boolean }) {
     } else setKeys(data as AgentKey[]);
   }, []);
   useEffect(() => {
-    if (isDemo) return;
     queueMicrotask(() => void refresh());
-  }, [isDemo, refresh]);
+  }, [refresh]);
 
   const create = async () => {
     if (!name.trim() || busy) return;
@@ -106,10 +105,7 @@ export function AgentKeysSection({ isDemo }: { isDemo: boolean }) {
           </p>
         </div>
       </div>
-      {isDemo ? (
-        <p className="settings-muted">Connect Supabase to use agent keys — the local demo lives only in this browser.</p>
-      ) : (
-        <>
+      <>
           {created && (
             <div className="agent-created" role="status">
               <strong>
@@ -175,8 +171,7 @@ export function AgentKeysSection({ isDemo }: { isDemo: boolean }) {
             </ul>
           )}
           {keys && keys.length === 0 && !created && <p className="settings-muted">No agent keys yet.</p>}
-        </>
-      )}
+      </>
     </section>
   );
 }

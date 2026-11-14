@@ -21,12 +21,15 @@ Check `node --version` in the same terminal before starting the app. Installing 
 node --version
 npm ci
 test -f .env.local || cp .env.example .env.local
+```
+
+Slate has no demo mode: everyone signs in, and Supabase is the only store. Set both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` (for local development, from [Local Supabase](#local-supabase) below), then run:
+
+```sh
 npm run dev
 ```
 
-Open http://localhost:3000 for the front page, or http://localhost:3000/app for the workspace. With the Supabase variables empty, the app runs a **browser-local demo** with example rental data. Demo changes belong only to that browser. The demo does not represent authenticated cloud storage and is never automatically imported into a real account.
-
-To use private persistent accounts, set both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. These are the project URL and public publishable key from Supabase. **Never use a service-role key in a `NEXT_PUBLIC_` variable.** Configured mode requires authentication, uses Supabase as the authoritative store, and creates an empty private workspace on registration.
+Open http://localhost:3000 for the front page, then register or log in to reach the workspace at http://localhost:3000/app. Registration creates an empty private workspace. These are the project URL and public publishable key from Supabase. **Never use a service-role key in a `NEXT_PUBLIC_` variable.** Without the two variables, the front page still loads, but the workspace redirects to the login page, which explains that Supabase isn't connected.
 
 ### Tailwind / magic-string ESM error
 
@@ -42,7 +45,7 @@ supabase db reset
 supabase status
 ```
 
-Copy the local API URL and publishable key from `supabase status` into `.env.local`, restart the app, and register. Local email confirmations are disabled by `supabase/config.toml`; hosted projects should enable them. Migrations create the schema, indexes, authorization policies, private Storage bucket, account bootstrap trigger, and transactional persistence functions. No shared demo account is seeded.
+Copy the local API URL and publishable key from `supabase status` into `.env.local`, restart the app, and register. Local email confirmations are disabled by `supabase/config.toml`; hosted projects should enable them. Migrations create the schema, indexes, authorization policies, private Storage bucket, account bootstrap trigger, and transactional persistence functions. No shared account is seeded. `supabase/config.toml` also raises the local sign-in rate limit, because the browser tests sign in a fresh account for every test.
 
 ## Data and security
 
@@ -73,7 +76,7 @@ npm run test:e2e
 npm run test:auth
 ```
 
-Unit tests cover document serialization and database computation. The SQL tests cover registration bootstrap, RLS isolation, unauthorized inserts, normalized snapshot ownership, and stale-save rejection. Running database and authentication tests requires the local Supabase Docker stack. The HTTP auth test refuses non-loopback URLs, creates unique temporary accounts, checks registration/login/session refresh, workspace bootstrap, nested-page and relational persistence, per-view column order, cross-account read/write isolation, stale revisions, password changes, reauthentication, and logout, then removes its accounts. `.github/workflows/ci.yml` runs application, database, and HTTP auth checks in CI. Set `SUPABASE_TEST_WORKDIR` to use an isolated Supabase CLI checkout.
+Unit tests cover document serialization and database computation. The SQL tests cover registration bootstrap, RLS isolation, unauthorized inserts, normalized snapshot ownership, and stale-save rejection. Running database and authentication tests requires the local Supabase Docker stack. The HTTP auth test refuses non-loopback URLs, creates unique temporary accounts, checks registration/login/session refresh, workspace bootstrap, nested-page and relational persistence, per-view column order, cross-account read/write isolation, stale revisions, password changes, reauthentication, and logout, then removes its accounts. `.github/workflows/ci.yml` runs application, database, and HTTP auth checks in CI. The Playwright suite also needs the local stack: for each test it creates a throwaway account holding the example rental workspace (`tests/fixtures/seed.ts`), signs in through the login form, and deletes the account afterwards. It starts its own dev server on port 3100 wired to `supabase status`; set `PLAYWRIGHT_BASE_URL` to use a server you run yourself. `.github/workflows/browser.yml` starts Supabase before running it. Set `SUPABASE_TEST_WORKDIR` to use an isolated Supabase CLI checkout.
 
 ## Cloudflare Workers
 
@@ -113,11 +116,11 @@ The production workflow is manually dispatched and uses the GitHub `production` 
 | Secret | `CLOUDFLARE_API_TOKEN` | Deploy the Worker |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account |
 
-Apply migrations to a staging Supabase project before production. No remote project is created, no migrations are applied remotely, and no production deployment occurs merely by running the demo.
+Apply migrations to a staging Supabase project before production. No remote project is created, no migrations are applied remotely, and no production deployment occurs merely by running the app locally.
 
 ## Scope and operational limits
 
-This repository implements an initial single-owner product, not multi-user live collaboration. Remote sync is serialized snapshot transport with optimistic revision checking; realtime merging and cursor-based data loading are not implemented. Documents accept external image URLs and private image uploads. Removing an image block does not delete the object. Recoverable source-page Trash retains owner image access for copied documents. Permanent page/workspace deletion cascades attachment metadata, but object garbage collection is not implemented. Production authentication and cross-user isolation must be verified against your configured Supabase project, and production deployment requires your own Cloudflare/Supabase configuration. The application does not claim that an unconfigured browser demo is a deployed production service.
+This repository implements an initial single-owner product, not multi-user live collaboration. Remote sync is serialized snapshot transport with optimistic revision checking; realtime merging and cursor-based data loading are not implemented. Documents accept external image URLs and private image uploads. Removing an image block does not delete the object. Recoverable source-page Trash retains owner image access for copied documents. Permanent page/workspace deletion cascades attachment metadata, but object garbage collection is not implemented. Production authentication and cross-user isolation must be verified against your configured Supabase project, and production deployment requires your own Cloudflare/Supabase configuration.
 
 ## Verification performed
 

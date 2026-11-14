@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSeedState, SEED_IDS } from "../src/lib/seed";
+import { createSeedState, SEED_IDS } from "./fixtures/seed";
 import { AGENT_TOOLS, callTool, ToolError, inputsSchema } from "../src/lib/agent-tools";
 import { handleMcpMessage } from "../src/lib/mcp";
 import { PROCEDURE_TEMPLATES, templateMarkdown } from "../src/lib/procedures";

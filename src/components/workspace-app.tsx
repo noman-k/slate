@@ -57,7 +57,6 @@ import { Menu, MenuItem, MenuSeparator, Modal, Popup } from "./ui/menu";
 import { useWorkspace } from "@/lib/use-workspace";
 import { id } from "@/lib/utils";
 import { duplicatePageSubtree } from "@/lib/pages";
-import { SEED_IDS } from "@/lib/seed";
 import { breadcrumbs, movePageTo, placementOf, trashPage } from "@/lib/tree";
 import type { Page, DbRecord, RecordOpenMode, WorkspaceState } from "@/lib/types";
 import { DatabaseView, RecordProperties } from "./database/DatabaseView";
@@ -163,18 +162,15 @@ function timeAgo(iso: string, now = Date.now()) {
 
 export function WorkspaceApp() {
   const dialogs = useWorkspaceDialogs();
-  const { state, change, ready, status, error, recovery, retry, isDemo } =
+  const { state, change, ready, status, error, recovery, retry } =
     useWorkspace();
-  const [activeId, setActiveId] = useState(SEED_IDS.ledger);
+  const [activeId, setActiveId] = useState("");
   const [search, setSearch] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [expanded, setExpanded] = useState(
-    new Set([SEED_IDS.hub, SEED_IDS.log]),
-  );
+  const [expanded, setExpanded] = useState(new Set<string>());
   const [recordId, setRecordId] = useState<string | null>(null);
   const [describing, setDescribing] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
-  const [demoCardHidden, setDemoCardHidden] = useState(false);
   /** A record opens in a side peek; "Open as full page" switches to this. */
   const [recordAsPage, setRecordAsPage] = useState(false);
   /**
@@ -316,7 +312,7 @@ export function WorkspaceApp() {
       restoreScroll.current = scrollMemory.current.get(entryKey.current) ?? 0;
       const path = window.location.pathname.match(/^\/p\/([^/]+)/);
       const q = new URLSearchParams(window.location.search).get("page");
-      setActiveId(path?.[1] || q || SEED_IDS.ledger);
+      setActiveId(path?.[1] || q || "");
       setRecordId(null);
       setPeekRecordId(null);
       // A record whose database opens records as full pages comes back as one.
@@ -336,7 +332,6 @@ export function WorkspaceApp() {
           setRecent((ids) =>
             [...new Set([...ids, ...prefs.recent])].slice(0, 12),
           );
-        if (prefs.demoCardHidden) setDemoCardHidden(true);
       } catch {}
     });
     return () => window.removeEventListener("popstate", route);
@@ -350,11 +345,10 @@ export function WorkspaceApp() {
           expanded: [...expanded],
           collapsed,
           recent,
-          demoCardHidden,
         }),
       );
     } catch {}
-  }, [expanded, collapsed, recent, demoCardHidden, ready]);
+  }, [expanded, collapsed, recent, ready]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -887,15 +881,11 @@ export function WorkspaceApp() {
       resolvePage={(pageId) =>
         state.pages.find((item) => item.id === pageId && !item.deleted_at)
       }
-      onUploadImage={
-        isDemo
-          ? undefined
-          : async (file) => {
-              await retry();
-              const { uploadImage } = await import("@/lib/attachments");
-              return uploadImage(file, p.id, p.workspace_id);
-            }
-      }
+      onUploadImage={async (file) => {
+        await retry();
+        const { uploadImage } = await import("@/lib/attachments");
+        return uploadImage(file, p.id, p.workspace_id);
+      }}
       renderDatabase={(db, block) => (
         <DatabaseView
           databaseId={db}
@@ -953,7 +943,6 @@ export function WorkspaceApp() {
         activeId={page?.id || activeId}
         expanded={expanded}
         collapsed={collapsed}
-        isDemo={isDemo}
         onToggle={() => setCollapsed((v) => !v)}
         onOpen={open}
         onExpand={(pageId) =>
@@ -973,9 +962,6 @@ export function WorkspaceApp() {
         onTrash={dialogs.trash}
         onMovePage={movePage}
         recentIds={recent}
-        onDismissDemoCard={
-          demoCardHidden ? undefined : () => setDemoCardHidden(true)
-        }
         playbookIds={playbookIds}
         onRunPlaybook={(pageId) => openRunStart(pageId)}
         onPlaybooks={() => open(PLAYBOOKS_VIEW)}
@@ -1026,11 +1012,7 @@ export function WorkspaceApp() {
             <span
               className={`save-status ${status}`}
               title={
-                isDemo
-                  ? "Saved in this browser. Configure Supabase to sync your workspace."
-                  : status === "saved"
-                    ? "All changes saved"
-                    : "Saving your changes"
+                status === "saved" ? "All changes saved" : "Saving your changes"
               }
             >
               {status === "saved" ? (
@@ -1596,7 +1578,7 @@ export function WorkspaceApp() {
             setActiveRun(null);
             openRunStart(pageId, inputs);
           }}
-          sendRequest={(request) => sendRequest(request, { viaServer: !isDemo })}
+          sendRequest={sendRequest}
           onOpenLog={() => {
             const pageId = activeRecord?.page_id;
             setActiveRun(null);
@@ -1697,7 +1679,6 @@ export function WorkspaceApp() {
         controller={dialogs}
         state={state}
         change={change}
-        isDemo={isDemo}
         patchPage={patchPage}
         expandPage={(pageId) =>
           setExpanded((current) => new Set([...current, pageId]))

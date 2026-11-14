@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { createSeedState,SEED_IDS } from '../src/lib/seed';
+import { createSeedState,SEED_IDS } from './fixtures/seed';
 import type { Page, WorkspaceState } from '../src/lib/types';
 import { canMovePage,breadcrumbs,purgePage,trashPage, dropPlacement, movePageTo, placementOf } from '../src/lib/tree';
 describe('page hierarchy',()=>{it('prevents moving a page into a descendant',()=>{const s=createSeedState();expect(canMovePage(s.pages,SEED_IDS.hub,SEED_IDS.ledger)).toBe(false);expect(canMovePage(s.pages,SEED_IDS.ledger,SEED_IDS.hub)).toBe(true);});it('builds breadcrumb ancestry',()=>{expect(breadcrumbs(createSeedState().pages,SEED_IDS.ledger).map(p=>p.title)).toEqual(['Rental Property Finance Hub','Tenant Rent Log','Rent Ledger']);});it('soft-deletes and restores descendants together',()=>{const s=trashPage(createSeedState(),SEED_IDS.hub);expect(s.pages.find(p=>p.id===SEED_IDS.ledger)?.deleted_at).toBeTruthy();expect(trashPage(s,SEED_IDS.hub,true).pages.find(p=>p.id===SEED_IDS.ledger)?.deleted_at).toBeNull();});});

@@ -21,8 +21,6 @@ import {
   FolderInput,
   SquarePen,
   CircleHelp,
-  HardDrive,
-  X,
   Compass,
   Play,
   ChevronsDownUp,
@@ -59,7 +57,6 @@ interface Props {
   activeId: string;
   expanded: Set<string>;
   collapsed: boolean;
-  isDemo: boolean;
   onToggle: () => void;
   onOpen: (id: string) => void;
   onExpand: (id: string) => void;
@@ -74,8 +71,6 @@ interface Props {
   onMovePage: (pageId: string, parentId: string | null, index: number) => void;
   /** Most recently opened page ids, newest first. */
   recentIds: string[];
-  /** Shows the dismissible "local demo" card when set. */
-  onDismissDemoCard?: () => void;
   /** Pages that are playbooks: they get a Run button, and the Playbooks entry appears. */
   playbookIds?: Set<string>;
   onRunPlaybook?: (pageId: string) => void;
@@ -662,22 +657,6 @@ export function Sidebar(p: Props) {
             )}
           </SidebarSection>
         </div>
-        {p.isDemo && p.onDismissDemoCard && (
-          <div className="sidebar-card" role="note">
-            <HardDrive size={16} />
-            <div>
-              <strong>Local demo</strong>
-              <p>Changes are saved in this browser only.</p>
-            </div>
-            <button
-              className="sidebar-card-close"
-              aria-label="Dismiss demo notice"
-              onClick={p.onDismissDemoCard}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
         <nav className="sidebar-footer-nav" aria-label="More">
           <button className="nav-row" onClick={p.onTrash}>
             <Trash2 size={18} />

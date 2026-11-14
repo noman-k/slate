@@ -442,7 +442,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       end("Site is up"),
       "## Down",
       check(
-        "Open {{site_url}} in a browser to confirm it's down. (Some sites can't be checked from the local demo, so they land here too.)",
+        "Open {{site_url}} in a browser to confirm it's down.",
         "The page doesn't load, or shows an error",
       ),
       when("alert_webhook", "set", "", NEXT, END),

@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkspaceState, SaveStatus } from "./types";
-import { createSeedState } from "./seed";
 import { normalizePageIcon } from "@/components/page-icon";
 import {
   isSupabaseConfigured,
@@ -9,7 +8,6 @@ import {
   saveRemoteState,
   getRemoteIdentity,
 } from "./persistence";
-const DEMO_KEY = "slate-workspace-v1";
 const emptyState = (): WorkspaceState => ({
   workspaces: [],
   pages: [],
@@ -36,9 +34,7 @@ function validState(value: unknown): value is WorkspaceState {
   );
 }
 export function useWorkspace() {
-  const [state, setState] = useState<WorkspaceState>(() =>
-    isSupabaseConfigured ? emptyState() : createSeedState(),
-  );
+  const [state, setState] = useState<WorkspaceState>(emptyState);
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("saved");
   const [error, setError] = useState("");
@@ -57,18 +53,14 @@ export function useWorkspace() {
   const journal = useCallback(() => {
     if (!loaded.current) return;
     try {
-      if (!isSupabaseConfigured)
-        localStorage.setItem(DEMO_KEY, JSON.stringify(current.current));
-      else {
-        if (owner.current && dirty.current)
-          localStorage.setItem(
-            `slate-pending:${owner.current}`,
-            JSON.stringify({
-              base_revision: baseRevision.current,
-              state: current.current,
-            }),
-          );
-      }
+      if (owner.current && dirty.current)
+        localStorage.setItem(
+          `slate-pending:${owner.current}`,
+          JSON.stringify({
+            base_revision: baseRevision.current,
+            state: current.current,
+          }),
+        );
     } catch {
       setError(
         "Device storage is full. Keep this tab open until your changes finish syncing.",
@@ -81,45 +73,33 @@ export function useWorkspace() {
       try {
         let next: WorkspaceState | null = null;
         let replay = false;
-        if (isSupabaseConfigured) {
-          next = await loadRemoteState();
-          persisted.current = next || undefined;
-          const identity = getRemoteIdentity();
-          owner.current = identity.userId;
-          baseRevision.current = identity.revision;
-          const raw = identity.userId
-            ? localStorage.getItem(`slate-pending:${identity.userId}`)
-            : null;
-          if (raw) {
-            const draft = JSON.parse(raw) as {
-              base_revision: number;
-              state: unknown;
-            };
-            if (validState(draft.state)) {
-              if (draft.base_revision === identity.revision) {
-                next = draft.state;
-                replay = true;
-                dirty.current = true;
-              } else {
-                setRecovery(draft.state);
-                setError(
-                  "An unsynced draft from an earlier version is available. Download it to preserve those edits.",
-                );
-              }
-            }
-          }
-        } else {
-          const cached = localStorage.getItem(DEMO_KEY);
-          if (cached) {
-            const parsed: unknown = JSON.parse(cached);
-            if (validState(parsed) && parsed.workspaces.length) {
-              next = parsed;
-              if (
-                !parsed.workspaces.some(
-                  (w) => w.id === parsed.active_workspace_id,
-                )
-              )
-                next.active_workspace_id = parsed.workspaces[0].id;
+        if (!isSupabaseConfigured)
+          throw new Error(
+            "Slate isn't connected to Supabase. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+          );
+        next = await loadRemoteState();
+        persisted.current = next || undefined;
+        const identity = getRemoteIdentity();
+        owner.current = identity.userId;
+        baseRevision.current = identity.revision;
+        const raw = identity.userId
+          ? localStorage.getItem(`slate-pending:${identity.userId}`)
+          : null;
+        if (raw) {
+          const draft = JSON.parse(raw) as {
+            base_revision: number;
+            state: unknown;
+          };
+          if (validState(draft.state)) {
+            if (draft.base_revision === identity.revision) {
+              next = draft.state;
+              replay = true;
+              dirty.current = true;
+            } else {
+              setRecovery(draft.state);
+              setError(
+                "An unsynced draft from an earlier version is available. Download it to preserve those edits.",
+              );
             }
           }
         }
@@ -167,21 +147,16 @@ export function useWorkspace() {
       do {
         queued.current = false;
         const snapshot = current.current;
-        if (isSupabaseConfigured) {
-          await saveRemoteState(snapshot, persisted.current, owner.current);
-          const savedIdentity = getRemoteIdentity();
-          if (savedIdentity.userId === owner.current)
-            baseRevision.current = savedIdentity.revision;
-          persisted.current = snapshot;
-          if (snapshot === current.current) {
-            dirty.current = false;
-            if (owner.current)
-              localStorage.removeItem(`slate-pending:${owner.current}`);
-          } else journal();
-        } else {
-          localStorage.setItem(DEMO_KEY, JSON.stringify(snapshot));
+        await saveRemoteState(snapshot, persisted.current, owner.current);
+        const savedIdentity = getRemoteIdentity();
+        if (savedIdentity.userId === owner.current)
+          baseRevision.current = savedIdentity.revision;
+        persisted.current = snapshot;
+        if (snapshot === current.current) {
           dirty.current = false;
-        }
+          if (owner.current)
+            localStorage.removeItem(`slate-pending:${owner.current}`);
+        } else journal();
       } while (queued.current);
       setStatus("saved");
       setError((previous) =>
@@ -223,7 +198,7 @@ export function useWorkspace() {
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
       journal();
-      if (isSupabaseConfigured && dirty.current) {
+      if (dirty.current) {
         event.preventDefault();
         event.returnValue = "";
       }
@@ -231,7 +206,7 @@ export function useWorkspace() {
     const hidden = () => {
       if (document.visibilityState === "hidden") {
         journal();
-        if (isSupabaseConfigured && dirty.current) void save();
+        if (dirty.current) void save();
       }
     };
     window.addEventListener("beforeunload", unload);
@@ -256,6 +231,5 @@ export function useWorkspace() {
     error,
     recovery,
     retry,
-    isDemo: !isSupabaseConfigured,
   };
 }

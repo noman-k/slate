@@ -1,7 +1,6 @@
 /**
  * API steps: building a request from a step (with {{values}} filled in), checking where
- * it may go, and sending it — through Slate's server for signed-in workspaces, or
- * straight from the browser in the local demo.
+ * it may go, and sending it through Slate's server.
  */
 import { interpolate, type ApiResponse, type HttpMethod, type Lookup, type Procedure, type Step } from "./runner";
 
@@ -101,35 +100,24 @@ export function urlProblem(url: string, options: { allowPrivate?: boolean } = {}
   return null;
 }
 
-/** Sends a request and reads the answer; never throws. */
-export async function sendRequest(
-  request: ApiRequest,
-  options: { viaServer: boolean },
-): Promise<ApiResponse> {
-  const problem = urlProblem(request.url, { allowPrivate: !options.viaServer });
+/**
+ * Sends a request through Slate's server and reads the answer; never throws. The server
+ * allows local addresses only in development, so the browser checks the same way.
+ */
+export async function sendRequest(request: ApiRequest): Promise<ApiResponse> {
+  const problem = urlProblem(request.url, { allowPrivate: process.env.NODE_ENV !== "production" });
   if (problem) return { status: 0, ok: false, body: "", error: problem };
   const started = performance.now();
   try {
-    if (options.viaServer) {
-      const response = await fetch("/api/run-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS + 5_000),
-      });
-      const data = (await response.json().catch(() => null)) as (ApiResponse & { error?: string }) | null;
-      if (!data) return { status: 0, ok: false, body: "", error: "Slate's server didn't answer. Try again.", ms: Math.round(performance.now() - started) };
-      return { ...data, ms: Math.round(performance.now() - started) };
-    }
-    const response = await fetch(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-      redirect: "follow",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    const response = await fetch("/api/run-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS + 5_000),
     });
-    const body = (await response.text()).slice(0, MAX_RESPONSE_BYTES);
-    return { status: response.status, ok: response.ok, body, ms: Math.round(performance.now() - started) };
+    const data = (await response.json().catch(() => null)) as (ApiResponse & { error?: string }) | null;
+    if (!data) return { status: 0, ok: false, body: "", error: "Slate's server didn't answer. Try again.", ms: Math.round(performance.now() - started) };
+    return { ...data, ms: Math.round(performance.now() - started) };
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "TimeoutError";
     return {
@@ -137,11 +125,7 @@ export async function sendRequest(
       ok: false,
       body: "",
       ms: Math.round(performance.now() - started),
-      error: timedOut
-        ? `No answer within ${REQUEST_TIMEOUT_MS / 1000} seconds.`
-        : options.viaServer
-          ? "Couldn't reach Slate's server."
-          : "Couldn't reach the API. Check the address — or the API may not accept requests from a browser (CORS).",
+      error: timedOut ? `No answer within ${REQUEST_TIMEOUT_MS / 1000} seconds.` : "Couldn't reach Slate's server.",
     };
   }
 }

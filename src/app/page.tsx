@@ -25,9 +25,9 @@ const configured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 );
 
-/** Who is looking: a visitor, a signed-in user, or the local demo (no Supabase). */
-async function audience(): Promise<'demo' | 'member' | 'visitor'> {
-  if (!configured) return 'demo';
+/** Who is looking: a signed-in member, or a visitor who needs to sign up or log in. */
+async function audience(): Promise<'member' | 'visitor'> {
+  if (!configured) return 'visitor';
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
@@ -214,9 +214,7 @@ export default async function Home() {
   const primary =
     who === 'member'
       ? { href: '/app', label: 'Open Slate' }
-      : who === 'demo'
-        ? { href: '/app', label: 'Try the demo' }
-        : { href: '/auth/register', label: 'Get started for free' };
+      : { href: '/auth/register', label: 'Get started for free' };
   return (
     <div className="landing">
       <a className="skip-link" href="#main">Skip to content</a>
@@ -273,7 +271,7 @@ export default async function Home() {
             </div>
             <ul className="hero-assurances" aria-label="Highlights">
               <li><Check size={14} /> Private by default</li>
-              <li><Check size={14} /> {who === 'demo' ? 'No account needed' : 'Nothing to install'}</li>
+              <li><Check size={14} /> Nothing to install</li>
               <li><Check size={14} /> Markdown in and out</li>
             </ul>
           </div>
@@ -470,8 +468,8 @@ export default async function Home() {
           <ol className="steps">
             <li>
               <span className="step-number">1</span>
-              <h3>{who === 'demo' ? 'Open Slate' : 'Create your account'}</h3>
-              <p>{who === 'demo' ? 'It runs right in your browser, with an example workspace to explore.' : 'An email and a password. Your private workspace is ready straight away.'}</p>
+              <h3>Create your account</h3>
+              <p>An email and a password. Your private workspace is ready straight away.</p>
             </li>
             <li>
               <span className="step-number">2</span>
@@ -553,7 +551,7 @@ export default async function Home() {
               <Link href="/auth/forgot">Reset password</Link>
             </>
           ) : (
-            <Link href="/app">{who === 'member' ? 'Open Slate' : 'Try the demo'}</Link>
+            <Link href="/app">Open Slate</Link>
           )}
         </nav>
       </footer>

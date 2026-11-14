@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { createExampleAccount, deleteAccount, mockApi, signIn, type TestAccount } from "./support";
 async function createPage(page: Page, name: string) {
   await page
     .getByRole("button", { name: "New page", exact: true })
@@ -28,11 +29,20 @@ async function startFromTemplate(page: Page, kind: "Playbook" | "Runbook", templ
   await page.keyboard.press("Enter");
   await expect(page.locator(".procedure-gallery")).toBeHidden();
 }
+let account: TestAccount | undefined;
 test.beforeEach(async ({ page }) => {
-  await page.goto("/app");
+  // Leaving a page with unsynced edits asks first; tests always leave.
+  page.on("dialog", (dialog) => void (dialog.type() === "beforeunload" ? dialog.accept() : dialog.dismiss()));
+  account = await createExampleAccount();
+  await signIn(page, account);
+  await page.goto(`/p/${account.ids.ledger}`);
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue(
     "Rent Ledger",
   );
+});
+test.afterEach(async () => {
+  await deleteAccount(account);
+  account = undefined;
 });
 test("reference ledger supports live filters and shared board views", async ({
   page,
@@ -155,7 +165,8 @@ test("theme can be switched in settings and is remembered", async ({ page }) => 
 test("front page links into the app", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await page.getByRole("link", { name: "Try the demo" }).first().click();
+  // Signed in, the front page offers the way back into the workspace.
+  await page.getByRole("link", { name: "Open Slate" }).first().click();
   await expect(page).toHaveURL(/\/app$/);
   await page.getByRole("link", { name: "Slate home" }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -818,13 +829,11 @@ test("a playbook is built from inputs, sections and steps", async ({ page }) => 
 test("an API step calls an endpoint, saves the response and branches on it", async ({ page }) => {
   let calls = 0;
   let lastAuth = "";
-  await page.route("https://api.example.test/**", async (route) => {
+  await mockApi(page, "https://api.example.test/", (request) => {
     calls++;
-    lastAuth = route.request().headers()["authorization"] || "";
-    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
-    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
-    if (route.request().url().endsWith("/orders/BAD")) return route.fulfill({ status: 404, headers: cors, body: '{"error":"not found"}' });
-    await route.fulfill({ status: 200, headers: { ...cors, "content-type": "application/json" }, body: JSON.stringify({ id: "A-7", status: "shipped", carrier: { name: "UPS" } }) });
+    lastAuth = request.headers["authorization"] || "";
+    if (request.url.endsWith("/orders/BAD")) return { status: 404, body: '{"error":"not found"}' };
+    return { status: 200, body: JSON.stringify({ id: "A-7", status: "shipped", carrier: { name: "UPS" } }) };
   });
   const node = (value: object) => `:::slate-node ${JSON.stringify(value)}`;
   const source = [
@@ -1076,11 +1085,9 @@ test("automation templates call other apps and keep secrets out of run history",
   await expect(gallery.locator(".procedure-group").last()).toHaveText("Notes & automations");
   // Daily standup: answers are posted to the team webhook, and kept as the run's note.
   let posted = "";
-  await page.route("https://hooks.example.test/**", async (route) => {
-    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
-    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
-    posted = route.request().postData() || "";
-    await route.fulfill({ status: 200, headers: cors, body: "ok" });
+  await mockApi(page, "https://hooks.example.test/", (request) => {
+    posted = request.body || "";
+    return { status: 200, body: "ok" };
   });
   await gallery.getByRole("option", { name: /Daily standup note/ }).click();
   await page.keyboard.press("Enter");
@@ -1126,6 +1133,8 @@ test("automation templates call other apps and keep secrets out of run history",
 test("a playbook opened directly (hard reload) has its styles", async ({ page }) => {
   await startFromTemplate(page, "Runbook", /Check a site is up/);
   const url = page.url();
+  // Let the new playbook reach Supabase before leaving.
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   // A fresh load of the playbook's address, without passing through a normal page.
   await page.goto("about:blank");
   await page.goto(url);
@@ -1136,14 +1145,35 @@ test("a playbook opened directly (hard reload) has its styles", async ({ page })
   const radius = await page.locator(".pb-step").first().evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
   expect(radius).not.toBe("0px");
 });
-test("settings explain AI agent access (keys need a synced workspace)", async ({ page }) => {
+test("settings explain AI agent access and offer agent keys", async ({ page }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const agents = page.getByRole("region", { name: "AI agents" });
   await expect(agents).toContainText("Let an AI agent read this workspace");
   await expect(agents).toContainText("can't change anything");
-  // The local demo lives only in the browser, so there's nothing for an agent to reach.
-  await expect(agents).toContainText("Connect Supabase to use agent keys");
-  await expect(agents.getByRole("button", { name: "Create key" })).toHaveCount(0);
+  await expect(agents.getByRole("button", { name: "Create key" })).toBeVisible();
+  await expect(agents).toContainText("No agent keys yet.");
+});
+test("an agent key reads the workspace over MCP without a session", async ({ page, playwright, baseURL }) => {
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const agents = page.getByRole("region", { name: "AI agents" });
+  await agents.getByRole("button", { name: "Create key" }).click();
+  const key = (await agents.locator(".agent-created code").first().textContent())!.trim();
+  expect(key).toMatch(/^slate_/);
+  // A separate client with no cookies: only the key identifies the workspace.
+  const agent = await playwright.request.newContext({ baseURL });
+  const rpc = (body: object, token = key) =>
+    agent.post("/api/mcp", { headers: { Authorization: `Bearer ${token}` }, data: { jsonrpc: "2.0", id: 1, ...body } });
+  const hello = await rpc({ method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "e2e", version: "1" } } });
+  expect(hello.status()).toBe(200);
+  expect((await hello.json()).result.serverInfo.name).toBe("slate");
+  const search = await rpc({ method: "tools/call", params: { name: "search_workspace", arguments: { query: "Rent Ledger" } } });
+  expect(search.status()).toBe(200);
+  expect(JSON.stringify(await search.json())).toContain("Rent Ledger");
+  // A made-up key is turned away by the endpoint itself.
+  const wrong = await rpc({ method: "initialize", params: {} }, `slate_${"A".repeat(43)}`);
+  expect(wrong.status()).toBe(401);
+  expect((await wrong.json()).error.message).toContain("not valid");
+  await agent.dispose();
 });
 test("checklists first: a plain list, advanced steps on request, and to-do lists that become runnable", async ({ page }) => {
   await startFromTemplate(page, "Playbook", /Blank checklist/);

@@ -82,7 +82,6 @@ interface WorkspaceDialogsProps extends PageMutationProps {
   controller: WorkspaceDialogController;
   state: WorkspaceState;
   change: ChangeState;
-  isDemo: boolean;
   expandPage: (pageId: string) => void;
   onWorkspaceCreated: () => void;
   record?: DbRecord;
@@ -104,7 +103,6 @@ export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
     controller,
     state,
     change,
-    isDemo,
     patchPage,
     expandPage,
     onWorkspaceCreated,
@@ -150,7 +148,6 @@ export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
           state={state}
           close={close}
           change={change}
-          isDemo={isDemo}
         />
       )}
       <RecordPageDialog
@@ -548,8 +545,7 @@ function SettingsDialog({
   state,
   close,
   change,
-  isDemo,
-}: CommonProps & { change: ChangeState; isDemo: boolean }) {
+}: CommonProps & { change: ChangeState }) {
   const router = useRouter();
   const currentWorkspace = state.workspaces.find(
     (workspace) => workspace.id === state.active_workspace_id,
@@ -671,25 +667,10 @@ function SettingsDialog({
             <ThemeSwitcher />
           </div>
         </section>
-        <AgentKeysSection isDemo={isDemo} />
+        <AgentKeysSection />
         <section className="settings-section">
           <h3>Account</h3>
-          {isDemo ? (
-            <div className="settings-row">
-              <div>
-                <strong>You’re in a local demo</strong>
-                <p>
-                  Changes are saved in this browser. Connect Supabase to create an
-                  account and sync your data.
-                </p>
-              </div>
-              <a className="secondary-button" href="/auth/login">
-                Account setup
-                <ArrowUpRight size={14} />
-              </a>
-            </div>
-          ) : (
-            <>
+          <>
               <div className="settings-row">
                 <div>
                   <strong>Password</strong>
@@ -711,7 +692,6 @@ function SettingsDialog({
                 </button>
               </div>
             </>
-          )}
         </section>
         <section className="settings-section danger-zone">
           <h3>Danger zone</h3>
