@@ -344,3 +344,30 @@ test("playbooks on a phone: a roomy list, fields that fit, and run buttons withi
   expect(run.height).toBeGreaterThanOrEqual(44);
   expect((await row.locator(".playbook-text").boundingBox())!.width).toBeGreaterThan(220);
 });
+
+test("search on a phone fills the screen, with Cancel and clear, and no keyboard hints", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
+  await page.getByRole("button", { name: /^Search/ }).first().tap();
+  const dialog = page.getByRole("dialog", { name: "Search your workspace" });
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(300);
+  const box = (await dialog.boundingBox())!;
+  expect(box.x).toBe(0);
+  expect(box.y).toBe(0);
+  expect(box.width).toBe(390);
+  // The field is ready to type in, with a search keyboard.
+  const field = page.getByRole("combobox", { name: "Search workspace" });
+  await expect(field).toBeFocused();
+  await expect(field).toHaveAttribute("enterkeyhint", "go");
+  await expect(dialog.locator(".key-hint").first()).toBeHidden();
+  await expect(dialog.locator(".search-footer")).toBeHidden();
+  // Clear empties it; Cancel closes search.
+  await field.fill("rent");
+  await expect(dialog.getByRole("option").first()).toBeVisible();
+  await dialog.getByRole("button", { name: "Clear search" }).tap();
+  await expect(field).toHaveValue("");
+  await dialog.getByRole("button", { name: "Cancel" }).tap();
+  await expect(dialog).toBeHidden();
+});

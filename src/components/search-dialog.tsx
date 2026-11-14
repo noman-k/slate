@@ -5,6 +5,7 @@ import {
   CornerDownLeft,
   ArrowUp,
   ArrowDown,
+  X,
 } from "lucide-react";
 import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
@@ -123,6 +124,7 @@ export function SearchDialog({
       ?.scrollIntoView({ block: "nearest" });
   }, [selected]);
 
+  const inputRef = useRef<HTMLInputElement>(null);
   const visit = (id: string) => {
     onOpen(id);
     onClose();
@@ -137,7 +139,15 @@ export function SearchDialog({
       <div className="search-input-wrap">
         <Search size={20} />
         <input
-          placeholder="Search pages, databases, and more…"
+          ref={inputRef}
+          type="text"
+          inputMode="search"
+          enterKeyHint="go"
+          autoCapitalize="off"
+          autoCorrect="off"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Search pages and databases…"
           aria-label="Search workspace"
           role="combobox"
           aria-expanded
@@ -164,7 +174,25 @@ export function SearchDialog({
           }}
           autoFocus
         />
-        <kbd>esc</kbd>
+        {query && (
+          <button
+            type="button"
+            className="search-clear"
+            aria-label="Clear search"
+            onClick={() => {
+              setQuery("");
+              setSelected(0);
+              inputRef.current?.focus();
+            }}
+          >
+            <X size={14} />
+          </button>
+        )}
+        <kbd className="key-hint">esc</kbd>
+        {/* On a phone search fills the screen: Cancel is the way back. */}
+        <button type="button" className="search-cancel" onClick={onClose}>
+          Cancel
+        </button>
       </div>
       <div
         className="search-results"
@@ -172,6 +200,10 @@ export function SearchDialog({
         role="listbox"
         aria-label="Search results"
         ref={listRef}
+        // Scrolling the results puts the keyboard away, so more of them show.
+        onTouchMove={() => {
+          if (document.activeElement === inputRef.current) inputRef.current?.blur();
+        }}
       >
         <div className="menu-label">
           {needle
@@ -217,21 +249,18 @@ export function SearchDialog({
               )}
             </span>
             <span className="search-meta">
-              {selected === i ? (
-                <CornerDownLeft size={16} />
-              ) : (
-                timeAgo(p.updated_at)
-              )}
+              {selected === i && <CornerDownLeft size={16} className="key-hint" aria-hidden />}
+              <span className="search-time">{timeAgo(p.updated_at)}</span>
             </span>
           </button>
         ))}
       </div>
       <div className="search-footer">
-        <span>
+        <span className="key-hint">
           <ArrowUp size={12} />
           <ArrowDown size={12} /> to navigate
         </span>
-        <span>
+        <span className="key-hint">
           <CornerDownLeft size={12} /> to open
         </span>
         <span>Only your private workspace is searched</span>
