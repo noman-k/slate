@@ -76,6 +76,9 @@ import {
 import { id } from "@/lib/utils";
 import { checkPlaybook, type Issue } from "@/lib/playbook-checks";
 import { localDate } from "@/lib/procedures";
+// Step, input and value-chip styles live with the editor's. The page editor is loaded
+// only when a normal page opens, so a playbook opened directly needs them here too.
+import "./editor/editor.css";
 
 const STEP_TYPES: StepType[] = ["send", "ask", "check", "if", "api", "end"];
 

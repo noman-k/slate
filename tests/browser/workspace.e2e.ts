@@ -1106,3 +1106,16 @@ test("automation templates call other apps and keep secrets out of run history",
   await expect(page.getByRole("row", { name: /Planning/ })).toBeVisible();
   await expect(page.locator(".database-view")).not.toContainText("sk_live_very_secret");
 });
+test("a playbook opened directly (hard reload) has its styles", async ({ page }) => {
+  await startFromTemplate(page, "Runbook", /Check a site is up/);
+  const url = page.url();
+  // A fresh load of the playbook's address, without passing through a normal page.
+  await page.goto("about:blank");
+  await page.goto(url);
+  const badge = page.locator(".pb-step .proc-step-badge select").first();
+  await expect(badge).toBeAttached();
+  // The type menu sits invisibly over its short label, and steps have their card look.
+  await expect.poll(() => badge.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+  const radius = await page.locator(".pb-step").first().evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
+  expect(radius).not.toBe("0px");
+});
