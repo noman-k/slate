@@ -103,6 +103,9 @@ test("records have private persistent URLs and editable page content", async ({
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]+$/);
+  // An existing record opens to be read: the panel has focus, no field is being edited.
+  await expect(page.getByRole("dialog")).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Record title", exact: true })).not.toBeFocused();
   await page
     .getByRole("textbox", { name: "Record title", exact: true })
     .fill("Updated April rent");
@@ -265,6 +268,9 @@ test("rows of an embedded database open over the current page", async ({ page })
   // The record peeks in from the side; the page underneath stays put.
   const peek = page.getByRole("dialog");
   await expect(peek.getByLabel("Record title")).toBeVisible();
+  // The new row has no name yet, so its title is focused, ready to be named.
+  await expect(peek.getByLabel("Record title")).toHaveValue("");
+  await expect(peek.getByLabel("Record title")).toBeFocused();
   expect(page.url()).toBe(url);
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Reading");
   await page.keyboard.press("Escape");

@@ -805,6 +805,10 @@ function RecordPageDialog({
       title={parent?.title || "Database record"}
       className="record-dialog"
       variant="peek"
+      // An existing record opens to be read: focus the panel, not a field, so nothing is
+      // selected for editing and phones keep the keyboard down. A new, untitled one
+      // focuses its title (below), ready to be named.
+      focusPanel
       // Where the record lives, with its icon, like a breadcrumb: click to open it.
       heading={
         parent ? (
@@ -836,7 +840,7 @@ function RecordPageDialog({
             className="record-title-input"
             aria-label="Record title"
             placeholder="Untitled"
-            autoFocus
+            autoFocus={!page.title.trim()}
             value={page.title}
             onChange={(event) =>
               patchPage(page.id, { title: event.target.value })

@@ -187,3 +187,13 @@ test("on a touch screen, help shows touch tips instead of keyboard shortcuts", a
   await expect(page.locator("aside.sidebar .sidebar-search")).toBeVisible();
   await expect(page.locator("aside.sidebar .sidebar-search kbd")).toHaveCount(0);
 });
+
+test("opening a database row on a phone doesn't raise the keyboard", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.ledger}`);
+  await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).tap();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Record title")).toHaveValue(/2026-04/);
+  // The panel has focus, so no text field is active (and no keyboard comes up).
+  await expect(dialog).toBeFocused();
+  expect(await page.evaluate(() => document.activeElement?.matches("input, textarea, [contenteditable=true]"))).toBe(false);
+});

@@ -1357,6 +1357,11 @@ section.is-folded .section-toggle svg {
 .peek-backdrop {
   background: var(--peek-backdrop);
 }
+/* A panel focused on open (so nothing in it is) shows no ring: it isn't a control. */
+.peek-surface:focus,
+.modal-surface:focus {
+  outline: none;
+}
 .peek-surface {
   position: fixed;
   top: 0;

@@ -3,7 +3,7 @@ import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import * as Popover from "@radix-ui/react-popover";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Check } from "lucide-react";
-import type { ReactNode, RefObject } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 type Side = "top" | "right" | "bottom" | "left";
 
 /**
@@ -107,6 +107,7 @@ export function Modal({
   actions,
   heading,
   initialFocus,
+  focusPanel = false,
 }: {
   open: boolean;
   onOpenChange: (value: boolean) => void;
@@ -122,8 +123,15 @@ export function Modal({
   heading?: ReactNode;
   /** What gets focus when it opens (by default, the first focusable element). */
   initialFocus?: RefObject<HTMLElement | null>;
+  /**
+   * Focus the panel itself on open, not a control in it: for something opened to be read
+   * (an existing record), so nothing is selected for editing and phones keep the keyboard
+   * down. Escape, Tab and screen readers work from there as usual.
+   */
+  focusPanel?: boolean;
 }) {
   const peek = variant === "peek";
+  const surface = useRef<HTMLDivElement>(null);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -131,16 +139,14 @@ export function Modal({
           className={`modal-backdrop ${peek ? "peek-backdrop" : ""}`}
         />
         <Dialog.Content
+          ref={surface}
           className={`${peek ? "peek-surface" : "modal-surface"} ${className}`}
-          onOpenAutoFocus={
-            initialFocus
-              ? (event) => {
-                  if (!initialFocus.current) return;
-                  event.preventDefault();
-                  initialFocus.current.focus();
-                }
-              : undefined
-          }
+          onOpenAutoFocus={(event) => {
+            const target = initialFocus?.current ?? (focusPanel ? surface.current : null);
+            if (!target) return;
+            event.preventDefault();
+            target.focus({ preventScroll: true });
+          }}
         >
           {peek ? (
             <div className="peek-heading">
