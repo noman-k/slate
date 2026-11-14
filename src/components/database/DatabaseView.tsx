@@ -217,7 +217,8 @@ export function DatabaseView({ databaseId, state, onChange, onOpenRecord, compac
   const setOpenMode = (mode: RecordOpenMode) => onChange((current) => ({ ...current, databases: current.databases.map((db) => db.id === databaseId ? { ...db, open_mode: mode } : db) }));
   const fallback: View = { id: placement ?? databaseId, database_id: databaseId, placement: placement ?? null, name: 'Default view', type: 'table', filters: [], sorts: [], hidden_properties: [] };
   const view = views.find((v) => v.id === activeId) || views[0] || fallback;
-  const baseProperties = useMemo(() => state.properties.filter((property) => property.database_id === databaseId), [state.properties, databaseId]);
+  // System properties (e.g. a run's saved progress) are kept with the record but never shown.
+  const baseProperties = useMemo(() => state.properties.filter((property) => property.database_id === databaseId && !property.config.system), [state.properties, databaseId]);
   const properties = useMemo(() => orderProperties(baseProperties, view.property_order), [baseProperties, view.property_order]);
   const visible = properties.filter((property) => !view.hidden_properties.includes(property.id));
   const records = useMemo(() => visibleRecords(databaseId, view, state, search), [databaseId, view, state, search]);
@@ -286,7 +287,7 @@ export function DatabaseView({ databaseId, state, onChange, onOpenRecord, compac
   </div>;
 }
 export function RecordProperties({ record, state, onChange, onOpenRecord }: { record: DbRecord; state: WorkspaceState; onChange: Props['onChange']; onOpenRecord: Props['onOpenRecord'] }) {
-  const properties = state.properties.filter((property) => property.database_id === record.database_id && property.type !== 'title').sort((a, b) => a.position - b.position);
+  const properties = state.properties.filter((property) => property.database_id === record.database_id && property.type !== 'title' && !property.config.system).sort((a, b) => a.position - b.position);
   return <div className="db-record-properties">{properties.map((property) => <div className="db-record-property" key={property.id}><span className="db-record-property-label"><PropertyIcon type={property.type} /><span>{property.name}</span></span><div className="db-record-property-value"><Cell record={record} property={property} state={state} onChange={onChange} onOpenRecord={onOpenRecord} /></div></div>)}</div>;
 }
 export default DatabaseView;

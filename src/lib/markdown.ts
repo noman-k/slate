@@ -32,6 +32,9 @@ export function decodeDirective(source: string): WorkspaceDirective | null {
   }
 }
 
+/** Block types saved as `:::slate-node` JSON lines (anything else is kept as source). */
+const RICH_NODES = ["callout", "toggle", "procedureParams", "procedureStep"];
+
 /** Recognize directives only outside fenced code. Preserve unfamiliar block syntax verbatim. */
 export function splitMarkdown(source: string): MarkdownPart[] {
   const lines = source.split("\n");
@@ -83,7 +86,7 @@ export function splitMarkdown(source: string): MarkdownPart[] {
           unknown
         >;
         result.push(
-          ["callout", "toggle"].includes(String(node.type))
+          RICH_NODES.includes(String(node.type))
             ? { kind: "rich", source: line, node }
             : { kind: "preserved", source: line },
         );

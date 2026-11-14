@@ -27,9 +27,9 @@ describe("playbook and runbook templates", () => {
   it("outlines sections with their step counts", () => {
     const refund = PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-refund")!;
     expect(templateOutline(refund).map((s) => s.title)).toEqual([
-      "Guidelines", "1 · Find the order", "2 · Check eligibility", "3 · Refund", "4 · Wrap up",
+      "Guidelines", "1 · Check eligibility", "2 · Refund", "Offer store credit", "Escalate",
     ]);
-    expect(templateOutline(refund)[1].items).toBe(3);
+    expect(templateOutline(refund).map((s) => s.items)).toEqual([0, 1, 3, 5, 2]);
   });
 
   it("parses into real headings, lists, checklists and tables, and survives a round trip", () => {
@@ -38,10 +38,14 @@ describe("playbook and runbook templates", () => {
       const types = new Set(doc.content?.map((n) => n.type));
       expect(types.has("heading")).toBe(true);
       expect(types.has("preserved") || types.has("preservedSource")).toBe(false);
-      if (t.kind === "runbook") {
-        expect(types.has("table")).toBe(true);
-        expect(types.has("taskList")).toBe(true);
-      }
+      expect(types.has("procedureStep")).toBe(true);
+      if (t.kind === "runbook") expect(types.has("table")).toBe(true);
+      // Every branch goes somewhere real.
+      const sections = new Set(doc.content?.filter((n) => n.type === "heading").map((n) => n.content?.map((c) => c.text).join("")));
+      for (const n of doc.content || [])
+        if (n.type === "procedureStep")
+          for (const target of [n.attrs?.then, n.attrs?.else])
+            if (target && target !== "@end") expect(sections.has(target)).toBe(true);
       expect(parseDocument(api, manager.serialize(doc))).toEqual(doc);
     }
   });

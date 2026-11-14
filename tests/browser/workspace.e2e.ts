@@ -626,7 +626,7 @@ test("a new page can start from a playbook or runbook template", async ({ page }
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Refund request");
   await expect(page.getByText("When to use: a customer asks for their money back on an order.")).toBeVisible();
   const editor = page.getByLabel("Page content", { exact: true });
-  await expect(editor.getByRole("heading", { name: "2 · Check eligibility" })).toBeVisible();
+  await expect(editor.getByRole("heading", { name: "1 · Check eligibility" })).toBeVisible();
   await expect(starter).toBeHidden();
   // Undo puts the page back the way it was.
   await page.locator("[data-sonner-toast]").getByRole("button", { name: "Undo" }).click();
@@ -680,4 +680,109 @@ test("/playbook and /runbook insert a template into a page that has content", as
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "New playbook" })).toBeHidden();
   await expect(editor.getByRole("heading", { name: "Guidelines" })).toHaveCount(0);
+});
+
+async function startFromTemplate(page: Page, kind: "Playbook" | "Runbook", template: RegExp) {
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
+  await page.getByLabel("Start this page").getByRole("button", { name: kind, exact: true }).click();
+  await page.locator(".procedure-gallery").getByRole("option", { name: template }).click();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".procedure-gallery")).toBeHidden();
+}
+test("a playbook runs step by step, branches on its inputs and is saved as a run", async ({ page }) => {
+  await startFromTemplate(page, "Playbook", /Refund request/);
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  const form = page.getByRole("dialog", { name: "Run Refund request" });
+  // Required inputs are checked before starting.
+  await form.getByRole("button", { name: "Start run" }).click();
+  await expect(form.getByText("Order number is required")).toBeVisible();
+  await form.getByLabel("Order number").fill("A-1042");
+  await form.getByLabel("Order total").fill("$84.00");
+  await form.getByLabel("Days since delivery").fill("45");
+  await form.getByLabel("Reason").selectOption("Damaged");
+  await form.getByLabel("Days since delivery").press("Enter");
+  const run = page.locator(".run-surface");
+  await expect(run.locator(".run-input-chip", { hasText: "A-1042" })).toBeVisible();
+  // 45 days is past the window: the If step says why and where it goes.
+  await expect(run.locator(".run-decision")).toContainText("“is less than 31” is false");
+  await expect(run.locator(".run-decision")).toContainText("Offer store credit");
+  await page.keyboard.press("Enter");
+  // Send: values are filled in.
+  await expect(run.locator(".run-card-text")).toHaveText(
+    "Order A-1042 is outside our 30-day refund window, but I can offer $84.00 in store credit instead.",
+  );
+  await page.keyboard.press("Enter");
+  // Ask (yes / no), then Back changes the answer.
+  await run.getByRole("button", { name: "No", exact: true }).click();
+  await expect(run.locator(".run-decision")).toContainText("Escalate");
+  await run.getByRole("button", { name: "Back" }).click();
+  await run.getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(run.locator(".run-decision")).toContainText("the next step");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(run.getByRole("button", { name: "Finish run" })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(run.getByRole("heading", { name: "Run complete" })).toBeVisible();
+  // Steps on the path not taken are marked skipped in the outline.
+  await expect(run.locator(".run-outline li.is-skipped")).toHaveCount(3);
+  await run.getByRole("button", { name: "Done" }).click();
+  await expect(run).toBeHidden();
+  // The run is a record in the playbook's Runs database.
+  await page.getByRole("button", { name: "1 run" }).click();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Runs");
+  const row = page.getByRole("row", { name: /A-1042/ });
+  await expect(row).toContainText("Done");
+  await expect(row).toContainText("Store credit issued");
+  await expect(page.getByRole("columnheader", { name: /Progress/ })).toHaveCount(0);
+});
+test("a run can be paused, picked up after a reload, and started from a run link", async ({ page }) => {
+  await startFromTemplate(page, "Runbook", /Deploy a release/);
+  const url = page.url();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  const start = page.getByRole("dialog", { name: /^Run / });
+  await start.getByLabel("Version").fill("2.4.0");
+  await start.getByRole("button", { name: "Start run" }).click();
+  const run = page.locator(".run-surface");
+  await run.getByRole("button", { name: "Passed" }).click();
+  await expect(run.locator(".run-card-text")).toContainText("deploying 2.4.0 to Production");
+  await page.keyboard.press("Escape");
+  await expect(run).toBeHidden();
+  await page.reload();
+  const resume = page.getByRole("button", { name: /Resume 2\.4\.0 .* step 2 of/ });
+  await expect(resume).toBeVisible();
+  await resume.click();
+  await expect(run.locator(".run-card-text")).toContainText("deploying 2.4.0 to Production");
+  await page.keyboard.press("Enter");
+  // A failed check goes to Roll back.
+  await run.getByRole("button", { name: "Failed" }).click();
+  await expect(run.locator(".run-card-text")).toContainText("Redeploy the previous version");
+  await run.getByRole("button", { name: "Stop" }).click();
+  await expect(run.getByRole("heading", { name: "Run stopped" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // A run link opens the form already filled in, and only once.
+  await page.goto(`${url}?run=1&version=3.0.0&environment=Staging`);
+  const form = page.getByRole("dialog", { name: /^Run / });
+  await expect(form.getByLabel("Version")).toHaveValue("3.0.0");
+  await expect(form.getByLabel("Environment")).toHaveValue("Staging");
+  await expect(page).toHaveURL(url);
+});
+test("step blocks and parameters can be added with slash commands", async ({ page }) => {
+  await createPage(page, "Handbook");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("/parameters");
+  await page.keyboard.press("Enter");
+  await page.getByLabel("Parameter name").fill("tenant name");
+  await expect(page.getByLabel("Parameter name")).toHaveValue("tenant_name");
+  await page.locator(".slate-prose > p").last().click();
+  await page.keyboard.type("/ask");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("How did {{tenant_name}} pay?");
+  await expect(page.locator(".proc-step.is-ask .var-chip")).toHaveText("{{tenant_name}}");
+  await page.getByLabel("Save answer as").fill("method");
+  await expect(page.getByRole("button", { name: "Run", exact: true })).toBeVisible();
+  await expect(page.locator(".run-bar-meta")).toHaveText("1 step · 1 input");
+  // Saved as blocks and read back after a reload.
+  await page.reload();
+  await expect(page.locator(".proc-step.is-ask")).toContainText("How did {{tenant_name}} pay?");
+  await expect(page.getByLabel("Save answer as")).toHaveValue("method");
 });

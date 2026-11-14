@@ -4,6 +4,7 @@ import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
 import {
   PROCEDURE_KINDS,
+  templateInputs,
   templateOutline,
   templatesOf,
   type ProcedureKind,
@@ -41,6 +42,7 @@ export function ProcedureGallery({
   const listRef = useRef<HTMLDivElement>(null);
   const chosen = list[Math.min(index, list.length - 1)];
   const outline = chosen ? templateOutline(chosen) : [];
+  const inputs = chosen ? templateInputs(chosen) : [];
   const info = PROCEDURE_KINDS[kind ?? "playbook"];
   return (
     <Modal
@@ -115,13 +117,21 @@ export function ProcedureGallery({
               <span className="procedure-when">When to use</span>
               {capitalize(chosen.whenToUse.replace(/^When to use:\s*/, ""))}
             </p>
+            {inputs.length > 0 && (
+              <div className="procedure-inputs" aria-label="Inputs">
+                <span className="procedure-when">Asks for</span>
+                {inputs.map((param) => (
+                  <code key={param.name}>{param.name}</code>
+                ))}
+              </div>
+            )}
             <ol>
               {outline.map((section) => (
                 <li key={section.title}>
                   <span>{section.title}</span>
                   {section.items > 0 && (
                     <small>
-                      {section.items} {section.items === 1 ? "item" : "items"}
+                      {section.items} {section.items === 1 ? "step" : "steps"}
                     </small>
                   )}
                 </li>

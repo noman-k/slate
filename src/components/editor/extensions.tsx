@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -36,17 +36,11 @@ import {
   Check,
 } from "lucide-react";
 import { encodeDirective, fencedCode, splitMarkdown } from "../../lib/markdown";
-import type { Page } from "../../lib/types";
 import { PageIcon } from "../page-icon";
 
-export interface EmbedOptions {
-  /** `block` is set for a linked database: that block has its own views. */
-  renderDatabase?: (id: string, block?: string) => ReactNode;
-  onOpenPage?: (id: string) => void;
-  /** Live title, icon and kind of a linked page (the stored title can be stale). */
-  resolvePage?: (id: string) => Pick<Page, "title" | "icon" | "kind"> | undefined;
-}
-export const EmbedContext = createContext<EmbedOptions>({});
+import { EmbedContext, type EmbedOptions } from "./embed-context";
+import { ProcedureParams, ProcedureStep, VariableChips, stepPlaceholder } from "./procedure-nodes";
+export { EmbedContext, type EmbedOptions };
 function EmbedView({ node, extension }: NodeViewProps) {
   const context = useContext(EmbedContext);
   const options =
@@ -401,7 +395,9 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
           ? `Heading ${node.attrs.level}`
           : node.type.name === "paragraph"
             ? "Press '/' for commands…"
-            : "",
+            : node.type.name === "procedureStep"
+              ? stepPlaceholder(node)
+              : "",
     }),
     TaskList,
     TaskItem.configure({ nested: true }),
@@ -415,6 +411,9 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
     PreservedSource,
     Callout,
     Toggle,
+    ProcedureParams,
+    ProcedureStep,
+    VariableChips,
   ];
 }
 
@@ -423,7 +422,8 @@ export function parseDocument(
   source: string,
 ): JSONContent {
   const content: JSONContent[] = [];
-  for (const part of splitMarkdown(source)) {
+  const parts = splitMarkdown(source);
+  for (const [index, part] of parts.entries()) {
     if (part.kind === "embed")
       content.push({ type: "workspaceEmbed", attrs: part.directive });
     else if (part.kind === "preserved")
@@ -439,8 +439,13 @@ export function parseDocument(
           attrs: { source: part.source },
         });
       }
-    } else if (part.source.trim())
-      content.push(...(editor.markdown?.parse(part.source).content || []));
+    } else if (part.source.trim()) {
+      // Blank lines before a block line (a table's serializer adds one) would come
+      // back as an empty paragraph, one more on every save.
+      const text =
+        index < parts.length - 1 ? part.source.replace(/\n\s*$/, "") : part.source;
+      content.push(...(editor.markdown?.parse(text).content || []));
+    }
   }
   return {
     type: "doc",

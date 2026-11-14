@@ -18,6 +18,7 @@ import {
   AlignLeft,
   ChevronRight,
   SmilePlus,
+  Play,
   Table2,
   KanbanSquare,
   List,
@@ -31,6 +32,18 @@ import { BrandMark } from "./brand";
 import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@/lib/page-blocks";
 import { templateMarkdown, type ProcedureKind, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
+import { RunStartDialog, RunView } from "./run-mode";
+import {
+  advance as advanceRun,
+  back as backRun,
+  isRunnable,
+  parseProcedure,
+  startRun,
+  type RunState,
+  type StepOutcome,
+} from "@/lib/runner";
+import { createRun, readRun, recordLookup, runsOf, saveRun } from "@/lib/runs";
+import { recordTitle } from "@/lib/database";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
@@ -154,6 +167,12 @@ export function WorkspaceApp() {
   const [focusTitle, setFocusTitle] = useState<string | null>(null);
   /** The playbook / runbook gallery, open for the current page when set. */
   const [procedureKind, setProcedureKind] = useState<ProcedureKind | null>(null);
+  /** The run form (inputs) for a page, and the run being played back. */
+  const [runStart, setRunStart] = useState<{
+    pageId: string;
+    initial: Record<string, string>;
+  } | null>(null);
+  const [activeRun, setActiveRun] = useState<{ pageId: string; recordId: string } | null>(null);
   /** Set when the gallery was opened from "/playbook" or "/runbook" in the editor. */
   const procedureInsert = useRef<((markdown: string) => void) | null>(null);
   const insertProcedure = useCallback(
@@ -509,6 +528,74 @@ export function WorkspaceApp() {
         : [...s.documents, { page_id: pageId, markdown, updated_at: now }],
     }));
   };
+  /** A page's parameters, sections and steps, read from its Markdown. */
+  const procedureOf = (pageId: string) =>
+    parseProcedure(state.documents.find((d) => d.page_id === pageId)?.markdown || "");
+  /** Starts a run right away: a record in the page's Runs database, played back. */
+  const beginRun = (pageId: string, values: Record<string, string>) => {
+    const playbook = state.pages.find((p) => p.id === pageId);
+    if (!playbook) return;
+    const procedure = procedureOf(pageId);
+    const run = startRun(procedure, values);
+    let recordId = "";
+    change((s) => {
+      const made = createRun(s, playbook, procedure, run);
+      recordId = made.recordId;
+      return made.state;
+    });
+    setRunStart(null);
+    if (recordId) setActiveRun({ pageId, recordId });
+  };
+  /** The Run button and run links: ask for the inputs first (if there are any). */
+  const openRunStart = (pageId: string, values: Record<string, string> = {}) => {
+    const procedure = procedureOf(pageId);
+    const initial = {
+      ...Object.fromEntries(procedure.params.map((p) => [p.name, p.default ?? ""])),
+      ...values,
+    };
+    if (!procedure.params.length) beginRun(pageId, initial);
+    else setRunStart({ pageId, initial });
+  };
+  const copyRunLink = (pageId: string, values: Record<string, string>) => {
+    const query = new URLSearchParams({ run: "1" });
+    for (const [name, value] of Object.entries(values)) if (value) query.set(name, value);
+    const link = `${window.location.origin}/p/${pageId}?${query.toString()}`;
+    navigator.clipboard
+      ?.writeText(link)
+      .then(() => toast("Run link copied — it opens this form filled in"))
+      .catch(() => toast("Couldn't copy the run link"));
+  };
+  const activeProcedure = activeRun ? procedureOf(activeRun.pageId) : null;
+  const activeRecord = activeRun
+    ? state.records.find((r) => r.id === activeRun.recordId)
+    : undefined;
+  const activeRunState = activeRecord ? readRun(state, activeRecord) : null;
+  /** Moves the active run along and saves it to its record (so it can be resumed). */
+  const updateRun = (update: (run: RunState, s: WorkspaceState) => RunState) => {
+    if (!activeRun || !activeProcedure) return;
+    change((s) => {
+      const record = s.records.find((r) => r.id === activeRun.recordId);
+      const current = record ? readRun(s, record) : null;
+      return current
+        ? saveRun(s, activeRun.recordId, activeProcedure, update(current, s))
+        : s;
+    });
+  };
+  /** A run link (/p/<id>?run=1&name=value) opens the run form with those values. */
+  const runLinkHandled = useRef(false);
+  useEffect(() => {
+    if (!ready || runLinkHandled.current) return;
+    runLinkHandled.current = true;
+    const query = new URLSearchParams(window.location.search);
+    const pageId = window.location.pathname.match(/^\/p\/([^/]+)/)?.[1];
+    if (!query.has("run") || !pageId) return;
+    const values = Object.fromEntries([...query].filter(([key]) => key !== "run"));
+    // The link has done its job; a reload shouldn't open the form again.
+    window.history.replaceState(window.history.state, "", `/p/${pageId}`);
+    queueMicrotask(() => openRunStart(pageId, values));
+    // Only once the workspace is ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
   /** Like Notion: a new page opens immediately with the cursor in its title. */
   const requestNew = (
     parent?: string | null,
@@ -1145,6 +1232,51 @@ export function WorkspaceApp() {
                         </div>
                       </div>
                     )}
+                    {(() => {
+                      const procedure = procedureOf(page.id);
+                      if (!isRunnable(procedure)) return null;
+                      const { database, runs } = runsOf(state, page.id);
+                      const inProgress = runs.find((r) => r.run.status === "running");
+                      return (
+                        <div className="run-bar" aria-label="Run this page">
+                          <button
+                            className="run-button"
+                            onClick={() => openRunStart(page.id)}
+                            title="Run it step by step"
+                          >
+                            <Play size={14} />
+                            Run
+                          </button>
+                          <span className="run-bar-meta">
+                            {procedure.steps.length}{" "}
+                            {procedure.steps.length === 1 ? "step" : "steps"}
+                            {procedure.params.length > 0 &&
+                              ` · ${procedure.params.length} ${procedure.params.length === 1 ? "input" : "inputs"}`}
+                          </span>
+                          {inProgress && (
+                            <button
+                              className="run-bar-link is-resume"
+                              onClick={() =>
+                                setActiveRun({ pageId: page.id, recordId: inProgress.record.id })
+                              }
+                            >
+                              <span className="run-live" aria-hidden />
+                              Resume {recordTitle(inProgress.record, state)} · step{" "}
+                              {inProgress.run.step + 1} of {procedure.steps.length}
+                            </button>
+                          )}
+                          {database && (
+                            <button
+                              className="run-bar-link"
+                              onClick={() => open(database.page_id)}
+                              title="See every run of this page"
+                            >
+                              {runs.length} {runs.length === 1 ? "run" : "runs"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {editor(page)}
                     {(() => {
                       // Subpages show as blocks inside the page. Any child without one
@@ -1247,6 +1379,65 @@ export function WorkspaceApp() {
           onOpen={open}
           recentIds={recent}
           currentId={page?.id || activeId}
+        />
+      )}
+      {runStart && (
+        <RunStartDialog
+          key={`${runStart.pageId}:${JSON.stringify(runStart.initial)}`}
+          open
+          title={state.pages.find((p) => p.id === runStart.pageId)?.title || ""}
+          procedure={procedureOf(runStart.pageId)}
+          initial={runStart.initial}
+          recordOptions={(param) =>
+            state.records
+              .filter(
+                (r) =>
+                  r.database_id === param.databaseId &&
+                  !state.pages.find((p) => p.id === r.page_id)?.deleted_at,
+              )
+              .map((r) => ({ id: r.id, label: recordTitle(r, state) }))
+          }
+          onStart={(values) => beginRun(runStart.pageId, values)}
+          onCopyLink={(values) => copyRunLink(runStart.pageId, values)}
+          onClose={() => setRunStart(null)}
+        />
+      )}
+      {activeRun && activeProcedure && activeRunState && (
+        <RunView
+          open
+          page={
+            state.pages.find((p) => p.id === activeRun.pageId) ?? {
+              title: "",
+              icon: "",
+              kind: "document",
+            }
+          }
+          procedure={activeProcedure}
+          run={activeRunState}
+          lookup={recordLookup(state)}
+          onAdvance={(outcome: StepOutcome) =>
+            updateRun((run, s) => advanceRun(activeProcedure, run, outcome, recordLookup(s)))
+          }
+          onBack={() => updateRun((run) => backRun(run))}
+          onPause={() => {
+            setActiveRun(null);
+            if (activeRunState.status === "running")
+              toast("Run paused — resume it from the page");
+          }}
+          onStop={() => updateRun((run) => ({ ...run, status: "stopped", step: -1 }))}
+          onRunAgain={() => {
+            const pageId = activeRun.pageId;
+            const inputs = Object.fromEntries(
+              activeProcedure.params.map((p) => [p.name, activeRunState.vars[p.name] ?? ""]),
+            );
+            setActiveRun(null);
+            openRunStart(pageId, inputs);
+          }}
+          onOpenLog={() => {
+            const pageId = activeRecord?.page_id;
+            setActiveRun(null);
+            if (pageId) open(pageId);
+          }}
         />
       )}
       <ProcedureGallery

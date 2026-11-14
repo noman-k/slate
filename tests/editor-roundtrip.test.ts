@@ -76,6 +76,14 @@ describe("interactive editor / Markdown round-trip", () => {
     expect(markdown).toContain(raw);
     expect(markdown).toContain(comment);
   });
+  it("doesn't add an empty paragraph between a table and the block after it on each save", () => {
+    let markdown = `| a | b |\n| --- | --- |\n| 1 | 2 |\n\n:::slate-node ${JSON.stringify({ type: "callout", content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }] })}\n`;
+    for (let i = 0; i < 3; i++) {
+      const doc = parseDocument(documentApi, markdown);
+      expect(doc.content?.map((node) => node.type)).toEqual(["table", "callout"]);
+      markdown = manager.serialize(doc);
+    }
+  });
   it("retains nested callouts and collapsed toggles through source edits", () => {
     const node = {
       type: "toggle",

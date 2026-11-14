@@ -57,9 +57,15 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  CircleHelp,
   ClipboardList,
   Code2,
   Compass,
+  Flag,
+  ListChecks,
+  MessageSquare,
+  SlidersHorizontal,
+  Split,
   Undo2,
   Redo2,
   Check,
@@ -200,7 +206,7 @@ type SlashItem = {
   name: string;
   description: string;
   icon: typeof FileText;
-  group: "Basic blocks" | "Media & embeds" | "Templates";
+  group: "Basic blocks" | "Media & embeds" | "Playbook steps" | "Templates";
   /** Extra search words, so "/todo", "/ul" or "/img" find the right block. */
   keywords: string;
   run: (editor: Editor) => void;
@@ -890,6 +896,53 @@ export function DocumentEditor(props: DocumentEditorProps) {
           });
         },
       },
+      {
+        name: "Parameters",
+        group: "Playbook steps",
+        keywords: "inputs variables params fields playbook runbook run",
+        description: "Inputs asked for when this page runs",
+        icon: SlidersHorizontal,
+        run: (e) => {
+          e.chain()
+            .focus()
+            .insertContent({
+              type: "procedureParams",
+              attrs: { params: [{ name: "", type: "text", required: true }] },
+            })
+            .run();
+        },
+      },
+      ...(
+        [
+          ["send", "Send step", MessageSquare, "Say or do something; {{name}} fills in values", "message say tell reply instruction"],
+          ["ask", "Ask step", CircleHelp, "Ask a question and save the answer", "question collect input prompt"],
+          ["check", "Check step", ListChecks, "Do something and confirm the expected result", "verify expected test runbook"],
+          ["if", "If / Else", Split, "Branch on a value: go to a section or continue", "condition branch decide when else"],
+          ["end", "End step", Flag, "Finish the run here", "stop finish done exit"],
+        ] as const
+      ).map(
+        ([step, name, icon, description, keywords]) =>
+          ({
+            name,
+            group: "Playbook steps",
+            keywords: `step playbook runbook ${keywords}`,
+            description,
+            icon,
+            run: (e: Editor) => {
+              e.chain()
+                .focus()
+                .insertContent({
+                  type: "procedureStep",
+                  attrs: {
+                    step,
+                    ...(step === "ask" ? { answer: "text" } : {}),
+                    ...(step === "if" ? { op: "is" } : {}),
+                  },
+                })
+                .run();
+            },
+          }) satisfies SlashItem,
+      ),
       ...(onInsertProcedure
         ? (
             [
@@ -1396,7 +1449,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
         </div>
       </div>
       {mode === "interactive" ? (
-        <EmbedContext.Provider value={{ renderDatabase, onOpenPage, resolvePage }}>
+        <EmbedContext.Provider value={{ renderDatabase, onOpenPage, resolvePage, listDatabases }}>
           <EditorContent editor={editor} />
         </EmbedContext.Provider>
       ) : (

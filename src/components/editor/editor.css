@@ -1385,3 +1385,225 @@
 .editor-db-picker-icon.is-new {
   color: var(--accent-text);
 }
+
+/* ---------- Playbook steps and parameters ---------- */
+.proc-step {
+  --step-color: var(--icon-blue);
+  margin: 6px 0;
+  padding: 8px 10px 8px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--step-color) 7%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--step-color) 70%, transparent);
+}
+.proc-step.is-ask { --step-color: var(--icon-purple); }
+.proc-step.is-check { --step-color: var(--icon-green); }
+.proc-step.is-if { --step-color: var(--icon-orange); }
+.proc-step.is-end { --step-color: var(--icon-gray); }
+.proc-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.proc-step-badge {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.proc-step-badge select {
+  appearance: none;
+  width: 60px;
+  height: 22px;
+  padding: 0 6px;
+  text-align: center;
+  text-align-last: center;
+  border: 0;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--step-color) 18%, transparent);
+  color: var(--step-color);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.proc-step-badge select:hover {
+  background: color-mix(in srgb, var(--step-color) 26%, transparent);
+}
+.proc-step-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.6;
+}
+.proc-step-text > div {
+  outline: none;
+}
+.slate-prose .proc-step .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.proc-step-config {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 8px 0 0 2px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.proc-step-config label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.proc-step-config .proc-grow {
+  flex: 1;
+  min-width: 220px;
+}
+.proc-step-config .proc-grow input {
+  flex: 1;
+}
+.proc-step-config input,
+.proc-step-config select,
+.proc-params input:not([type="checkbox"]),
+.proc-params select {
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--divider);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.proc-step-config input:focus,
+.proc-step-config select:focus,
+.proc-params input:focus,
+.proc-params select:focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--accent-border),
+    0 0 0 2px var(--accent-soft);
+}
+.proc-step-config select.is-missing {
+  box-shadow: inset 0 0 0 1px var(--icon-red);
+}
+.proc-var-input {
+  font-family: var(--mono) !important;
+  font-size: 12.5px !important;
+  /* Grows with the name, so long names stay readable. */
+  field-sizing: content;
+  min-width: 96px;
+  max-width: 240px;
+}
+.proc-config-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+}
+.proc-config-word {
+  min-width: 34px;
+  color: var(--text-tertiary);
+}
+.var-chip {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 0.86em;
+  white-space: nowrap;
+}
+.proc-params {
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--bg);
+}
+.proc-params-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--icon);
+}
+.proc-params-head strong {
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 600;
+}
+.proc-params-head span {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.proc-params-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.proc-params-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) 150px minmax(140px, 1.4fr) 64px 28px;
+  align-items: center;
+  gap: 8px;
+}
+.proc-params-row.is-head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+}
+.proc-params-row .proc-var-input {
+  max-width: none;
+}
+.proc-required {
+  display: flex;
+  justify-content: center;
+}
+.proc-required input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+.proc-remove,
+.proc-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 6px;
+  color: var(--icon);
+}
+.proc-remove {
+  width: 28px;
+  height: 28px;
+}
+.proc-add {
+  height: 28px;
+  padding: 0 8px 0 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.proc-remove:hover,
+.proc-add:hover {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+@media (max-width: 760px) {
+  .proc-params-row {
+    grid-template-columns: 1fr 1fr 28px;
+  }
+  .proc-params-row.is-head {
+    display: none;
+  }
+}

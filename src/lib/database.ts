@@ -166,7 +166,7 @@ export function visibleRecords(databaseId: string, view: DatabaseView, state: Wo
   const properties = state.properties.filter((p) => p.database_id === databaseId);
   const get = (record: DbRecord, propertyId: string) => { const p = properties.find((item) => item.id === propertyId); return p ? cellValue(record, p, state) : null; };
   return state.records.filter((record) => record.database_id === databaseId && !state.pages.find((p) => p.id === record.page_id)?.deleted_at)
-    .filter((record) => !search || properties.some((property) => String(cellValue(record, property, state) ?? '').toLowerCase().includes(search.toLowerCase())))
+    .filter((record) => !search || properties.some((property) => !property.config.system && String(cellValue(record, property, state) ?? '').toLowerCase().includes(search.toLowerCase())))
     .filter((record) => view.filters.every((filter) => {
       const value = get(record, filter.property_id);
       const text = String(value ?? '').toLowerCase();
