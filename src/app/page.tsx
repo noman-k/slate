@@ -232,7 +232,6 @@ export default async function Home() {
             <a href="#faq">FAQ</a>
           </nav>
           <div className="landing-account">
-            <ThemeSwitcher compact />
             {who === 'visitor' && (
               <Link href="/auth/login" className="landing-link">Log in</Link>
             )}
@@ -536,6 +535,7 @@ export default async function Home() {
         <div className="footer-brand">
           <Brand size={20} />
           <p>Write it down. Organize it. Run it.</p>
+          <ThemeSwitcher compact />
         </div>
         <nav aria-label="Product">
           <h2>Product</h2>

@@ -1469,9 +1469,6 @@ html:has(.landing) {
   }
 }
 @media (max-width: 440px) {
-  .landing-account .theme-switcher {
-    display: none;
-  }
   .shot-board {
     display: none;
   }
