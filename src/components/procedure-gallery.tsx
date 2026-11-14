@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
 import {
@@ -10,6 +10,7 @@ import {
   type ProcedureKind,
   type ProcedureTemplate,
 } from "@/lib/procedures";
+import { labelOf } from "@/lib/runner";
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -81,7 +82,11 @@ export function ProcedureGallery({
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
               const step = event.key === "ArrowDown" ? 1 : -1;
-              setIndex((i) => (i + step + list.length) % list.length);
+              setIndex((i) => {
+                const next = (i + step + list.length) % list.length;
+                document.getElementById(`procedure-${list[next].id}`)?.scrollIntoView({ block: "nearest" });
+                return next;
+              });
             } else if (event.key === "Enter" && chosen) {
               event.preventDefault();
               onUse(chosen);
@@ -89,8 +94,13 @@ export function ProcedureGallery({
           }}
         >
           {list.map((template, i) => (
+            <Fragment key={template.id}>
+            {(i === 0 || (template.group ?? "") !== (list[i - 1].group ?? "")) && (
+              <div className="procedure-group" role="presentation">
+                {template.group === "automation" ? "Automations" : "Guides"}
+              </div>
+            )}
             <div
-              key={template.id}
               id={`procedure-${template.id}`}
               role="option"
               aria-selected={i === index}
@@ -105,6 +115,7 @@ export function ProcedureGallery({
                 <small>{template.summary}</small>
               </span>
             </div>
+            </Fragment>
           ))}
         </div>
         {chosen && (
@@ -121,7 +132,7 @@ export function ProcedureGallery({
               <div className="procedure-inputs" aria-label="Inputs">
                 <span className="procedure-when">Asks for</span>
                 {inputs.map((param) => (
-                  <code key={param.name}>{param.name}</code>
+                  <code key={param.name}>{labelOf(param)}</code>
                 ))}
               </div>
             )}

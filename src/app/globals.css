@@ -2781,11 +2781,23 @@ section.is-folded .section-toggle svg {
   color: var(--text-strong);
   box-shadow: var(--shadow-chip);
 }
+/* The dialog's header and tabs stay put; only the list of templates scrolls. */
+.modal-surface.procedure-gallery {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .procedure-body {
   display: grid;
   grid-template-columns: 250px 1fr;
   gap: 16px;
   min-height: 300px;
+  height: min(440px, calc(100dvh - 2 * clamp(24px, 13vh, 120px) - 190px));
+}
+.procedure-list {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 4px;
 }
 .procedure-list {
   display: flex;
@@ -4312,4 +4324,23 @@ section.is-folded .section-toggle svg {
 .pb-inputs .proc-params-row > .proc-input-done:hover {
   background: var(--hover-strong);
   color: var(--text);
+}
+
+.run-field small.run-field-hint {
+  color: var(--text-tertiary);
+}
+
+.procedure-group {
+  margin: 8px 10px 2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.procedure-group:first-child {
+  margin-top: 0;
+}
+.procedure-preview {
+  align-self: start;
 }

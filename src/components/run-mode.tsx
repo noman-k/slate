@@ -32,7 +32,7 @@ import {
   targetLabel,
   humanize,
   labelOf,
-  displayValue,
+  shownValue,
   type Lookup,
   type Param,
   type Procedure,
@@ -269,11 +269,23 @@ export function RunStartDialog({
                   <input
                     id={id}
                     autoFocus={index === 0}
-                    type={param.type === "number" ? "number" : param.type === "date" ? "date" : "text"}
+                    type={
+                      param.type === "number"
+                        ? "number"
+                        : param.type === "date"
+                          ? "date"
+                          : param.type === "secret"
+                            ? "password"
+                            : "text"
+                    }
+                    autoComplete={param.type === "secret" ? "off" : undefined}
                     value={value}
                     aria-invalid={invalid}
                     onChange={(event) => set(param.name, event.target.value)}
                   />
+                )}
+                {param.type === "secret" && !invalid && (
+                  <small className="run-field-hint">Hidden, and never shown in run history or run links.</small>
                 )}
                 {invalid && <small role="alert">{labelOf(param)} is required</small>}
               </div>
@@ -574,7 +586,7 @@ export function RunView({
             <Dialog.Title className="run-title">{page.title || "Untitled"}</Dialog.Title>
             <div className="run-inputs">
               {procedure.params.map((param) => {
-                const value = displayValue(procedure, run.vars, param.name, lookup);
+                const value = shownValue(procedure, run.vars, param.name, lookup);
                 return value ? (
                   <span key={param.name} className="run-input-chip" title={labelOf(param)}>
                     <small>{labelOf(param)}</small>

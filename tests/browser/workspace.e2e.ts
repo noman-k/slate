@@ -1051,3 +1051,58 @@ test("the builder scrolls as one page, with inputs as one-line summaries", async
   await page.evaluate(() => (document.querySelector(".page-scroll")!.scrollTop = 1500));
   await expect(page.getByRole("region", { name: "Outline" })).toBeInViewport();
 });
+test("automation templates call other apps and keep secrets out of run history", async ({ page }) => {
+  // The gallery groups templates into guides and automations.
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
+  await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).click();
+  const gallery = page.locator(".procedure-gallery");
+  await expect(gallery.locator(".procedure-group")).toHaveText(["Guides", "Automations"]);
+  // Daily standup: answers are posted to the team webhook, and kept as the run's note.
+  let posted = "";
+  await page.route("https://hooks.example.test/**", async (route) => {
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+    posted = route.request().postData() || "";
+    await route.fulfill({ status: 200, headers: cors, body: "ok" });
+  });
+  await gallery.getByRole("option", { name: /Daily standup note/ }).click();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  const form = page.getByRole("dialog", { name: /^Run / });
+  await form.getByLabel("Your name").fill("Sam");
+  await form.getByLabel("Team chat webhook (optional)").fill("https://hooks.example.test/T1/B2");
+  await form.getByRole("button", { name: "Start run" }).click();
+  const run = page.locator(".run-surface");
+  for (const answer of ["Fixed the invoice bug", "Release notes", "None"]) {
+    await run.getByLabel("Answer").fill(answer);
+    await page.keyboard.press("Enter");
+  }
+  await page.keyboard.press("Enter"); // the decision: there's a webhook, so share
+  await expect(run.locator(".run-request-line")).toContainText("https://hooks.example.test/T1/B2");
+  await page.keyboard.press("Enter");
+  await expect(run.locator(".run-response")).toContainText("200 OK");
+  expect(JSON.parse(posted)).toEqual({ text: "Sam: yesterday Fixed the invoice bug · today Release notes · blockers None" });
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(run.getByRole("heading", { name: "Run complete" })).toBeVisible();
+  await run.getByRole("button", { name: "Done" }).click();
+  // Meeting notes: the API token is a secret — hidden in the form, never saved or linked.
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
+  await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).click();
+  await gallery.getByRole("option", { name: /Meeting notes to tasks/ }).click();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await form.getByLabel("Meeting").fill("Planning");
+  const token = form.getByLabel("API token (optional)");
+  await expect(token).toHaveAttribute("type", "password");
+  await token.fill("sk_live_very_secret");
+  await form.getByRole("button", { name: "Copy run link" }).click();
+  const link = await page.evaluate(() => navigator.clipboard.readText()).catch(() => "");
+  if (link) expect(link).not.toContain("sk_live_very_secret");
+  await form.getByRole("button", { name: "Start run" }).click();
+  await expect(run.locator(".run-inputs")).not.toContainText("sk_live");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "1 run" }).click();
+  await expect(page.getByRole("row", { name: /Planning/ })).toBeVisible();
+  await expect(page.locator(".database-view")).not.toContainText("sk_live_very_secret");
+});

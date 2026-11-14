@@ -7,7 +7,7 @@
  * prerequisites, numbered steps with the result to expect, then verify, roll back and
  * escalate. Both are plain Markdown, so they read the same in either editor mode.
  */
-import { NEXT, parseProcedure, type Param, type StepAttrs, type StepType } from "./runner";
+import { END, NEXT, parseProcedure, type Param, type StepAttrs, type StepType } from "./runner";
 
 export type ProcedureKind = "playbook" | "runbook";
 
@@ -23,6 +23,8 @@ export type ProcedureTemplate = {
   icon: string;
   /** The page's Markdown; `{today}` becomes the date it's created. */
   markdown: string;
+  /** Automations call other apps or write notes for you; shown under their own heading. */
+  group?: "automation";
 };
 
 export const PROCEDURE_KINDS: Record<ProcedureKind, { label: string; plural: string; blurb: string }> = {
@@ -65,6 +67,14 @@ const when = (variable: string, op: StepOptions["op"], value: string, then: stri
     ...(otherwise ? { else: otherwise } : {}),
   });
 const end = (text: string) => step("end", text);
+const call = (
+  text: string,
+  method: StepOptions["method"],
+  url: string,
+  variable: string,
+  onFail: string,
+  extra: { headers?: string; body?: string } = {},
+) => step("api", text, { method, url, variable, ...extra, ...(onFail ? { else: onFail } : {}) });
 const params = (list: Param[]) => node({ type: "procedureParams", attrs: { params: list } });
 const lines = (...parts: string[]) => parts.join("\n\n") + "\n";
 const reviewTable = (owner: string, time: string) => `| Owner | Time needed | Last reviewed | Review every |
@@ -282,6 +292,194 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       end("Rolled back"),
     ),
   },
+  /* ---------- Automations: notes that write themselves, and calls to other apps ---------- */
+  {
+    id: "playbook-standup",
+    kind: "playbook",
+    group: "automation",
+    name: "Daily standup note",
+    summary: "Three questions; saved as a note, shared if you like",
+    whenToUse: "When to use: every morning. Your answers are saved as today's note in Runs, and can be posted to your team's chat.",
+    icon: "icon:notebook:blue",
+    markdown: lines(
+      params([
+        { name: "your_name", type: "text", required: true },
+        { name: "team_webhook", label: "Team chat webhook (optional)", type: "text", required: false },
+      ]),
+      "## Guidelines",
+      "- Keep each answer to a sentence or two.\n- Name people and tickets, so the note is easy to search later.",
+      "## Write the note",
+      ask("What did you get done yesterday?", "yesterday"),
+      ask("What are you working on today?", "today"),
+      ask("Is anything blocking you?", "blockers"),
+      when("team_webhook", "set", "", "Share with the team", "Done", "Shared only if you gave a team chat webhook."),
+      "## Share with the team",
+      call("Post the note to your team's chat", "POST", "{{team_webhook}}", "post", "Done", {
+        body: '{ "text": "{{your_name}}: yesterday {{yesterday}} · today {{today}} · blockers {{blockers}}" }',
+      }),
+      "## Done",
+      end("Standup note saved"),
+    ),
+  },
+  {
+    id: "playbook-meeting-tasks",
+    kind: "playbook",
+    group: "automation",
+    name: "Meeting notes to tasks",
+    summary: "Capture decisions and send follow-ups to your task app",
+    whenToUse: "When to use: right after a meeting. The notes are saved in Runs, and the action items go to your task tool's API.",
+    icon: "icon:presentation:purple",
+    markdown: lines(
+      params([
+        { name: "meeting", type: "text", required: true },
+        { name: "tasks_api", label: "Task app API address (optional)", type: "text", required: false },
+        { name: "api_token", label: "API token (optional)", type: "secret", required: false },
+      ]),
+      "## Guidelines",
+      "- Write one action item per line, starting with who owns it.\n- Decisions are what was agreed, not what was discussed.",
+      "## Capture",
+      ask("Who was there?", "attendees"),
+      ask("What was decided?", "decisions"),
+      ask("What are the action items? One per line, with an owner.", "action_items"),
+      when("tasks_api", "set", "", "Create tasks", "Done"),
+      "## Create tasks",
+      call("Create a follow-up task", "POST", "{{tasks_api}}", "task", "Tasks by hand", {
+        headers: "Authorization: Bearer {{api_token}}\nAccept: application/json",
+        body: '{ "title": "Follow-ups from {{meeting}}", "description": "{{action_items}}" }',
+      }),
+      send("Created a task for the follow-ups from {{meeting}}."),
+      end("Notes saved and tasks created"),
+      "## Tasks by hand",
+      send("The task app didn't accept it. Copy these into it by hand: {{action_items}}"),
+      end("Notes saved; tasks added by hand"),
+      "## Done",
+      end("Notes saved"),
+    ),
+  },
+  {
+    id: "playbook-github-issue",
+    kind: "playbook",
+    group: "automation",
+    name: "Check a GitHub issue",
+    summary: "Look up an issue live and say where it stands",
+    whenToUse: "When to use: someone asks about a bug or feature request that's tracked on GitHub.",
+    icon: "icon:code:purple",
+    markdown: lines(
+      params([
+        { name: "owner", label: "Repository owner", type: "text", required: true, default: "vercel" },
+        { name: "repo", label: "Repository", type: "text", required: true, default: "next.js" },
+        { name: "issue_number", label: "Issue number", type: "number", required: true },
+      ]),
+      "## Look it up",
+      call("Look up the issue on GitHub", "GET", "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{issue_number}}", "issue", "Not found", {
+        headers: "Accept: application/vnd.github+json",
+      }),
+      when("issue.state", "is", "open", NEXT, "Closed"),
+      "## Open",
+      send("“{{issue.title}}” is still open. {{issue.user.login}} opened it, and it has {{issue.comments}} comments."),
+      end("Issue is open"),
+      "## Closed",
+      send("“{{issue.title}}” was closed on {{issue.closed_at}}."),
+      end("Issue is closed"),
+      "## Not found",
+      send("GitHub couldn't find issue {{issue_number}} in {{owner}}/{{repo}}."),
+      end("Issue not found"),
+    ),
+  },
+  {
+    id: "runbook-uptime",
+    kind: "runbook",
+    group: "automation",
+    name: "Check a site is up",
+    summary: "Load the site, and alert the team if it's down",
+    whenToUse: "When to use: someone reports the site is down, or as a quick check after a change.",
+    icon: "icon:activity:green",
+    markdown: lines(
+      reviewTable("On-call engineer", "2 min"),
+      params([
+        { name: "site_url", label: "Site address", type: "text", required: true, default: "https://example.com" },
+        { name: "alert_webhook", label: "Alert webhook (optional)", type: "text", required: false },
+      ]),
+      "## Check",
+      call("Load the site", "GET", "{{site_url}}", "site", "Down"),
+      when("site_status", "is", "200", NEXT, "Down", "Anything other than 200 OK counts as down."),
+      "## Up",
+      end("Site is up"),
+      "## Down",
+      check(
+        "Open {{site_url}} in a browser to confirm it's down. (Some sites can't be checked from the local demo, so they land here too.)",
+        "The page doesn't load, or shows an error",
+      ),
+      when("alert_webhook", "set", "", NEXT, END),
+      call("Alert the team", "POST", "{{alert_webhook}}", "alert", "", {
+        body: '{ "text": "{{site_url}} looks down (status {{site_status}})." }',
+      }),
+      end("Team alerted"),
+    ),
+  },
+  {
+    id: "runbook-weather",
+    kind: "runbook",
+    group: "automation",
+    name: "Weather check before a site visit",
+    summary: "Live forecast, with a plan for rain or wind",
+    whenToUse: "When to use: before heading out to work on site.",
+    icon: "icon:sun:yellow",
+    markdown: lines(
+      reviewTable("Site lead", "5 min"),
+      params([
+        { name: "place", label: "Where", type: "text", required: true, default: "London" },
+        { name: "latitude", type: "number", required: true, default: "51.51" },
+        { name: "longitude", type: "number", required: true, default: "-0.13" },
+      ]),
+      "## Forecast",
+      call(
+        "Get the current weather",
+        "GET",
+        "https://api.open-meteo.com/v1/forecast?latitude={{latitude}}&longitude={{longitude}}&current=temperature_2m,precipitation,wind_speed_10m",
+        "weather",
+        "No forecast",
+      ),
+      send("Right now in {{place}}: {{weather.current.temperature_2m}}°C, {{weather.current.precipitation}} mm of rain, wind {{weather.current.wind_speed_10m}} km/h."),
+      when("weather.current.precipitation", "gt", "0", "Rain plan", NEXT),
+      when("weather.current.wind_speed_10m", "gt", "40", "High wind plan", NEXT),
+      end("Good to go"),
+      "## Rain plan",
+      check("Pack waterproofs and cover any equipment.", "Everything that can't get wet is covered"),
+      end("Going, with rain gear"),
+      "## High wind plan",
+      check("Put off any work at height and tell the team.", "Work at height is rescheduled"),
+      end("Going, without work at height"),
+      "## No forecast",
+      send("The weather service didn't answer. Check a forecast site before you leave."),
+      end("Checked the forecast by hand"),
+    ),
+  },
+  {
+    id: "runbook-webhook",
+    kind: "runbook",
+    group: "automation",
+    name: "Send a webhook",
+    summary: "Post a message to any webhook and confirm it arrived",
+    whenToUse: "When to use: to notify a chat channel or another app at a set point in a process.",
+    icon: "icon:zap:orange",
+    markdown: lines(
+      reviewTable("Add an owner", "1 min"),
+      params([
+        { name: "webhook_url", label: "Webhook address", type: "text", required: true },
+        { name: "message", type: "text", required: true },
+      ]),
+      "## Send",
+      call("Send the message", "POST", "{{webhook_url}}", "reply", "Not sent", {
+        body: '{ "text": "{{message}}" }',
+      }),
+      check("Confirm the message arrived.", "You can see it where the webhook posts"),
+      end("Sent"),
+      "## Not sent",
+      send("The webhook answered {{reply_status}}. Check the address and try again."),
+      end("Not sent"),
+    ),
+  },
 ];
 
 export function templatesOf(kind: ProcedureKind) {
@@ -296,7 +494,8 @@ export function localDate(date = new Date()) {
 
 /** The template's Markdown, ready for a new page. */
 export function templateMarkdown(template: ProcedureTemplate, today = new Date()) {
-  return template.markdown.replaceAll("{today}", localDate(today));
+  // Only a lone {today}: a value called {{today}} in a step stays as it is.
+  return template.markdown.replace(/(?<!\{)\{today\}(?!\})/g, localDate(today));
 }
 
 /** Sections (## headings) with how many steps each holds, for the preview. */

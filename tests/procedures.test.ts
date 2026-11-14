@@ -21,7 +21,10 @@ describe("playbook and runbook templates", () => {
     // Late evening locally is still that day, whatever the UTC date is.
     const md = templateMarkdown(templatesOf("runbook")[0], new Date(2026, 10, 13, 23, 30));
     expect(md).toContain("| 2026-11-13 |");
-    expect(md).not.toContain("{today}");
+    expect(md).not.toMatch(/(?<!\{)\{today\}(?!\})/);
+    // A value named {{today}} in a step isn't touched.
+    const standup = templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-standup")!);
+    expect(standup).toContain("{{today}}");
   });
 
   it("outlines sections with their step counts", () => {

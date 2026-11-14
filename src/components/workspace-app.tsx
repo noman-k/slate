@@ -576,7 +576,9 @@ export function WorkspaceApp() {
   };
   const copyRunLink = (pageId: string, values: Record<string, string>) => {
     const query = new URLSearchParams({ run: "1" });
-    for (const [name, value] of Object.entries(values)) if (value) query.set(name, value);
+    const secrets = new Set(procedureOf(pageId).params.filter((p) => p.type === "secret").map((p) => p.name));
+    // Secrets never go in a link.
+    for (const [name, value] of Object.entries(values)) if (value && !secrets.has(name)) query.set(name, value);
     const link = `${window.location.origin}/p/${pageId}?${query.toString()}`;
     navigator.clipboard
       ?.writeText(link)

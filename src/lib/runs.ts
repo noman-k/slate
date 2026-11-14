@@ -8,6 +8,7 @@ import { cellValue, recordTitle } from "./database";
 import {
   displayValue,
   interpolate,
+  shownValue,
   runLogMarkdown,
   type Lookup,
   type Procedure,
@@ -157,7 +158,7 @@ export function ensureRunsDatabase(
 
 function runTitle(procedure: Procedure, run: RunState, lookup: Lookup, started: Date) {
   const first = procedure.params[0];
-  const label = first ? displayValue(procedure, run.vars, first.name, lookup) : "";
+  const label = first && first.type !== "secret" ? displayValue(procedure, run.vars, first.name, lookup) : "";
   const when = started.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   return label ? `${label} · ${when}` : `Run · ${when}`;
 }
@@ -229,7 +230,8 @@ export function createRun(
     if (property.name === "Started" && property.type === "datetime") values[property.id] = now;
     const param = procedure.params.find((p) => p.name === property.config.param);
     if (param) {
-      const shown = displayValue(procedure, run.vars, param.name, lookup);
+      // Secrets are never written to run history.
+      const shown = shownValue(procedure, run.vars, param.name, lookup);
       values[property.id] = property.type === "number" && shown !== "" ? Number(shown) : shown || null;
     }
   }

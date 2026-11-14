@@ -8,7 +8,7 @@
  */
 import { splitMarkdown } from "./markdown";
 
-export type ParamType = "text" | "number" | "date" | "yesno" | "choice" | "record";
+export type ParamType = "text" | "number" | "date" | "yesno" | "choice" | "record" | "secret";
 export interface Param {
   /** The key used in {{…}}; made from the label and kept stable once steps use it. */
   name: string;
@@ -187,6 +187,13 @@ export function displayValue(
   return value;
 }
 
+/** A value as it may be shown: secrets (API tokens and the like) stay hidden. */
+export function shownValue(p: Procedure, vars: Record<string, string>, name: string, lookup?: Lookup) {
+  const param = p.params.find((item) => item.name === name);
+  if (param?.type === "secret") return vars[name] ? "••••••" : "";
+  return displayValue(p, vars, name, lookup);
+}
+
 /**
  * A field inside a JSON value, e.g. "customer.email" or "items.0.name" (an API
  * response). Objects and lists read as compact JSON; anything missing reads as "".
@@ -224,7 +231,9 @@ export function interpolate(
   return text.replace(VARIABLE_PATTERN, (match, name: string, property?: string) => {
     const value = displayValue(p, vars, name, lookup, property?.trim());
     if (escape === "none") return value === "" ? match : value;
-    if (escape === "url") return encodeURIComponent(value);
+    // A whole web address (e.g. a webhook input) goes in as it is; other values are
+    // encoded so they can't break the address.
+    if (escape === "url") return /^https?:\/\//i.test(value) ? value : encodeURIComponent(value);
     return JSON.stringify(value).slice(1, -1);
   });
 }
@@ -394,7 +403,7 @@ export function runLogMarkdown(p: Procedure, state: RunState, lookup?: Lookup) {
   if (p.params.length) {
     lines.push("## Inputs", "");
     for (const param of p.params)
-      lines.push(`- **${labelOf(param)}:** ${displayValue(p, state.vars, param.name, lookup) || "—"}`);
+      lines.push(`- **${labelOf(param)}:** ${shownValue(p, state.vars, param.name, lookup) || "—"}`);
     lines.push("");
   }
   lines.push("## Steps", "");

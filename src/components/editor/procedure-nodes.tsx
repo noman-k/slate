@@ -619,6 +619,7 @@ const PARAM_TYPES: { value: ParamType; label: string }[] = [
   { value: "yesno", label: "Yes or no" },
   { value: "choice", label: "Pick from a list" },
   { value: "record", label: "A record from a database" },
+  { value: "secret", label: "Secret (e.g. an API token)" },
 ];
 
 function ParamsView({ node, updateAttributes, editor }: NodeViewProps) {
