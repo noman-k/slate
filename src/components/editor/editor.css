@@ -2118,3 +2118,30 @@
   background: var(--bg);
   box-shadow: 0 0 0 1px var(--divider);
 }
+/* "+ Add a page" under the list: another page inside this one. */
+.pages-inside-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--radius);
+  font-size: 15px;
+  color: var(--text-tertiary);
+}
+.pages-inside-add svg {
+  width: 18px;
+  flex-shrink: 0;
+}
+@media (hover: hover) {
+  .pages-inside-add:hover {
+    background: var(--hover);
+    color: var(--text-secondary);
+  }
+}
+@media (pointer: coarse) {
+  .pages-inside-add {
+    min-height: 44px;
+  }
+}

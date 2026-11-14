@@ -314,8 +314,8 @@ export default async function McpDocs() {
             </div>
             <h3 className="docs-tools-group">Creating (apps and keys allowed to “Read and create”)</h3>
             <p>
-              These only add. A new page or playbook can go inside an existing page, where it appears as a link at the end of
-              that page; nothing else that exists is changed, and nothing is deleted. A playbook is checked the way the
+              These only add. A new page or playbook can go inside an existing page, where it&apos;s listed under that
+              page&apos;s <em>Pages inside</em>; nothing that exists is changed, and nothing is deleted. A playbook is checked the way the
               builder checks it, and anything that would break a run comes back as an error to fix before it&apos;s made.
               Each answer includes the new page&apos;s address.
             </p>

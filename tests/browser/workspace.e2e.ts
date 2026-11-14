@@ -175,16 +175,18 @@ test("front page links into the app", async ({ page }) => {
   await page.getByRole("link", { name: "Slate home" }).click();
   await expect(page).toHaveURL(/\/$/);
 });
-test("subpages appear as blocks in their parent and follow moves", async ({ page }) => {
+test("subpages are listed in their parent, can become blocks, and follow moves", async ({ page }) => {
   await createPage(page, "Trip plans");
   const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
   const parentRow = sidebar.locator(".tree-row", { hasText: "Trip plans" });
   await parentRow.hover();
   await parentRow.getByRole("button", { name: "Add a page inside Trip plans" }).click();
   await page.getByLabel("Page title", { exact: true }).fill("Packing list");
-  // The parent page now shows the subpage as a block in its content.
+  // The parent lists it under Pages inside; "Add to page" makes it a block in the text.
   await parentRow.locator(".tree-page").click();
-  const block = page.locator(".page-body .editor-page-reference", { hasText: "Packing list" });
+  await expect(page.getByRole("region", { name: "Pages inside" })).toContainText("Packing list");
+  await page.getByRole("region", { name: "Pages inside" }).getByRole("button", { name: "Add to page" }).click();
+  const block = page.locator(".page-body .slate-prose .editor-page-reference", { hasText: "Packing list" });
   await expect(block).toBeVisible();
   await expect(page.locator(".pages-inside")).toHaveCount(0);
   // Opening a page must not leave a block selected: it lights up once the editor
@@ -1640,4 +1642,29 @@ test("menus fade away when they close, and spinners keep turning for reduced mot
     return result;
   });
   expect(spinning).toEqual({ duration: "1.6s", count: "infinite" });
+});
+test("a page added inside another is listed under Pages inside, leaving the parent's text as it was", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.guide}`);
+  const title = page.getByLabel("Page title", { exact: true });
+  await expect(title).toHaveValue("Getting started");
+  const text = await page.getByLabel("Page content", { exact: true }).textContent();
+  // The sidebar's "+" on Getting started makes a page inside it.
+  const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+  const row = sidebar.locator(".tree-row", { hasText: "Getting started" }).first();
+  await row.hover();
+  await row.getByRole("button", { name: "Add a page inside Getting started" }).click();
+  await title.fill("world");
+  await page.goto(`/p/${account!.ids.guide}`);
+  const inside = page.getByRole("region", { name: "Pages inside" });
+  await expect(inside.getByRole("button", { name: "world" })).toBeVisible();
+  expect(await page.getByLabel("Page content", { exact: true }).textContent()).toBe(text);
+  // "Add a page" there makes another.
+  await inside.getByRole("button", { name: "Add a page" }).click();
+  await title.fill("animals");
+  await page.goto(`/p/${account!.ids.guide}`);
+  await expect(inside.getByRole("button", { name: /^(world|animals)$/ })).toHaveCount(2);
+  // "Add to page" puts links to them in the text instead.
+  await inside.getByRole("button", { name: "Add to page" }).click();
+  await expect(inside).toHaveCount(0);
+  await expect(page.getByLabel("Page content", { exact: true }).locator(".editor-page-reference")).toHaveCount(2);
 });

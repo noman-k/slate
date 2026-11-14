@@ -11,7 +11,6 @@ import { ToolError, type ToolDefinition, type ToolResult } from "./agent-tools";
 import { checkPlaybook } from "./playbook-checks";
 import { serializePlaybook, type BuilderSection, type BuilderStep, type PlaybookModel } from "./playbook-model";
 import { END, NEXT, keyFor, type AnswerType, type ConditionOp, type HttpMethod, type Param, type ParamType, type StepAttrs } from "./runner";
-import { encodeDirective } from "./markdown";
 import type { CellValue, DbRecord, Database, DatabaseView, Document, Page, Property, PropertyType, WorkspaceState } from "./types";
 
 /** What `agent_create` inserts. `appends` adds text to the end of an existing page. */
@@ -67,7 +66,7 @@ export const WRITE_TOOLS: ToolDefinition[] = [
     title: "Create a page",
     description:
       "Create a new page with a title and Markdown text (headings, lists, to-dos like '- [ ] task', tables, code). " +
-      "It's added at the top level, or inside an existing page, where it shows as a link in that page's text. " +
+      "It's added at the top level, or inside an existing page, where it's listed under that page's \"Pages inside\" (the page's own text isn't changed). " +
       "Returns the new page's id and address. Creates only; it never changes existing pages.",
     inputSchema: {
       type: "object",
@@ -267,7 +266,7 @@ function placement({ state }: Context, parentId: unknown) {
 
 const emptyCreation = (): Creation => ({ pages: [], documents: [], databases: [], properties: [], views: [], records: [], appends: [] });
 
-/** The page itself, its text, and (inside a parent) a link block at the end of the parent's text. */
+/** The page itself and its text (inside a parent, it's listed under the parent's "Pages inside"). */
 function addPage(
   creation: Creation,
   where: ReturnType<typeof placement>,
@@ -285,7 +284,8 @@ function addPage(
     position: where.position,
   });
   creation.documents.push({ page_id: page.id, markdown: page.markdown });
-  if (where.parent) creation.appends.push({ page_id: where.parent.id, text: encodeDirective({ kind: "page", id: page.id }) });
+  // Inside a parent it's listed under the parent's "Pages inside"; the parent's text is
+  // left exactly as it is.
 }
 
 const placeText = (where: ReturnType<typeof placement>) => (where.parent ? `inside “${where.parent.title}”` : "at the top level");

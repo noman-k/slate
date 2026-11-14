@@ -19,10 +19,10 @@ describe("create_page", () => {
     expect(creation.appends).toEqual([]);
     expect(result.text).toContain("at the top level");
   });
-  it("puts a page inside another, linked at the end of the parent's text", () => {
-    const { creation, pageId } = plan("create_page", { title: "Notes", parent_page_id: SEED_IDS.hub });
+  it("puts a page inside another without changing the parent's text (it's listed under Pages inside)", () => {
+    const { creation } = plan("create_page", { title: "Notes", parent_page_id: SEED_IDS.hub });
     expect(creation.pages[0]).toMatchObject({ parent_id: SEED_IDS.hub });
-    expect(creation.appends).toEqual([{ page_id: SEED_IDS.hub, text: `:::slate {"kind":"page","id":"${pageId}"}` }]);
+    expect(creation.appends).toEqual([]);
   });
   it("keeps agent text as text: embed and step lines are dropped", () => {
     expect(plainMarkdown(`Hi\n:::slate {"kind":"database","id":"x"}\n:::slate-node {"type":"procedureStep"}\nBye`)).toBe("Hi\nBye");

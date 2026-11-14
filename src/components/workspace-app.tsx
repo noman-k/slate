@@ -18,6 +18,7 @@ import {
   Star,
   AlignLeft,
   ChevronRight,
+  Plus,
   SmilePlus,
   Pencil,
   Play,
@@ -507,8 +508,9 @@ export function WorkspaceApp() {
       };
     });
   /**
-   * `linkInParent` adds the new page's block to its parent's page (sidebar "+");
-   * the slash command inserts its own block where the cursor is, so it passes false.
+   * `linkInParent` also adds a link block to the end of the parent's text. New subpages
+   * don't (they're listed under "Pages inside" at the bottom of the parent, and its text
+   * stays as written); the slash command inserts its own block where the cursor is.
    */
   const createPage = (
     parent: string | null,
@@ -762,7 +764,7 @@ export function WorkspaceApp() {
       pendingNew.current = [parent ?? null, kind];
       return;
     }
-    const made = createPage(parent ?? null, "", kind, true);
+    const made = createPage(parent ?? null, "", kind);
     open(made.pageId);
     setFocusTitle(made.pageId);
   };
@@ -1516,8 +1518,8 @@ export function WorkspaceApp() {
                       editor(page)
                     )}
                     {(() => {
-                      // Subpages show as blocks inside the page. Any child without one
-                      // (older pages, imports) is listed here so it is never hidden.
+                      // Subpages live here, under "Pages inside", unless the page's text
+                      // links to them (a page block from "/page" or "Add to page").
                       const markdown =
                         state.documents.find((d) => d.page_id === page.id)
                           ?.markdown || "";
@@ -1545,7 +1547,7 @@ export function WorkspaceApp() {
                                   ),
                                 )
                               }
-                              title="Add these pages as blocks at the end of the page"
+                              title="Add links to these pages at the end of the text"
                             >
                               Add to page
                             </button>
@@ -1564,6 +1566,13 @@ export function WorkspaceApp() {
                               <ChevronRight size={16} />
                             </button>
                           ))}
+                          <button
+                            className="pages-inside-add"
+                            onClick={() => requestNew(page.id)}
+                          >
+                            <Plus size={16} />
+                            Add a page
+                          </button>
                         </section>
                       );
                     })()}
