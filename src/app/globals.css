@@ -124,9 +124,7 @@
   --muted: var(--text-tertiary);
   --blue: var(--accent);
 }
-:root[data-theme="light"],
-/* The front page is designed for light only, whatever the app theme is. */
-:root:has(.landing) {
+:root[data-theme="light"] {
   color-scheme: light;
   --bg: #ffffff;
   --bg-sidebar: #f8f8f7;

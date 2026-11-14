@@ -1,17 +1,14 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Mona_Sans } from 'next/font/google';
 import {
   Activity, ArrowRight, Bot, Check, CheckCircle2, ChevronDown, CircleHelp, Code2, Command, Compass,
   FileText, GitBranch, Globe, History, House, KanbanSquare, KeyRound, Lock, MessageSquare, PenLine, Play,
   Receipt, Search, Sparkles, Table2, Users, Zap,
 } from 'lucide-react';
 import { Brand, BrandMark } from '@/components/brand';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 import { createClient } from '@/lib/supabase/server';
 import './landing.css';
-
-// GitHub's open-source typeface; self-hosted by next/font, no requests to Google from the browser.
-const display = Mona_Sans({ subsets: ['latin'], variable: '--font-landing', display: 'swap' });
 
 const TITLE = 'Slate — write it down, organize it, run it';
 const DESCRIPTION =
@@ -23,9 +20,6 @@ export const metadata: Metadata = {
   openGraph: { title: TITLE, description: DESCRIPTION, type: 'website', siteName: 'Slate' },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 };
-
-// Light only, so the phone's browser bar matches whatever the visitor's system theme is.
-export const viewport: Viewport = { themeColor: '#ffffff', colorScheme: 'light' };
 
 const configured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -224,7 +218,7 @@ export default async function Home() {
         ? { href: '/app', label: 'Try the demo' }
         : { href: '/auth/register', label: 'Get started for free' };
   return (
-    <div className={`landing ${display.variable}`}>
+    <div className="landing">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="landing-header">
         <div className="landing-nav">
@@ -238,6 +232,7 @@ export default async function Home() {
             <a href="#faq">FAQ</a>
           </nav>
           <div className="landing-account">
+            <ThemeSwitcher compact />
             {who === 'visitor' && (
               <Link href="/auth/login" className="landing-link">Log in</Link>
             )}
