@@ -8,7 +8,7 @@ const deploy = parseProcedure(templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t
 describe("running a playbook", () => {
   it("reads parameters, sections and steps from the Markdown", () => {
     expect(refund.params.map((p) => p.name)).toEqual(["order_number", "order_total", "days_since_delivery", "reason"]);
-    expect(refund.sections).toEqual(["Guidelines", "1 · Check eligibility", "2 · Refund", "Offer store credit", "Escalate"]);
+    expect(refund.sections).toEqual(["Guidelines", "Check eligibility", "Refund", "Offer store credit", "Escalate"]);
     expect(refund.steps[0]).toMatchObject({ step: "if", variable: "days_since_delivery", op: "lt", value: "31", section: 1 });
     expect(variablesOf(refund)).toContain("accepts_credit");
   });
@@ -24,7 +24,7 @@ describe("running a playbook", () => {
     let run = startRun(refund, { order_number: "A-12", order_total: "$40", days_since_delivery: "12" });
     expect(evaluate(refund.steps[0], refund, run.vars).holds).toBe(true);
     run = advance(refund, run, { kind: "next" });
-    expect(refund.steps[run.step].section).toBe(refund.sections.indexOf("2 · Refund"));
+    expect(refund.steps[run.step].section).toBe(refund.sections.indexOf("Refund"));
     run = advance(refund, run, { kind: "check", result: "passed" });
     run = advance(refund, run, { kind: "next" });
     run = advance(refund, run, { kind: "next" });

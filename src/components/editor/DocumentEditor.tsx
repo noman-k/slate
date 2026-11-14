@@ -70,6 +70,7 @@ import {
   Undo2,
   Redo2,
   Check,
+  AlertTriangle,
   ClipboardCopy,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -106,9 +107,18 @@ export interface DocumentEditorProps {
    * Opens the playbook / runbook gallery; the chosen template's Markdown comes back
    * through `insert`, which puts it where the slash command was typed.
    */
-  onInsertProcedure?: (kind: "playbook" | "runbook", insert: (markdown: string) => void) => void;
+  /** Opens the template gallery; the new playbook page's id comes back to be linked here. */
+  onInsertProcedure?: (kind: "playbook" | "runbook", insert: (pageId: string) => void) => void;
   /** Starts a run of this page at a section (from the section heading). */
   onRunFrom?: (section: string) => void;
+  /**
+   * A playbook or runbook: its steps are structured blocks, so the page is edited in
+   * the editor only (like a database page) unless `editSource` is on.
+   */
+  runnable?: boolean;
+  /** "Edit anyway" from View as Markdown: open the source of a runnable page. */
+  editSource?: boolean;
+  onEditSourceChange?: (on: boolean) => void;
 }
 
 interface SlashState {
@@ -210,7 +220,7 @@ type SlashItem = {
   name: string;
   description: string;
   icon: typeof FileText;
-  group: "Basic blocks" | "Media & embeds" | "Playbook steps" | "Templates";
+  group: "Basic blocks" | "Media & embeds" | "Playbook steps" | "Templates" | "Steps" | "Text";
   /** Extra search words, so "/todo", "/ul" or "/img" find the right block. */
   keywords: string;
   run: (editor: Editor) => void;
@@ -320,6 +330,9 @@ export function DocumentEditor(props: DocumentEditorProps) {
     resolvePage,
     onInsertProcedure,
     onRunFrom,
+    runnable,
+    editSource,
+    onEditSourceChange,
   } = props;
   const [mode, setMode] = useState<"interactive" | "markdown">("interactive");
   const [slash, setSlash] = useState<SlashState | null>(null);
@@ -644,7 +657,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
     };
   }, [mode, pageId]);
 
-  const items: SlashItem[] = useMemo(
+  const allItems: SlashItem[] = useMemo(
     () => [
       {
         name: "Text",
@@ -919,7 +932,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
       },
       ...(
         [
-          ["send", "Say something", MessageSquare, "Say something or give an instruction", "send message tell reply instruction step"],
+          ["send", "Say something", MessageSquare, "A message to send, or an instruction to follow", "send message tell reply instruction step"],
           ["ask", "Ask a question", CircleHelp, "Ask, and remember the answer", "question collect input prompt step"],
           ["check", "Check something", ListChecks, "Do something and confirm it worked", "verify expected test runbook step"],
           ["if", "Make a decision", Split, "Go a different way depending on a value", "if else condition branch decide when"],
@@ -953,8 +966,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
       ...(onInsertProcedure
         ? (
             [
-              ["playbook", "Playbook", Compass, "A guided procedure in phases: Ask, Send, Run, If…", "procedure guide support workflow sop steps ada"],
-              ["runbook", "Runbook", ClipboardList, "Steps for a repeatable task, with verify and roll back", "procedure ops operation incident deploy checklist sop steps"],
+              ["playbook", "Playbook", Compass, "A new playbook page, linked here", "procedure guide support workflow sop steps ada"],
+              ["runbook", "Runbook", ClipboardList, "A new runbook page, linked here", "procedure ops operation incident deploy checklist sop steps"],
             ] as const
           ).map(
             ([kind, name, icon, description, keywords]) =>
@@ -965,11 +978,15 @@ export function DocumentEditor(props: DocumentEditorProps) {
                 description,
                 icon,
                 run: (e: Editor) => {
-                  // The cursor is on the (now empty) line where "/" was typed.
+                  // A playbook is its own page: it's created from the chosen template and
+                  // linked here, on the line where "/" was typed.
                   const at = e.state.selection.from;
-                  onInsertProcedure(kind, (markdown) => {
-                    const content = parseDocument(e, markdown).content || [];
-                    e.chain().focus().setTextSelection(at).insertContent(content).run();
+                  onInsertProcedure(kind, (pageId) => {
+                    e.chain()
+                      .focus()
+                      .setTextSelection(at)
+                      .insertContent({ type: "workspaceEmbed", attrs: { kind: "page", id: pageId } })
+                      .run();
                   });
                 },
               }) satisfies SlashItem,
@@ -980,7 +997,41 @@ export function DocumentEditor(props: DocumentEditorProps) {
   );
   const filteredItems = useMemo(() => {
     const query = (slash?.query || "").toLowerCase();
-    const byGroup = (item: SlashItem) => (item.group === "Basic blocks" ? 0 : 1);
+    // Steps belong to playbooks, which are built in the playbook builder; on an
+    // ordinary page they'd turn it into one mid-sentence.
+    const items = runnable ? allItems : allItems.filter((item) => item.group !== "Playbook steps");
+    const byGroup = (item: SlashItem) =>
+      runnable ? (item.group === "Playbook steps" ? 0 : 1) : item.group === "Basic blocks" ? 0 : 1;
+    if (!query && runnable) {
+      // A playbook: steps first, then the few text blocks that suit one. Everything
+      // else is still a search away.
+      let hasInputs = false;
+      editor?.state.doc.forEach((node) => {
+        if (node.type.name === "procedureParams") hasInputs = true;
+      });
+      const steps = items
+        .filter((item) => item.group === "Playbook steps" && !(hasInputs && item.name === "Inputs"))
+        .sort((a, b) => Number(a.name === "Inputs") - Number(b.name === "Inputs"))
+        .map((item) => ({ ...item, group: "Steps" as const }));
+      const text = (
+        [
+          ["Text", null, null],
+          ["Heading 2", "Section", "Start a new part (steps can jump to it)"],
+          ["Heading 3", "Sub-heading", "A smaller heading inside a section"],
+          ["Bullet list", null, null],
+          ["Numbered list", null, null],
+          ["To-do list", null, null],
+          ["Callout", null, "A tip or warning people should notice"],
+          ["Divider", null, null],
+        ] as const
+      ).flatMap(([name, rename, describe]) => {
+        const item = items.find((i) => i.name === name);
+        return item
+          ? [{ ...item, group: "Text" as const, name: rename ?? item.name, description: describe ?? item.description }]
+          : [];
+      });
+      return [...steps, ...text];
+    }
     if (!query) return [...items].sort((a, b) => byGroup(a) - byGroup(b));
     // Names that start with the query first, then any match in name, keywords or description.
     const score = (item: SlashItem) => {
@@ -993,9 +1044,10 @@ export function DocumentEditor(props: DocumentEditorProps) {
     return items
       .map((item) => ({ item, rank: score(item) }))
       .filter(({ rank }) => rank >= 0)
-      .sort((a, b) => a.rank - b.rank)
+      // On a playbook, a step wins a tie with another block.
+      .sort((a, b) => a.rank - b.rank || (runnable ? byGroup(a.item) - byGroup(b.item) : 0))
       .map(({ item }) => item);
-  }, [items, slash?.query]);
+  }, [allItems, slash?.query, runnable, editor]);
   const runSlash = useCallback(
     (item: SlashItem) => {
       if (!editor || !slash) return;
@@ -1128,6 +1180,18 @@ export function DocumentEditor(props: DocumentEditorProps) {
     setDbPicker(null);
     setMode(next);
   };
+  // A runnable page shows only the editor, unless its source was opened on purpose;
+  // closing the source (or the page becoming runnable while in Markdown) returns to it.
+  const switchModeRef = useRef(switchMode);
+  useEffect(() => {
+    switchModeRef.current = switchMode;
+  });
+  const wantedMode = runnable && !editSource ? "interactive" : editSource ? "markdown" : null;
+  useEffect(() => {
+    if (!wantedMode || wantedMode === mode || !editor) return;
+    queueMicrotask(() => switchModeRef.current(wantedMode));
+  }, [wantedMode, mode, editor]);
+  const showModeSwitch = !runnable || editSource;
   const setLink = () => {
     if (editor)
       setUrlInput({
@@ -1415,7 +1479,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
         setHover(null);
       }}
     >
-      <div className="editor-mode-bar">
+      <div className={`editor-mode-bar ${showModeSwitch ? "" : "is-compact"}`}>
+        {showModeSwitch ? (
         <div
           className="editor-mode-options"
           role="group"
@@ -1425,7 +1490,10 @@ export function DocumentEditor(props: DocumentEditorProps) {
             className={mode === "interactive" ? "is-active" : ""}
             aria-pressed={mode === "interactive"}
             title="Edit with blocks and formatting"
-            onClick={() => switchMode("interactive")}
+            onClick={() => {
+              if (editSource) onEditSourceChange?.(false);
+              switchMode("interactive");
+            }}
           >
             Interactive
           </button>
@@ -1439,6 +1507,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             Markdown
           </button>
         </div>
+        ) : null}
         <div className="editor-history">
           <button
             title="Undo (⌘Z)"
@@ -1469,6 +1538,24 @@ export function DocumentEditor(props: DocumentEditorProps) {
           <EditorContent editor={editor} />
         </EmbedContext.Provider>
       ) : (
+        <>
+        {editSource && (
+          <div className="source-warning" role="note">
+            <AlertTriangle size={16} />
+            <span>
+              You&apos;re editing this playbook&apos;s source. Steps and inputs are stored as data
+              here — a small slip can break them, so it&apos;s safer to edit them on the page.
+            </span>
+            <button
+              onClick={() => {
+                onEditSourceChange?.(false);
+                switchMode("interactive");
+              }}
+            >
+              Back to the page
+            </button>
+          </div>
+        )}
         <div className="md-editor">
           <div
             className="md-toolbar"
@@ -1515,6 +1602,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             </span>
           </div>
         </div>
+        </>
       )}
       {mode === "interactive" && hover && (blockMenu || draggingBlock) && (
         <div
@@ -1760,7 +1848,9 @@ export function DocumentEditor(props: DocumentEditorProps) {
             </div>
           )}
           <div className="slash-menu-footer">
-            <span>↑↓ to navigate</span>
+            <span>
+              {runnable && !slash.query ? "Type to search all blocks" : "↑↓ to navigate"}
+            </span>
             <span>↵ to insert</span>
           </div>
         </div>

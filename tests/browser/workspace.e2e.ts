@@ -11,6 +11,13 @@ async function createPage(page: Page, name: string) {
   await title.fill(name);
   await expect(page.getByLabel("Page content", { exact: true })).toBeVisible();
 }
+async function startFromTemplate(page: Page, kind: "Playbook" | "Runbook", template: RegExp) {
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
+  await page.getByLabel("Start this page").getByRole("button", { name: kind, exact: true }).click();
+  await page.locator(".procedure-gallery").getByRole("option", { name: template }).click();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".procedure-gallery")).toBeHidden();
+}
 test.beforeEach(async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue(
@@ -610,11 +617,9 @@ test("a new page can start from a playbook or runbook template", async ({ page }
   // The dialog is named after the tab you're on ("New playbook" / "New runbook").
   const gallery = page.locator(".procedure-gallery");
   await expect(page.getByRole("dialog", { name: "New playbook" })).toBeVisible();
-  // The list is focused: arrow down to "Refund request"; the preview follows.
   await expect(gallery.getByRole("option", { name: /Blank playbook/ })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowDown");
   await expect(gallery.getByRole("region", { name: "Refund request preview" })).toContainText("Check eligibility");
-  // Switching tabs shows runbooks; switching back keeps the playbook you picked.
   await gallery.getByRole("tab", { name: "Runbooks" }).click();
   await expect(page.getByRole("dialog", { name: "New runbook" })).toBeVisible();
   await expect(gallery.getByRole("option", { name: /Incident response/ })).toBeVisible();
@@ -622,11 +627,10 @@ test("a new page can start from a playbook or runbook template", async ({ page }
   await expect(gallery.getByRole("option", { name: /Refund request/ })).toHaveAttribute("aria-selected", "true");
   await gallery.getByRole("button", { name: "Use template" }).click();
   await expect(gallery).toBeHidden();
-  // The page takes the template's name, "when to use" description and structure.
+  // The page takes the template's name and "when to use", and opens in the builder.
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Refund request");
   await expect(page.getByText("When to use: a customer asks for their money back on an order.")).toBeVisible();
-  const editor = page.getByLabel("Page content", { exact: true });
-  await expect(editor.getByRole("heading", { name: "1 · Check eligibility" })).toBeVisible();
+  await expect(page.getByLabel("Section name").first()).toHaveValue("Check eligibility");
   await expect(starter).toBeHidden();
   // Undo puts the page back the way it was.
   await page.locator("[data-sonner-toast]").getByRole("button", { name: "Undo" }).click();
@@ -638,60 +642,42 @@ test("a new page can start from a playbook or runbook template", async ({ page }
   await page.getByRole("dialog", { name: "New runbook" }).getByRole("option", { name: /Deploy a release/ }).click();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Ship v2");
-  await expect(editor.getByRole("heading", { name: "Roll back" })).toBeVisible();
-  // Today in the browser's own time zone, not UTC.
+  await expect(page.getByLabel("Section name").last()).toHaveValue("Roll back");
   const today = await page.evaluate(() => new Date().toLocaleDateString("en-CA"));
-  await expect(editor.locator("table")).toContainText(today);
+  const details = page.getByRole("region", { name: "Details" });
+  await expect(details.getByLabel("Last reviewed")).toHaveValue(today);
+  await expect(details.getByLabel("Owner")).toHaveValue("Release manager");
   await page.reload();
-  await expect(page.getByLabel("Page content", { exact: true }).getByRole("heading", { name: "Roll back" })).toBeVisible();
+  await expect(page.getByLabel("Section name").last()).toHaveValue("Roll back");
 });
-test("/playbook and /runbook insert a template into a page that has content", async ({ page }) => {
+test("/runbook in a page creates a runbook page and links it there", async ({ page }) => {
   await page.getByRole("complementary").locator(".tree-title", { hasText: /^Getting started$/ }).click();
   const editor = page.getByLabel("Page content", { exact: true });
-  await editor.getByText("Everything in this workspace is private to you.").click();
-  await page.keyboard.press("End");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
+  // On the empty line at the end of the page.
+  await page.locator(".slate-prose > p").last().click();
   await page.keyboard.type("/runbook");
-  await expect(page.locator(".editor-menu-label", { hasText: "Templates" })).toHaveCount(0); // a query hides group labels
   await page.keyboard.press("Enter");
   const gallery = page.getByRole("dialog", { name: "New runbook" });
-  await expect(gallery).toBeVisible();
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await expect(gallery.getByRole("option", { name: /Deploy a release/ })).toHaveAttribute("aria-selected", "true");
+  await gallery.getByRole("option", { name: /Deploy a release/ }).click();
   await page.keyboard.press("Enter");
   await expect(gallery).toBeHidden();
-  // Added below the existing text; the page keeps its own title and content.
-  await expect(editor.getByRole("heading", { name: "Roll back" })).toBeVisible();
+  // The page keeps its own content; the runbook is a page of its own, linked here.
   await expect(editor.getByRole("heading", { name: "Make yourself at home" })).toBeVisible();
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
-  // Heading text only (section headings also hold a step-count chip).
-  const order = await editor.locator("h2").evaluateAll((hs) =>
-    hs.map((h) => [...h.childNodes].filter((n) => !(n as HTMLElement).classList?.contains("proc-section-tools")).map((n) => n.textContent).join("").trim()),
-  );
-  expect(order.indexOf("Bring a little structure")).toBeLessThan(order.indexOf("Before you start"));
-  await expect(editor.locator(".slate-prose > p", { hasText: "/runbook" })).toHaveCount(0);
-  // ⌘Z takes it out again.
-  await page.keyboard.press("ControlOrMeta+z");
-  await expect(editor.getByRole("heading", { name: "Roll back" })).toHaveCount(0);
-  await expect(editor.getByRole("heading", { name: "Make yourself at home" })).toBeVisible();
-  // Closing the gallery without choosing inserts nothing.
+  const link = editor.locator(".editor-page-reference", { hasText: "Deploy a release" });
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Deploy a release");
+  await expect(page.getByLabel("Section name").first()).toHaveValue("Before you start");
+  // Closing the gallery without choosing creates nothing.
+  await page.goBack();
+  await page.locator(".slate-prose > p").last().click();
   await page.keyboard.type("/playbook");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("dialog", { name: "New playbook" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "New playbook" })).toBeHidden();
-  await expect(editor.getByRole("heading", { name: "Guidelines" })).toHaveCount(0);
+  await expect(page.locator(".editor-page-reference")).toHaveCount(1);
 });
-
-async function startFromTemplate(page: Page, kind: "Playbook" | "Runbook", template: RegExp) {
-  await page.getByRole("button", { name: "New page", exact: true }).first().click();
-  await page.getByLabel("Start this page").getByRole("button", { name: kind, exact: true }).click();
-  await page.locator(".procedure-gallery").getByRole("option", { name: template }).click();
-  await page.keyboard.press("Enter");
-  await expect(page.locator(".procedure-gallery")).toBeHidden();
-}
 test("a playbook runs step by step, branches on its inputs and is saved as a run", async ({ page }) => {
   await startFromTemplate(page, "Playbook", /Refund request/);
   await page.getByRole("button", { name: "Run", exact: true }).click();
@@ -769,26 +755,50 @@ test("a run can be paused, picked up after a reload, and started from a run link
   await expect(form.getByLabel("Environment")).toHaveValue("Staging");
   await expect(page).toHaveURL(url);
 });
-test("step blocks and parameters can be added with slash commands", async ({ page }) => {
-  await createPage(page, "Handbook");
-  await page.getByLabel("Page title", { exact: true }).press("Enter");
-  await page.keyboard.type("/parameters");
+test("a playbook is built from inputs, sections and steps", async ({ page }) => {
+  await startFromTemplate(page, "Playbook", /Blank playbook/);
+  // An input, named in words.
+  const inputs = page.getByRole("region", { name: "Inputs" });
+  await inputs.getByRole("button", { name: "Add an input" }).click();
+  await inputs.getByLabel("Input name").last().fill("Tenant name");
+  // A new section, named in its card.
+  await page.getByRole("button", { name: "Add section" }).click();
+  const section = page.locator(".pb-section").last();
+  await expect(section.getByLabel("Section name")).toBeFocused();
+  await page.keyboard.type("Remind");
+  await expect(page.locator(".pb-outline-title").last()).toHaveText("Remind");
+  // Its first step: Say, with a value inserted by name.
+  const say = section.locator(".pb-step").first();
+  await say.locator(".pb-step-text").click();
+  await page.keyboard.type("Send a reminder to ");
+  await say.getByRole("button", { name: "Insert a value" }).click();
+  await page.getByRole("menuitem", { name: "Tenant name" }).click();
+  await expect(say.locator(".var-chip")).toHaveText("Tenant name");
+  // Enter adds the next step; then pick an Ask step and remember the answer.
   await page.keyboard.press("Enter");
-  await page.getByLabel("Input name").fill("Tenant name");
-  await expect(page.getByLabel("Input name")).toHaveAttribute("title", "Use it in steps as {{tenant_name}}");
-  await page.locator(".slate-prose > p").last().click();
-  await page.keyboard.type("/ask");
-  await page.keyboard.press("Enter");
-  await page.keyboard.type("How did {{tenant_name}} pay?");
-  await expect(page.locator(".proc-step.is-ask .var-chip")).toHaveText("Tenant name");
-  await expect(page.locator(".proc-step.is-ask .var-chip")).toHaveAttribute("data-key", "{{tenant_name}}");
-  await page.getByLabel("Remember the answer as").fill("Method");
-  await expect(page.getByRole("button", { name: "Run", exact: true })).toBeVisible();
-  await expect(page.locator(".run-bar-meta")).toHaveText("1 step · 1 input");
-  // Saved as blocks and read back after a reload.
+  await expect(section.locator(".pb-step")).toHaveCount(2);
+  await section.locator(".pb-step").nth(1).getByLabel("Step type").selectOption("ask");
+  await page.keyboard.type("Did they pay?");
+  await section.getByLabel("Remember the answer as").fill("Paid");
+  await section.locator(".pb-step").nth(1).getByLabel("Answer type").selectOption("yesno");
+  // A decision picks the value by name.
+  await section.getByRole("button", { name: "Add step" }).click();
+  await page.getByRole("menuitem", { name: /Decide/ }).click();
+  const decide = section.locator(".pb-step.is-if");
+  await decide.getByLabel("Value to check").selectOption({ label: "Paid" });
+  await decide.getByLabel("Value to compare").fill("No");
+  // Renaming the input renames it everywhere it's used.
+  await inputs.getByLabel("Input name").last().fill("Renter");
+  await expect(say.locator(".var-chip")).toHaveText("Renter");
+  await section.getByLabel("Remember the answer as").fill("Has paid");
+  await expect(decide.getByLabel("Value to check")).toHaveValue("has_paid");
+  await expect(section.locator(".pb-count")).toHaveText("3 steps");
+  // Saved: it's all there after a reload, and it runs.
   await page.reload();
-  await expect(page.locator(".proc-step.is-ask")).toContainText("How did Tenant name pay?");
-  await expect(page.getByLabel("Remember the answer as")).toHaveValue("Method");
+  const again = page.locator(".pb-section").last();
+  await expect(again.getByLabel("Section name")).toHaveValue("Remind");
+  await expect(again.locator(".pb-step").first().locator(".var-chip")).toHaveText("Renter");
+  await expect(page.locator(".run-bar-meta")).toContainText("steps");
 });
 test("an API step calls an endpoint, saves the response and branches on it", async ({ page }) => {
   let calls = 0;
@@ -816,7 +826,9 @@ test("an API step calls an endpoint, saves the response and branches on it", asy
   await page.getByRole("button", { name: "Markdown", exact: true }).click();
   await page.locator(".markdown-source-editor .cm-content").click();
   await page.keyboard.insertText(source);
-  await page.getByRole("button", { name: "Interactive", exact: true }).click();
+  // Once it has steps, the page is a playbook: it goes back to the editor by itself.
+  await expect(page.locator(".md-editor")).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Editor mode" })).toHaveCount(0);
   // The step's settings show in the editor.
   await expect(page.getByLabel("URL", { exact: true })).toHaveValue("https://api.example.test/orders/{{order_number}}");
   await page.getByRole("button", { name: "Run", exact: true }).click();
@@ -851,94 +863,81 @@ test("an API step calls an endpoint, saves the response and branches on it", asy
   await run.getByRole("button", { name: "Continue to “Not found”" }).click();
   await expect(run.locator(".run-card-text")).toHaveText("No order BAD");
 });
-test("sections show their steps, fold, follow renames and can be run from", async ({ page }) => {
+test("sections are cards: fold, rename with links following, reorder, run from here", async ({ page }) => {
   await startFromTemplate(page, "Runbook", /Restore from backup/);
-  const heading = (name: string) => page.locator(".slate-prose h2", { hasText: name });
-  await expect(heading("Restore").locator(".proc-section-count")).toHaveText("4 steps");
-  await expect(heading("Roll back").locator(".proc-section-count")).toHaveText("2 steps");
+  const section = (name: string) => page.locator(".pb-section", { has: page.locator(`input[value="${name}"]`) });
+  await expect(section("Restore").locator(".pb-count")).toHaveText("4 steps");
   // Fold a section's steps away and back.
-  await heading("Restore").locator(".proc-section-count").click();
-  await expect(heading("Restore").locator(".proc-section-count")).toHaveText("4 steps hidden");
-  await expect(page.locator(".proc-step", { hasText: "Spot-check the copy" })).toBeHidden();
-  await heading("Restore").locator(".proc-section-count").click();
-  await expect(page.locator(".proc-step", { hasText: "Spot-check the copy" })).toBeVisible();
-  // Renaming a section heading updates the steps that go to it.
-  const failTarget = page.locator(".proc-step", { hasText: "Spot-check the copy" }).getByLabel("If it fails");
+  await section("Restore").locator(".pb-count").click();
+  await expect(section("Restore").locator(".pb-step")).toHaveCount(0);
+  await section("Restore").locator(".pb-count").click();
+  await expect(section("Restore").locator(".pb-step")).toHaveCount(4);
+  // Renaming a section updates the steps that jump to it.
+  const failTarget = section("Restore").locator(".pb-step").nth(2).getByLabel("If it fails");
   await expect(failTarget).toHaveValue("Roll back");
-  await heading("Roll back").click();
-  await page.keyboard.press("End");
-  await page.keyboard.type(" the restore");
-  await expect(failTarget).toHaveValue("Roll back the restore");
-  await expect(failTarget.locator("option:checked")).toHaveText("Jump to “Roll back the restore”");
+  await section("Roll back").getByLabel("Section name").fill("Undo the restore");
+  await expect(failTarget).toHaveValue("Undo the restore");
+  await expect(failTarget.locator("option:checked")).toHaveText("Jump to “Undo the restore”");
+  // Sections can be moved; the numbers follow.
+  await section("Verify").getByRole("button", { name: /Section \d options/ }).click();
+  await page.getByRole("menuitem", { name: "Move up" }).click();
+  await expect(page.locator(".pb-outline-title")).toHaveText(["Before you start", "Verify", "Restore", "Undo the restore"]);
   // Run from here starts the run at that section.
-  await heading("Roll back the restore").hover();
-  await heading("Roll back the restore").getByRole("button", { name: "Run from Roll back the restore" }).click();
+  await section("Undo the restore").getByRole("button", { name: /Section \d options/ }).click();
+  await page.getByRole("menuitem", { name: "Run from here" }).click();
   const form = page.getByRole("dialog", { name: /^Run / });
-  await expect(form).toContainText("Starts at “Roll back the restore”");
+  await expect(form).toContainText("Starts at “Undo the restore”");
   await form.getByLabel("Database").fill("orders");
   await form.getByLabel("Restore point").fill("2026-11-01");
   await form.getByRole("button", { name: "Start run" }).click();
   await expect(page.locator(".run-card-text")).toHaveText("Point the app back at the original orders and tell the team.");
 });
-
-test("steps are built with plain words: values by name, renames follow, add a step", async ({ page }) => {
-  await createPage(page, "Late rent");
-  await page.getByLabel("Page title", { exact: true }).press("Enter");
-  await page.keyboard.type("/inputs");
-  await page.keyboard.press("Enter");
-  await page.getByLabel("Input name").fill("Tenant name");
-  await page.locator(".slate-prose > p").last().click();
-  await page.keyboard.type("## Remind");
-  await page.keyboard.press("Enter");
-  await page.keyboard.type("/say");
-  await page.keyboard.press("Enter");
-  await page.keyboard.type("Send a reminder to ");
-  // + Value inserts the input by its name, no braces to type.
-  const say = page.locator(".proc-step.is-send");
-  await say.getByRole("button", { name: "Insert a value" }).click();
-  await page.getByRole("menuitem", { name: "Tenant name" }).click();
-  await expect(say.locator(".var-chip")).toHaveAttribute("data-key", "{{tenant_name}}");
-  // It reads as the input's name; Backspace removes it whole, and it can be put back.
-  await expect(say.locator(".var-chip")).toHaveText("Tenant name");
-  await page.keyboard.press("Backspace");
-  await expect(say.locator(".var-chip")).toHaveCount(0);
-  await expect(say).toContainText("Send a reminder to");
-  await say.getByRole("button", { name: "Insert a value" }).click();
-  await page.getByRole("menuitem", { name: "Tenant name" }).click();
-  await expect(say.locator(".var-chip")).toHaveText("Tenant name");
-  // Add a step below the section's last step, choosing the type in words.
-  await page.getByRole("button", { name: "Add a step" }).click();
-  await page.getByRole("group", { name: "Choose a step" }).getByRole("button", { name: /Ask/ }).click();
-  await page.keyboard.type("Did they pay?");
-  await page.getByLabel("Remember the answer as").fill("Paid");
-  await page.locator(".proc-step.is-ask").getByLabel("Answer type").selectOption("yesno");
-  await page.getByRole("button", { name: "Add a step" }).click();
-  await page.getByRole("group", { name: "Choose a step" }).getByRole("button", { name: /Decide/ }).click();
-  // A decision picks the value from a list, by name.
-  const decide = page.locator(".proc-step.is-if");
-  await decide.getByLabel("Value to check").selectOption({ label: "Paid" });
-  await decide.getByLabel("Value to compare").fill("No");
-  await expect(decide.getByLabel("Value to check")).toHaveValue("paid");
-  // Renaming the input renames it everywhere it's used.
-  await page.getByLabel("Input name").fill("Renter");
-  await expect(say.locator(".var-chip")).toHaveAttribute("data-key", "{{renter}}");
-  await expect(say.locator(".var-chip")).toHaveText("Renter");
-  await page.getByLabel("Remember the answer as").fill("Has paid");
-  await expect(decide.getByLabel("Value to check")).toHaveValue("has_paid");
-  await expect(page.locator(".proc-section-count")).toHaveText("3 steps");
-  // How it works is one click away.
-  await page.getByRole("button", { name: "How playbooks work" }).click();
-  await expect(page.getByText("How playbooks work", { exact: true })).toBeVisible();
+test("steps can be reordered, moved between sections, duplicated and deleted with undo", async ({ page }) => {
+  await startFromTemplate(page, "Runbook", /Restore from backup/);
+  const section = (name: string) => page.locator(".pb-section", { has: page.locator(`input[value="${name}"]`) });
+  const texts = (name: string) => section(name).locator(".pb-step-text");
+  await expect(texts("Restore").first()).toContainText("Find the newest backup");
+  // Move down from the step's menu.
+  await section("Restore").locator(".pb-step").first().getByRole("button", { name: "Step 2.1 options" }).click();
+  await page.getByRole("menuitem", { name: "Move down" }).click();
+  await expect(texts("Restore").nth(1)).toContainText("Find the newest backup");
+  // Move to another section.
+  await section("Restore").locator(".pb-step").first().getByRole("button", { name: "Step 2.1 options" }).click();
+  await page.getByRole("menuitem", { name: "Move to “Verify”" }).click();
+  await expect(section("Restore").locator(".pb-step")).toHaveCount(3);
+  await expect(section("Verify").locator(".pb-step")).toHaveCount(3);
+  // Drag a step by its handle to the top of its section.
+  await section("Verify").locator(".pb-step").last().hover();
+  const handle = section("Verify").locator(".pb-step").last().getByRole("button", { name: /Move step/ });
+  await expect(handle).toBeVisible();
+  const target = section("Verify").locator(".pb-step").first();
+  const from = (await handle.boundingBox())!;
+  const to = (await target.boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 4, from.y - 10, { steps: 4 });
+  await page.mouse.move(to.x + 30, to.y + 4, { steps: 10 });
+  await page.mouse.up();
+  await expect(texts("Verify").first()).toContainText("Restore it to a separate copy");
+  // Duplicate, then delete with Undo.
+  await section("Roll back").locator(".pb-step").first().getByRole("button", { name: /options/ }).click();
+  await page.getByRole("menuitem", { name: "Duplicate" }).click();
+  await expect(section("Roll back").locator(".pb-step")).toHaveCount(3);
+  await section("Roll back").locator(".pb-step").first().getByRole("button", { name: /options/ }).click();
+  await page.getByRole("menuitem", { name: "Delete step" }).click();
+  await expect(section("Roll back").locator(".pb-step")).toHaveCount(2);
+  await page.locator("[data-sonner-toast]", { hasText: "Deleted step" }).getByRole("button", { name: "Undo" }).click();
+  await expect(section("Roll back").locator(".pb-step")).toHaveCount(3);
 });
-
 test("values in steps are chips that behave like one character", async ({ page }) => {
-  await createPage(page, "Chips");
-  await page.getByLabel("Page title", { exact: true }).press("Enter");
-  await expect(page.getByLabel("Page content", { exact: true })).toBeFocused();
-  await page.keyboard.type("/say");
-  await page.keyboard.press("Enter");
-  const step = page.locator(".proc-step").first();
-  const text = step.locator(".proc-step-text");
+  await startFromTemplate(page, "Playbook", /Blank playbook/);
+  // A new step at the end of the first section.
+  const first = page.locator(".pb-section").first();
+  await first.getByRole("button", { name: "Add step" }).click();
+  await page.getByRole("menuitem", { name: /Say/ }).click();
+  const step = first.locator(".pb-step").last();
+  const text = step.locator(".pb-step-text");
+  await expect(text).toBeFocused();
   // Typing {{name}} becomes a chip, and typing continues after it.
   await page.keyboard.type("Hi {{customer_name}}");
   await expect(step.locator(".var-chip")).toHaveText("Customer name");
@@ -951,8 +950,8 @@ test("values in steps are chips that behave like one character", async ({ page }
   await page.keyboard.type("!");
   await expect(text).toHaveText(">Hi Customer name there!");
   // Arrow keys step over the chip as one character.
-  for (let i = 0; i < 7; i++) await page.keyboard.press("ArrowLeft"); // "there!" and the space
-  await page.keyboard.press("ArrowLeft"); // over the chip
+  for (let i = 0; i < 7; i++) await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
   await page.keyboard.type("·");
   await expect(text).toHaveText(">Hi ·Customer name there!");
   // Backspace right after a chip removes it whole.
@@ -976,4 +975,59 @@ test("values in steps are chips that behave like one character", async ({ page }
   await page.mouse.click(box.x + box.width - 3, box.y + box.height / 2);
   await page.keyboard.type("?");
   await expect(text).toHaveText(">Hi · there! Order total?");
+});
+test("playbooks are edited on the page; their Markdown is one menu away", async ({ page }) => {
+  // An ordinary page keeps the Interactive / Markdown switch.
+  await createPage(page, "Plain notes");
+  await expect(page.getByRole("group", { name: "Editor mode" })).toBeVisible();
+  await startFromTemplate(page, "Runbook", /Deploy a release/);
+  await expect(page.getByRole("group", { name: "Editor mode" })).toHaveCount(0);
+  // View as Markdown shows the source, read-only.
+  await page.getByRole("button", { name: "Page options" }).click();
+  await page.getByRole("menuitem", { name: "View as Markdown" }).click();
+  const dialog = page.getByRole("dialog", { name: "Markdown source" });
+  await expect(dialog.getByLabel("Markdown source")).toContainText('"type":"procedureStep"');
+  // Edit anyway opens the source with a warning; Back to the page returns to blocks.
+  await dialog.getByRole("button", { name: "Edit anyway" }).click();
+  await expect(page.locator(".md-editor")).toBeVisible();
+  await expect(page.locator(".source-warning")).toContainText("editing this playbook");
+  await page.getByRole("button", { name: "Back to the page" }).click();
+  await expect(page.locator(".md-editor")).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Editor mode" })).toHaveCount(0);
+  await expect(page.locator(".proc-step").first()).toBeVisible();
+});
+test("ordinary pages don't offer playbook steps in the / menu", async ({ page }) => {
+  await createPage(page, "Notes");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await expect(page.getByLabel("Page content", { exact: true })).toBeFocused();
+  await page.keyboard.type("/say");
+  await expect(page.locator(".slash-command-menu")).not.toContainText("Say something");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type(" /playbook");
+  await expect(page.locator(".slash-command-menu")).toContainText("A new playbook page, linked here");
+});
+test("the builder checks the playbook and says what to fix", async ({ page }) => {
+  await startFromTemplate(page, "Playbook", /Refund request/);
+  const outline = page.getByRole("region", { name: "Outline" });
+  await expect(outline).toContainText("Ready to run");
+  // Deleting a section that steps jump to: both are flagged, and counted.
+  const escalate = page.locator(".pb-section", { has: page.locator('input[value="Escalate"]') });
+  await escalate.getByRole("button", { name: /Section \d options/ }).click();
+  await page.getByRole("menuitem", { name: "Delete section" }).click();
+  await expect(outline.getByRole("button", { name: "2 to fix" })).toBeVisible();
+  await expect(page.locator(".pb-issues .is-warning", { hasText: "It jumps to “Escalate”, which isn't a section any more." })).toHaveCount(2);
+  await expect(page.locator(".pb-step.has-warning")).toHaveCount(2);
+  // Undo brings it back, and everything is fine again.
+  await page.locator("[data-sonner-toast]", { hasText: "Deleted" }).getByRole("button", { name: "Undo" }).click();
+  await expect(outline).toContainText("Ready to run");
+  // A new decision says what it still needs.
+  const first = page.locator(".pb-section").first();
+  await first.getByRole("button", { name: "Add step" }).click();
+  await page.getByRole("menuitem", { name: /Decide/ }).click();
+  const decide = first.locator(".pb-step").last();
+  await expect(decide.locator(".pb-issues")).toContainText("Choose which value to check.");
+  await decide.getByLabel("Value to check").selectOption({ label: "Reason" });
+  await decide.getByLabel("Value to compare").fill("Damaged");
+  await expect(decide.locator(".pb-issues")).toContainText("Both answers go the same way");
+  await expect(decide.locator(".pb-issues .is-warning")).toHaveCount(0);
 });

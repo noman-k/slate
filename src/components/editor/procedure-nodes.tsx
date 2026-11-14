@@ -4,7 +4,7 @@
  * and step blocks (Send, Ask, Check, If / Else, End). Each is saved as a `:::slate-node`
  * line, like callouts and toggles, and read back by `parseProcedure` to run the page.
  */
-import { useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -34,7 +34,7 @@ import { Menu, MenuItem } from "../ui/menu";
 import { EmbedContext } from "./embed-context";
 import { HTTP_METHODS } from "../../lib/api-request";
 
-const STEP_HINTS: Record<StepType, string> = {
+export const STEP_HINTS: Record<StepType, string> = {
   send: "What to say or do",
   ask: "The question to ask",
   check: "What to do — then check it worked",
@@ -187,7 +187,7 @@ function NameField({
 }
 
 /** "+ Value": inserts an input or earlier answer into the step text, by name. */
-function ValuePicker({ values, onPick }: { values: ReturnType<typeof valuesOf>; onPick: (key: string) => void }) {
+export function ValuePicker({ values, onPick }: { values: ReturnType<typeof valuesOf>; onPick: (key: string) => void }) {
   const groups: [string, typeof values][] = [
     ["Inputs", values.filter((v) => v.kind === "input")],
     ["Answers", values.filter((v) => v.kind === "answer")],
@@ -281,71 +281,29 @@ function ValueSelect({
   );
 }
 
-function StepView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
-  const step = (node.attrs.step as StepType) || "send";
-  const { sections, values } = useDocumentInfo(editor);
-  const set = (attrs: Record<string, unknown>) => updateAttributes(attrs);
-  const op = (node.attrs.op as ConditionOp) || "is";
-  const variable = String(node.attrs.variable || "");
+/** A step's settings (what it remembers, where it jumps, the request it makes). */
+export function StepSettings({
+  attrs,
+  set,
+  sections,
+  values,
+  onRename,
+}: {
+  attrs: Record<string, unknown>;
+  set: (attrs: Record<string, unknown>) => void;
+  sections: string[];
+  values: ReturnType<typeof valuesOf>;
+  /** Renames this step's saved value (and everything that uses it). */
+  onRename: (key: string) => void;
+}) {
+  const node = { attrs: attrs as Record<string, string | null | undefined> };
+  const step = (attrs.step as StepType) || "send";
+  const op = (attrs.op as ConditionOp) || "is";
+  const variable = String(attrs.variable || "");
   const taken = values.map((v) => v.key);
-  const rename = (key: string) => {
-    const old = variable;
-    set({ variable: key });
-    if (old) renameValue(editor, old, key);
-  };
-  /** Puts {{key}} at the cursor if it's in this step, otherwise at the end of it. */
-  const insertValue = (key: string) => {
-    const pos = getPos();
-    if (typeof pos !== "number") return;
-    const start = pos + 1;
-    const end = pos + node.nodeSize - 1;
-    const { from, to } = editor.state.selection;
-    const inside = from >= start && to <= end;
-    // After the menu has closed and handed focus back.
-    window.requestAnimationFrame(() =>
-      editor
-        .chain()
-        .focus()
-        .insertContentAt(inside ? { from, to } : end, { type: "valueRef", attrs: { key } })
-        .run(),
-    );
-  };
+  const rename = onRename;
   return (
-    <NodeViewWrapper className={`proc-step is-${step}`}>
-      <div className="proc-step-row">
-        <span className="proc-step-badge" contentEditable={false}>
-          <select
-            aria-label="Step type"
-            title={STEP_PURPOSE[step]}
-            value={step}
-            onChange={(event) => set({ step: event.target.value })}
-          >
-            {(Object.keys(STEP_LABELS) as StepType[]).map((type) => (
-              <option key={type} value={type}>
-                {STEP_LABELS[type]} — {STEP_PURPOSE[type]}
-              </option>
-            ))}
-          </select>
-          <span className="proc-step-badge-label" aria-hidden>
-            {STEP_LABELS[step]}
-          </span>
-        </span>
-        {/* The hint lives inside the text area (the editor's own placeholder would be
-            drawn on the whole block, over the badge). */}
-        <div className="proc-step-body">
-          {node.content.size === 0 && (
-            <span className="proc-step-placeholder" contentEditable={false} aria-hidden>
-              {STEP_HINTS[step]}
-            </span>
-          )}
-          <NodeViewContent className="proc-step-text" />
-        </div>
-        {step !== "if" && (
-          <span className="proc-step-tools" contentEditable={false}>
-            <ValuePicker values={values} onPick={insertValue} />
-          </span>
-        )}
-      </div>
+    <>
       {step !== "send" && step !== "end" && (
         <div className="proc-step-config" contentEditable={false}>
           {step === "ask" && (
@@ -529,6 +487,74 @@ function StepView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
           )}
         </div>
       )}
+    </>
+  );
+}
+
+function StepView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
+  const step = (node.attrs.step as StepType) || "send";
+  const { sections, values } = useDocumentInfo(editor);
+  const set = (attrs: Record<string, unknown>) => updateAttributes(attrs);
+  const variable = String(node.attrs.variable || "");
+  const rename = (key: string) => {
+    const old = variable;
+    set({ variable: key });
+    if (old) renameValue(editor, old, key);
+  };
+  /** Puts {{key}} at the cursor if it's in this step, otherwise at the end of it. */
+  const insertValue = (key: string) => {
+    const pos = getPos();
+    if (typeof pos !== "number") return;
+    const start = pos + 1;
+    const end = pos + node.nodeSize - 1;
+    const { from, to } = editor.state.selection;
+    const inside = from >= start && to <= end;
+    // After the menu has closed and handed focus back.
+    window.requestAnimationFrame(() =>
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(inside ? { from, to } : end, { type: "valueRef", attrs: { key } })
+        .run(),
+    );
+  };
+  return (
+    <NodeViewWrapper className={`proc-step is-${step}`}>
+      <div className="proc-step-row">
+        <span className="proc-step-badge" contentEditable={false}>
+          <select
+            aria-label="Step type"
+            title={STEP_PURPOSE[step]}
+            value={step}
+            onChange={(event) => set({ step: event.target.value })}
+          >
+            {(Object.keys(STEP_LABELS) as StepType[]).map((type) => (
+              <option key={type} value={type}>
+                {STEP_LABELS[type]} — {STEP_PURPOSE[type]}
+              </option>
+            ))}
+          </select>
+          <span className="proc-step-badge-label" aria-hidden>
+            {STEP_LABELS[step]}
+          </span>
+        </span>
+        {/* The hint lives inside the text area (the editor's own placeholder would be
+            drawn on the whole block, over the badge). */}
+        <div className="proc-step-body">
+          {node.content.size === 0 && (
+            <span className="proc-step-placeholder" contentEditable={false} aria-hidden>
+              {STEP_HINTS[step]}
+            </span>
+          )}
+          <NodeViewContent className="proc-step-text" />
+        </div>
+        {step !== "if" && (
+          <span className="proc-step-tools" contentEditable={false}>
+            <ValuePicker values={values} onPick={insertValue} />
+          </span>
+        )}
+      </div>
+      <StepSettings attrs={node.attrs} set={set} sections={sections} values={values} onRename={rename} />
     </NodeViewWrapper>
   );
 }
@@ -596,11 +622,37 @@ const PARAM_TYPES: { value: ParamType; label: string }[] = [
 ];
 
 function ParamsView({ node, updateAttributes, editor }: NodeViewProps) {
-  const params = (node.attrs.params as Param[]) || [];
+  const { values } = useDocumentInfo(editor);
+  return (
+    <NodeViewWrapper className="proc-params" contentEditable={false}>
+      <InputsEditor
+        params={(node.attrs.params as Param[]) || []}
+        onChange={(params) => updateAttributes({ params })}
+        values={values}
+        onRenameKey={(from, to) => renameValue(editor, from, to)}
+      />
+    </NodeViewWrapper>
+  );
+}
+
+/** The Inputs table: what to ask for when someone presses Run. */
+export function InputsEditor({
+  params,
+  onChange,
+  values,
+  onRenameKey,
+  compact,
+}: {
+  params: Param[];
+  onChange: (params: Param[]) => void;
+  values: ReturnType<typeof valuesOf>;
+  onRenameKey: (from: string, to: string) => void;
+  /** A narrow panel: each input on its own small card. */
+  compact?: boolean;
+}) {
   const { listDatabases } = useContext(EmbedContext);
   const databases = listDatabases?.() ?? [];
-  const { values } = useDocumentInfo(editor);
-  const save = (next: Param[]) => updateAttributes({ params: next });
+  const save = onChange;
   const edit = (index: number, patch: Partial<Param>) =>
     save(params.map((param, i) => (i === index ? { ...param, ...patch } : param)));
   /** The label is what people see; its key follows it, and steps using it are updated. */
@@ -611,10 +663,10 @@ function ParamsView({ node, updateAttributes, editor }: NodeViewProps) {
     const taken = values.map((v) => v.key).filter((k) => k !== param.name);
     for (let n = 2; base && taken.includes(key); n++) key = `${base}_${n}`;
     edit(index, { label, name: key });
-    if (param.name && key !== param.name) renameValue(editor, param.name, key);
+    if (param.name && key !== param.name) onRenameKey(param.name, key);
   };
   return (
-    <NodeViewWrapper className="proc-params" contentEditable={false}>
+    <div className={compact ? "proc-inputs is-compact" : "proc-inputs"}>
       <div className="proc-params-head">
         <SlidersHorizontal size={15} />
         <strong>Inputs</strong>
@@ -715,7 +767,7 @@ function ParamsView({ node, updateAttributes, editor }: NodeViewProps) {
         <Plus size={14} />
         Add an input
       </button>
-    </NodeViewWrapper>
+    </div>
   );
 }
 
@@ -785,8 +837,12 @@ export function chipsToText(node: JsonContent): JsonContent {
 }
 
 /** A value in a step, shown by its name ("Order number"). */
+/** The values a playbook's steps can use, when steps are edited outside the page editor. */
+export const ProcedureValuesContext = createContext<ReturnType<typeof valuesOf> | null>(null);
+
 function ValueChipView({ node, editor, getPos }: NodeViewProps) {
-  const { values } = useDocumentInfo(editor);
+  const fromDocument = useDocumentInfo(editor).values;
+  const values = useContext(ProcedureValuesContext) ?? fromDocument;
   const key = String(node.attrs.key || "");
   const path = node.attrs.path ? String(node.attrs.path) : "";
   const value = values.find((v) => v.key === key);
@@ -818,8 +874,12 @@ function ValueChipView({ node, editor, getPos }: NodeViewProps) {
  * treat it as a unit) and is saved as plain {{key}} text, so Markdown and runs are
  * unchanged. Typing {{name}} turns into a chip.
  */
-export const ValueRef = Node.create({
+export const ValueRef = Node.create<{ anywhere: boolean }>({
   name: "valueRef",
+  addOptions() {
+    // Off in pages (chips live only in steps); on in a step's own text editor.
+    return { anywhere: false };
+  },
   group: "inline",
   inline: true,
   atom: true,
@@ -854,16 +914,15 @@ export const ValueRef = Node.create({
   addNodeView() {
     return ReactNodeViewRenderer(ValueChipView, { as: "span" });
   },
-  // Browsers can't always put the caret after a chip that ends a line (or before one
-  // that starts it), so Home / End are handled here when a chip is at that end.
+  // Browsers don't reliably put the caret past a chip at either end of a line, so
+  // Home / End are handled here (on a wrapped line, the browser keeps doing it).
   addKeyboardShortcuts() {
     const jump = (toEnd: boolean) => () => {
       const { state, view } = this.editor;
       const { $from, empty } = state.selection;
-      if (!empty || $from.parent.type.name !== "procedureStep") return false;
+      if (!empty || (!this.options.anywhere && $from.parent.type.name !== "procedureStep")) return false;
       const edge = toEnd ? $from.end() : $from.start();
-      const chip = toEnd ? $from.parent.lastChild : $from.parent.firstChild;
-      if ($from.pos === edge || chip?.type.name !== "valueRef") return false;
+      if ($from.pos === edge) return false;
       // Only on the same visual line as that end (a wrapped step keeps native Home / End).
       const here = view.coordsAtPos($from.pos);
       const there = view.coordsAtPos(edge, toEnd ? -1 : 1);
@@ -879,7 +938,7 @@ export const ValueRef = Node.create({
         undoable: false,
         find: /\{\{\s*([A-Za-z_][\w]*)(?:\.([^}]+?))?\s*\}\}$/,
         handler: ({ state, range, match }) => {
-          if (state.doc.resolve(range.from).parent.type.name !== "procedureStep") return null;
+          if (!this.options.anywhere && state.doc.resolve(range.from).parent.type.name !== "procedureStep") return null;
           state.tr.replaceWith(range.from, range.to, this.type.create({ key: match[1], path: match[2]?.trim() || null }));
         },
       }),

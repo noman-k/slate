@@ -9,6 +9,7 @@ import {
   Download,
   CircleHelp,
   ClipboardList,
+  Code2,
   Compass,
   FileText,
   HelpCircle,
@@ -19,6 +20,7 @@ import {
   AlignLeft,
   ChevronRight,
   SmilePlus,
+  Pencil,
   Play,
   Table2,
   KanbanSquare,
@@ -33,6 +35,7 @@ import { BrandMark } from "./brand";
 import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@/lib/page-blocks";
 import { templateMarkdown, type ProcedureKind, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
+import { PlaybookBuilder } from "./playbook-builder";
 import { RunStartDialog, RunView } from "./run-mode";
 import {
   advance as advanceRun,
@@ -49,7 +52,7 @@ import { recordTitle } from "@/lib/database";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
-import { Menu, MenuItem, MenuSeparator, Popup } from "./ui/menu";
+import { Menu, MenuItem, MenuSeparator, Modal, Popup } from "./ui/menu";
 import { useWorkspace } from "@/lib/use-workspace";
 import { id } from "@/lib/utils";
 import { duplicatePageSubtree } from "@/lib/pages";
@@ -177,10 +180,14 @@ export function WorkspaceApp() {
     from?: string;
   } | null>(null);
   const [activeRun, setActiveRun] = useState<{ pageId: string; recordId: string } | null>(null);
+  /** View as Markdown (read-only) for a runnable page, and "Edit anyway". */
+  const [sourceView, setSourceView] = useState<string | null>(null);
+  const [sourceEdit, setSourceEdit] = useState<string | null>(null);
+  const sourceDoneRef = useRef<HTMLButtonElement>(null);
   /** Set when the gallery was opened from "/playbook" or "/runbook" in the editor. */
-  const procedureInsert = useRef<((markdown: string) => void) | null>(null);
+  const procedureInsert = useRef<((pageId: string) => void) | null>(null);
   const insertProcedure = useCallback(
-    (kind: ProcedureKind, insert: (markdown: string) => void) => {
+    (kind: ProcedureKind, insert: (pageId: string) => void) => {
       procedureInsert.current = insert;
       setProcedureKind(kind);
     },
@@ -269,6 +276,8 @@ export function WorkspaceApp() {
       setPeekRecordId(null);
       setFocusTitle(null);
       setIconPicker(false);
+      // Editing a playbook's source ends when you go to another page.
+      setSourceEdit((current) => (current === pageId ? current : null));
       remember(pageId);
       // Re-opening the page you're on doesn't add a history entry (Back would seem dead).
       if (push && window.history.state?.pageId !== pageId) {
@@ -535,6 +544,11 @@ export function WorkspaceApp() {
   /** A page's parameters, sections and steps, read from its Markdown. */
   const procedureOf = (pageId: string) =>
     parseProcedure(state.documents.find((d) => d.page_id === pageId)?.markdown || "");
+  /** A playbook or runbook: has steps or inputs, so it's edited as blocks only. */
+  const isStructured = (pageId: string) => {
+    const procedure = procedureOf(pageId);
+    return procedure.steps.length > 0 || procedure.params.length > 0;
+  };
   /** Starts a run right away: a record in the page's Runs database, played back. */
   const beginRun = (pageId: string, values: Record<string, string>, from?: string) => {
     const playbook = state.pages.find((p) => p.id === pageId);
@@ -718,7 +732,13 @@ export function WorkspaceApp() {
   const openRecordAsPage = (r: DbRecord) => {
     open(r.page_id);
     setRecordAsPage(true);
-  };
+  };  // Editors save through a stable callback that always uses the latest saveMarkdown.
+  const saveRef = useRef(saveMarkdown);
+  useEffect(() => {
+    saveRef.current = saveMarkdown;
+  });
+  const savePage = useCallback((pageId: string, md: string) => saveRef.current(pageId, md), []);
+
   /** From a database page: peek over it, or (per the setting, or ⌘-click) go full page. */
   const openRecord = (r: DbRecord, options?: { fullPage?: boolean }) =>
     options?.fullPage || recordOpenMode(r) === "page"
@@ -780,7 +800,7 @@ export function WorkspaceApp() {
       key={p.id}
       pageId={p.id}
       markdown={state.documents.find((d) => d.page_id === p.id)?.markdown || ""}
-      onChange={(md) => saveMarkdown(p.id, md)}
+      onChange={(md) => savePage(p.id, md)}
       onCreatePage={() => {
         const made = createPage(p.id, "");
         toast("Nested page created");
@@ -796,6 +816,9 @@ export function WorkspaceApp() {
       onLinkDatabase={linkDatabase}
       onInsertProcedure={insertProcedure}
       onRunFrom={(section) => openRunStart(p.id, {}, section)}
+      runnable={isStructured(p.id)}
+      editSource={sourceEdit === p.id}
+      onEditSourceChange={(on) => setSourceEdit(on ? p.id : null)}
       onHistoryApi={registerHistory}
       onOpenPage={open}
       resolvePage={(pageId) =>
@@ -1013,6 +1036,12 @@ export function WorkspaceApp() {
                     <Download />
                     Export Markdown
                   </MenuItem>
+                  {page.kind === "document" && isStructured(page.id) && (
+                    <MenuItem onClick={() => setSourceView(page.id)}>
+                      <Code2 />
+                      View as Markdown
+                    </MenuItem>
+                  )}
                   <MenuItem
                     onClick={() => {
                       void navigator.clipboard.writeText(window.location.href);
@@ -1314,7 +1343,19 @@ export function WorkspaceApp() {
                         </div>
                       );
                     })()}
-                    {editor(page)}
+                    {/* A playbook or runbook is edited in the builder (its source only on purpose). */}
+                    {isStructured(page.id) && sourceEdit !== page.id ? (
+                      <PlaybookBuilder
+                        key={page.id}
+                        markdown={
+                          state.documents.find((d) => d.page_id === page.id)?.markdown || ""
+                        }
+                        onChange={(md) => savePage(page.id, md)}
+                        onRunFrom={(section) => openRunStart(page.id, {}, section)}
+                      />
+                    ) : (
+                      editor(page)
+                    )}
                     {(() => {
                       // Subpages show as blocks inside the page. Any child without one
                       // (older pages, imports) is listed here so it is never hidden.
@@ -1479,6 +1520,49 @@ export function WorkspaceApp() {
           }}
         />
       )}
+      <Modal
+        open={sourceView !== null}
+        onOpenChange={(open) => !open && setSourceView(null)}
+        title="Markdown source"
+        description="Steps and inputs are stored as data in the source. To change them safely, edit them on the page."
+        className="source-view"
+        initialFocus={sourceDoneRef}
+      >
+        <pre className="source-view-text" tabIndex={0} aria-label="Markdown source">
+          {sourceView ? state.documents.find((d) => d.page_id === sourceView)?.markdown || "" : ""}
+        </pre>
+        <div className="modal-footer">
+          <button
+            className="run-link-button"
+            onClick={() => {
+              const pageId = sourceView;
+              setSourceView(null);
+              if (pageId) {
+                setSourceEdit(pageId);
+                open(pageId, false);
+              }
+            }}
+          >
+            <Pencil size={14} />
+            Edit anyway
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() =>
+              navigator.clipboard
+                ?.writeText(state.documents.find((d) => d.page_id === sourceView)?.markdown || "")
+                .then(() => toast.success("Markdown copied"))
+                .catch(() => toast("Couldn't copy"))
+            }
+          >
+            <Copy size={14} />
+            Copy
+          </button>
+          <button ref={sourceDoneRef} className="primary-button" onClick={() => setSourceView(null)}>
+            Done
+          </button>
+        </div>
+      </Modal>
       <ProcedureGallery
         kind={procedureKind}
         onKindChange={setProcedureKind}
@@ -1491,8 +1575,14 @@ export function WorkspaceApp() {
           // From the slash menu: add the template where it was typed (⌘Z undoes it).
           const insert = procedureInsert.current;
           procedureInsert.current = null;
-          if (insert) {
-            insert(templateMarkdown(template));
+          if (insert && page) {
+            // From "/playbook" in a page: a new playbook page, linked where "/" was typed.
+            const made = createPage(page.id, "");
+            applyProcedure(made.pageId, template);
+            insert(made.pageId);
+            toast(`“${template.name}” created`, {
+              action: { label: "Open", onClick: () => open(made.pageId) },
+            });
             return;
           }
           if (!page) return;

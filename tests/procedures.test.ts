@@ -27,7 +27,7 @@ describe("playbook and runbook templates", () => {
   it("outlines sections with their step counts", () => {
     const refund = PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-refund")!;
     expect(templateOutline(refund).map((s) => s.title)).toEqual([
-      "Guidelines", "1 · Check eligibility", "2 · Refund", "Offer store credit", "Escalate",
+      "Guidelines", "Check eligibility", "Refund", "Offer store credit", "Escalate",
     ]);
     expect(templateOutline(refund).map((s) => s.items)).toEqual([0, 1, 3, 5, 2]);
   });

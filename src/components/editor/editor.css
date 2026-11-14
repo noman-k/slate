@@ -1910,3 +1910,47 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) 28px;
   }
 }
+
+/* Editing a playbook's source on purpose */
+.source-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--icon-orange) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--icon-orange) 35%, transparent);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.source-warning > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--icon-orange);
+}
+.source-warning span {
+  flex: 1;
+}
+.source-warning button {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  background: var(--bg);
+}
+.source-warning button:hover {
+  background: var(--hover-strong);
+}
+
+/* A playbook has no mode switch: undo / redo sit in a slim row. */
+.editor-mode-bar.is-compact {
+  margin: -6px 0 6px;
+  min-height: 0;
+}
