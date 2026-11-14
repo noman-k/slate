@@ -106,47 +106,70 @@ npm run test:auth
 
 Database, auth and browser tests need Docker. Set `SUPABASE_TEST_WORKDIR` to use an isolated Supabase CLI checkout. In CI, `.github/workflows/ci.yml` runs typecheck, lint, unit tests, the Worker build, database tests and the HTTP auth test; `.github/workflows/browser.yml` starts Supabase and runs the Playwright suite.
 
-## Cloudflare Workers
+## Deployment
 
-The repository follows the [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/) and the [OpenNext adapter setup](https://opennext.js.org/cloudflare/get-started). It is a Workers target with `nodejs_compat`, not a Pages static export.
+Pushing to `main` deploys both halves, each by its own service:
 
-```sh
-npm run build:worker
-npm run preview
-npm run deploy
-```
+- **App → Cloudflare Workers Builds.** Cloudflare builds the repo and deploys the Worker to **https://slate.noman.io**.
+- **Database → Supabase GitHub integration.** Supabase applies new files in `supabase/migrations` to `slate-production`.
 
-`preview` builds and serves the Worker through Wrangler. `deploy` builds and publishes it through `scripts/deploy-worker.mjs`, which loads production environment files, checks that the Supabase key is a public one, and writes a temporary Wrangler config with explicit runtime bindings (removed afterwards). `npm run deploy:check` validates without deploying. Authenticate Wrangler locally or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+Neither needs GitHub secrets. The two run side by side, so for a moment the new app can meet the old schema: keep migrations additive (add tables and columns; don't rename or drop what the running app still uses).
 
-The Supabase URL and publishable key must be present at build time, because Next.js embeds `NEXT_PUBLIC_` values in browser assets; the deploy script also binds them to the Worker runtime for the middleware. `NEXT_PUBLIC_APP_URL` records the canonical origin. Auth redirects use the current origin, so add any preview origin to Supabase's redirect URLs explicitly.
+### App: Cloudflare Workers Builds
 
-### Production domain: slate.noman.io
+In Cloudflare, **Workers & Pages → Create application → Import a repository**, then pick this repo:
 
-`wrangler.jsonc` attaches the Worker (`slate-workspace`) to **slate.noman.io** as a [Workers Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/), so the first deploy creates the DNS record and certificate. One-time setup:
+| Setting | Value |
+| --- | --- |
+| Worker name | `slate-workspace`: must match `name` in `wrangler.jsonc`, or the build fails |
+| Production branch | `main` |
+| Build command | empty (`npm run deploy` builds) |
+| Deploy command | `npm run deploy` |
+| Preview builds | off: a preview would use the production database |
+| Build variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_APP_URL` = `https://slate.noman.io` |
 
-1. **Cloudflare:** `noman.io` must be a zone in the same Cloudflare account as the Worker, with no existing DNS record for `slate`. `CLOUDFLARE_API_TOKEN` needs Workers Scripts edit, plus Workers Routes and DNS edit on the `noman.io` zone.
-2. **GitHub:** in the `production` environment, set `NEXT_PUBLIC_APP_URL` to `https://slate.noman.io`.
-3. **Supabase Auth → URL Configuration:** set the Site URL to `https://slate.noman.io` and add these redirect URLs (the `localhost` one lets `npm run dev` use this project too):
+Cloudflare installs dependencies itself and takes the Node version from `.nvmrc`. `npm run deploy` runs `scripts/deploy-worker.mjs`: it checks that the Supabase key is a public one, builds with OpenNext, and deploys with the Supabase values bound to the Worker runtime too (the middleware reads them there). The URL and key must be present at build time, because Next.js embeds `NEXT_PUBLIC_` values in browser assets.
+
+`wrangler.jsonc` attaches the Worker to `slate.noman.io` as a [Workers Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/); `noman.io` must be a zone in the same Cloudflare account, with no existing `slate` DNS record. If the domain doesn't answer after the first deploy, add it under the Worker's **Settings → Domains & Routes**.
+
+### Database: Supabase GitHub integration
+
+In Supabase, **slate-production → Project Settings → Integrations → GitHub**, connect this repo:
+
+| Setting | Value |
+| --- | --- |
+| Supabase directory | `supabase` |
+| Production branch | `main` |
+| Deploy to production | on: new migrations are applied on every push to `main` |
+| Automatic branching | off: otherwise each pull request gets its own billed database |
+
+The integration only applies migrations. The `[auth]` settings in `supabase/config.toml` (such as the raised local sign-in limit) stay local; production auth is configured in the dashboard.
+
+### One-time Supabase dashboard settings
+
+These live only in the dashboard:
+
+1. **Authentication → URL Configuration:** set the Site URL to `https://slate.noman.io` and add these redirect URLs (the `localhost` one lets `npm run dev` use this project too):
    - `https://slate.noman.io/auth/confirm`
    - `https://slate.noman.io/auth/callback`
    - `http://localhost:3000/auth/confirm`
-4. **Supabase Auth → Email Templates:** paste `supabase/templates/confirmation.html` into *Confirm signup* and `supabase/templates/recovery.html` into *Reset password*. Their links go to `/auth/confirm`, which uses the one-time token only when its button is pressed (mail scanners such as Outlook Safe Links open every link and would otherwise use it up) and verifies it on the server, so the link works in any browser or device.
-5. **Deploy:** run the *Deploy production* workflow (or `npm run deploy`), then open https://slate.noman.io and register to confirm sign-in works.
+2. **Authentication → Email Templates:** paste `supabase/templates/confirmation.html` into *Confirm signup* and `supabase/templates/recovery.html` into *Reset password*. Their links go to `/auth/confirm`, which uses the one-time token only when its button is pressed (mail scanners such as Outlook Safe Links open every link and would otherwise use it up) and verifies it on the server, so the link works in any browser or device.
+3. **Authentication → SMTP Settings:** add your own email sender (Resend, Postmark, …). Supabase's built-in sender only delivers to members of your Supabase team, a few emails an hour.
 
-### GitHub deployment
+After the first deploy, open https://slate.noman.io, sign up, confirm the email and check that you land on the *Getting started* page.
 
-The *Deploy production* workflow is started by hand and uses the GitHub `production` environment. It runs the checks, applies Supabase migrations, builds the Worker and deploys it. Configure:
+### Deploying by hand
 
-| Kind | Name | Purpose |
-| --- | --- | --- |
-| Variable | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL, build and runtime |
-| Variable | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public publishable key, build and runtime |
-| Variable | `NEXT_PUBLIC_APP_URL` | Production origin: `https://slate.noman.io` |
-| Secret | `SUPABASE_DB_URL` | Supabase Postgres connection URI, for applying migrations |
-| Secret | `CLOUDFLARE_API_TOKEN` | Deploy the Worker |
-| Secret | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account |
+Builds and deploys can also run from your machine, for example to debug a failed build:
 
-Try migrations on a staging Supabase project before production. Running the app locally never creates a remote project, applies remote migrations or deploys.
+```sh
+npm run build:worker   # build only
+npm run preview        # build and serve the Worker locally through Wrangler
+npm run deploy:check   # validate the Supabase settings without deploying
+npm run deploy         # build and deploy
+```
+
+`npm run deploy` reads `.env.production.local` ahead of `.env.local`, so put the production values there, and sign in with `npx wrangler login`. To apply migrations by hand: `supabase link --project-ref <project ref>`, then `supabase db push`. Running the app locally never touches a remote project.
 
 ## Scope and known limits
 
