@@ -5,7 +5,7 @@ import type { EditorView } from "@tiptap/pm/view";
  * this", not "start typing here", so those taps don't put the cursor in the page and raise
  * the keyboard:
  *
- * - a to-do's checkbox toggles (at any time);
+ * - a to-do's checkbox toggles, and a page block opens its page (at any time);
  * - while reading (the editor isn't focused), a link opens (Slate pages in place, others in
  *   a new tab) and an image is left as it is;
  * - while editing, links and images behave as usual, so a link's text can still be changed.
@@ -42,6 +42,14 @@ export function touchTaps() {
         // No synthetic click (which could focus the page); toggle it directly instead.
         event.preventDefault();
         box.click();
+        return true;
+      }
+      // A page block opens its page, whether or not the page is being edited. Opening it
+      // from the touch itself means Safari never gets to treat the tap as a hover first.
+      const pageBlock = target.closest<HTMLButtonElement>(".editor-page-reference");
+      if (pageBlock) {
+        event.preventDefault();
+        pageBlock.click();
         return true;
       }
       if (view.hasFocus()) return false;

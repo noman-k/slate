@@ -197,3 +197,60 @@ test("opening a database row on a phone doesn't raise the keyboard", async ({ pa
   await expect(dialog).toBeFocused();
   expect(await page.evaluate(() => document.activeElement?.matches("input, textarea, [contenteditable=true]"))).toBe(false);
 });
+
+test("a page block opens on the first tap, and a tap reveals nothing before it's used", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  // Safari treats a tap that makes something appear before its click as a hover, and
+  // needs a second tap. So record anything added to the page between touch and click.
+  await page.evaluate(() => {
+    const log: string[] = [];
+    (window as unknown as { tapLog: string[] }).tapLog = log;
+    let watching = false;
+    new MutationObserver((changes) => {
+      if (!watching) return;
+      for (const change of changes)
+        for (const node of Array.from(change.addedNodes))
+          if (node instanceof HTMLElement && node.matches(".block-controls")) log.push("handles");
+    }).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("touchstart", () => (watching = true), true);
+    window.addEventListener("click", () => { watching = false; log.push("click"); }, true);
+  });
+  await page.locator(".editor-page-reference", { hasText: "Tenant Rent Log" }).tap();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Tenant Rent Log");
+  expect(await page.evaluate(() => (window as unknown as { tapLog: string[] }).tapLog)).not.toContain("handles");
+  // Tapping text to edit it still brings up that block's handles, after the tap.
+  await page.goBack();
+  await page.getByLabel("Page content", { exact: true }).locator("p").first().tap();
+  await expect(page.locator(".block-controls")).toBeVisible();
+  // While editing too, a page block opens on the first tap.
+  await page.locator(".editor-page-reference", { hasText: "Tenant Rent Log" }).tap();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Tenant Rent Log");
+});
+
+test("swiping the sidebar scrolls it; only a long press picks a page up", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  const sidebar = page.locator("aside.sidebar");
+  const order = () => sidebar.locator(".tree-page .tree-title").allTextContents();
+  const before = await order();
+  const row = sidebar.locator(".tree-page").nth(1);
+  const box = (await row.boundingBox())!;
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  // A quick swipe down the list: no page moves.
+  await touch("touchStart", x, y);
+  for (let step = 1; step <= 8; step++) await touch("touchMove", x, y + step * 12);
+  await touch("touchEnd", x, y + 96);
+  await expect(sidebar.locator(".tree-row.is-dragging")).toHaveCount(0);
+  expect(await order()).toEqual(before);
+  // Press and hold, then move: now the page is being dragged.
+  await touch("touchStart", x, y);
+  await page.waitForTimeout(500);
+  await touch("touchMove", x, y + 12);
+  await touch("touchMove", x, y + 24);
+  await expect(sidebar.locator(".tree-row.is-dragging")).toHaveCount(1);
+  await touch("touchEnd", x, y);
+});

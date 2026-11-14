@@ -369,6 +369,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
   const changeRef = useRef(onChange);
   const uploadRef = useRef(onUploadImage);
   const touchHandlers = useMemo(() => touchTaps(), []);
+  /** Whether the pointer that's down is a finger (see the editor's onClick). */
+  const tapping = useRef(false);
   const slashHandlerRef = useRef<(event: KeyboardEvent) => boolean>(
     () => false,
   );
@@ -1459,13 +1461,21 @@ export function DocumentEditor(props: DocumentEditorProps) {
       data-page-id={pageId}
       data-update={tick}
       // A mouse or pen shows a block's handles as it moves over it. A finger shows them for
-      // the block it tapped, once the tap is done: doing it on the tap's synthetic mouse move
-      // would make Safari treat the first tap as a hover and need a second one.
+      // the block it tapped, but only after the tap's click, and not for a tap on something
+      // to use (a link, a page, a button): Safari treats a tap that makes anything appear
+      // before its click as a hover, so the page or link would need a second tap.
       onPointerMove={(event) => {
         if (event.pointerType !== "touch") hoverBlock(event);
       }}
-      onPointerUp={(event) => {
-        if (event.pointerType === "touch") hoverBlock(event);
+      onPointerDown={(event) => {
+        tapping.current = event.pointerType === "touch";
+      }}
+      onClick={(event) => {
+        if (!tapping.current) return;
+        tapping.current = false;
+        const target = event.target as HTMLElement;
+        if (target.closest("a, button, input, label, select, textarea, [role=button]")) return;
+        hoverBlock(event);
       }}
       onMouseDown={(event) => {
         if ((event.target as HTMLElement).closest(".ProseMirror"))

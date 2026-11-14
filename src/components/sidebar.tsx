@@ -30,7 +30,8 @@ import {
   DragOverlay,
   closestCenter,
   pointerWithin,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   KeyboardSensor,
   useDraggable,
   useDroppable,
@@ -195,12 +196,10 @@ function TreeRow({
         className="tree-page"
         aria-current={active ? "page" : undefined}
         onClick={onOpen}
-        // The whole row drags with the pointer; keyboard dragging stays on the handle.
-        onPointerDown={
-          listeners?.onPointerDown as
-            | React.PointerEventHandler<HTMLButtonElement>
-            | undefined
-        }
+        // The whole row drags (a mouse at once, a finger after a long press); keyboard
+        // dragging stays on the handle.
+        onMouseDown={listeners?.onMouseDown as React.MouseEventHandler<HTMLButtonElement> | undefined}
+        onTouchStart={listeners?.onTouchStart as React.TouchEventHandler<HTMLButtonElement> | undefined}
         title={
           recordCount === undefined
             ? name
@@ -341,7 +340,10 @@ export function Sidebar(p: Props) {
       return next;
     });
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 7 } }),
+    // A mouse drags a page once it moves a little. A finger has to press and hold first:
+    // otherwise swiping the list to scroll would pick up the page under it and move it.
+    useSensor(MouseSensor, { activationConstraint: { distance: 7 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 6 } }),
     useSensor(KeyboardSensor),
   );
   /** The page being dragged, and where it would land. */

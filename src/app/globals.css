@@ -566,6 +566,8 @@ textarea {
   overflow-x: hidden;
   padding: 8px 8px 16px;
   border-top: 1px solid transparent;
+  /* Reaching the end of the list doesn't scroll (or bounce) the page behind it. */
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar) transparent;
 }
@@ -2304,6 +2306,14 @@ section.is-folded .section-toggle svg {
   }
   .record-dialog {
     --peek-gutter: 32px;
+  }
+}
+@media (hover: none) {
+  /* A long press picks a page up to move it: no text selection or link callout instead. */
+  .tree-row {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 }
 @media (max-width: 760px) {
