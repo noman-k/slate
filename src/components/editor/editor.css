@@ -1,0 +1,1387 @@
+/* Page editor: interactive blocks (Tiptap) and the GitHub-style Markdown source mode. */
+.document-editor {
+  /* An invisible left gutter belongs to the editor, so the block handles that live
+     there stay reachable instead of vanishing as the mouse crosses the margin. */
+  --editor-gutter: 60px;
+  position: relative;
+  min-height: 320px;
+  isolation: isolate;
+  margin-left: calc(-1 * var(--editor-gutter));
+  padding-left: var(--editor-gutter);
+}
+
+/* ---------- Mode bar ---------- */
+.editor-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 30px;
+  /* Quiet while reading, but the active mode stays legible. */
+  opacity: 0.72;
+  transition: opacity 0.15s var(--ease);
+}
+.document-editor:hover .editor-mode-bar,
+.editor-mode-bar:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .editor-mode-bar {
+    opacity: 1;
+  }
+}
+.editor-mode-options {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 8px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--divider);
+}
+.editor-mode-options button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  transition: background-color 0.12s, color 0.12s;
+}
+.editor-mode-options button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.editor-mode-options .is-active,
+.editor-mode-options .is-active:hover {
+  background: var(--bg-strong);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-chip);
+}
+.editor-history {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+.editor-history button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  color: var(--icon);
+}
+.editor-history button:hover:not(:disabled) {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+.editor-history button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---------- Reading typography ---------- */
+.slate-prose {
+  outline: none;
+  min-height: 220px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.65;
+  caret-color: var(--text-strong);
+  overflow-wrap: anywhere;
+  padding-bottom: 30vh;
+}
+.slate-prose ::selection {
+  background: rgba(35, 131, 226, 0.32);
+}
+.slate-prose p {
+  margin: 2px 0;
+  padding: 3px 0;
+  min-height: 1.65em;
+}
+.slate-prose > *:first-child {
+  margin-top: 0;
+}
+.slate-prose h1,
+.slate-prose h2,
+.slate-prose h3 {
+  color: var(--text-strong);
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  padding: 3px 0;
+}
+/* More room above a heading than below, so it groups with the text it introduces. */
+.slate-prose h1 {
+  font-size: 30px;
+  margin: 36px 0 6px;
+}
+.slate-prose h2 {
+  font-size: 23px;
+  margin: 30px 0 4px;
+}
+.slate-prose h3 {
+  font-size: 19px;
+  margin: 22px 0 2px;
+}
+.slate-prose strong {
+  font-weight: 650;
+  color: var(--text-strong);
+}
+.slate-prose em {
+  color: var(--text-strong);
+}
+.slate-prose s {
+  color: var(--text-secondary);
+}
+.slate-prose a {
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--text-tertiary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: text-decoration-color 0.12s;
+}
+.slate-prose a:hover {
+  text-decoration-color: var(--accent-text);
+}
+.slate-prose ul,
+.slate-prose ol {
+  padding-left: 26px;
+  margin: 2px 0;
+}
+.slate-prose ul {
+  list-style-type: disc;
+}
+.slate-prose ul ul {
+  list-style-type: circle;
+}
+.slate-prose ul ul ul {
+  list-style-type: square;
+}
+.slate-prose ol {
+  list-style-type: decimal;
+}
+.slate-prose li {
+  padding: 1px 0 1px 4px;
+}
+.slate-prose li::marker {
+  color: var(--text-secondary);
+}
+.slate-prose li > p {
+  margin: 0;
+}
+.slate-prose blockquote {
+  margin: 10px 0;
+  padding: 1px 0 1px 18px;
+  border-left: 3px solid var(--text-strong);
+  color: var(--text);
+}
+.slate-prose hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+.slate-prose :not(pre) > code {
+  font-family: var(--mono);
+  font-size: 85%;
+  padding: 0.18em 0.4em;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--code-text);
+}
+
+/* Task lists: Notion-style checkboxes, centered on the first line of their text. */
+.slate-prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+  margin: 2px 0;
+}
+.slate-prose ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding-left: 0;
+}
+.slate-prose ul[data-type="taskList"] li::marker {
+  content: none;
+}
+/* The label is exactly one text line tall (line-height plus the paragraph's 3px
+   padding on each side), so the box sits on the first line's center even when the
+   item wraps or holds a nested list. */
+.slate-prose ul[data-type="taskList"] li > label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: calc(1.6em + 6px);
+  margin-left: -2px;
+  user-select: none;
+  cursor: pointer;
+}
+.slate-prose ul[data-type="taskList"] li > label input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 4px;
+  /* The check mark is a background image that grows in when checked
+     (pseudo-elements on inputs don't render in every browser). */
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 12.5l4.2 4.2L18.5 7.8'/%3E%3C/svg%3E")
+    center / 0 0 no-repeat;
+  cursor: pointer;
+  transition:
+    background-color 0.12s var(--ease),
+    background-size 0.16s var(--ease),
+    border-color 0.12s var(--ease),
+    transform 0.08s var(--ease);
+}
+.slate-prose ul[data-type="taskList"] li > label:hover input:not(:checked) {
+  border-color: var(--text-secondary);
+  background-color: var(--hover-strong);
+}
+.slate-prose ul[data-type="taskList"] li > label input:active {
+  transform: scale(0.88);
+}
+.slate-prose ul[data-type="taskList"] li > label input:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+.slate-prose ul[data-type="taskList"] li > label input:checked {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  background-size: 12px 12px;
+}
+.slate-prose ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+/* No extra paragraph margin inside to-dos: it offset the text from its box. */
+.slate-prose ul[data-type="taskList"] li > div > p {
+  margin: 0;
+}
+.slate-prose ul[data-type="taskList"] li > div > p,
+.slate-prose ul[data-type="taskList"] li > div > p * {
+  transition:
+    color 0.15s var(--ease),
+    text-decoration-color 0.15s var(--ease);
+}
+.slate-prose ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-tertiary);
+}
+.slate-prose ul[data-type="taskList"] li[data-checked="true"] > div > p * {
+  color: inherit;
+}
+/* Nested to-dos line up under the parent's text. */
+.slate-prose ul[data-type="taskList"] li > div > ul {
+  margin: 0;
+}
+
+/* Images and selected atoms */
+.slate-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: var(--radius);
+}
+/* Selected blocks (page links, databases, dividers…) get Notion's soft blue wash,
+   not a ring. Only while editing: a leftover selection on an unfocused page
+   shouldn't look picked. Images can't hold an overlay, so they keep the outline. */
+.slate-prose.ProseMirror-focused .react-renderer.ProseMirror-selectednode {
+  position: relative;
+  outline: none;
+}
+.slate-prose.ProseMirror-focused .react-renderer.ProseMirror-selectednode::after {
+  content: "";
+  position: absolute;
+  inset: 0 -4px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  pointer-events: none;
+  z-index: 1;
+}
+.slate-prose.ProseMirror-focused img.ProseMirror-selectednode,
+.slate-prose.ProseMirror-focused hr.ProseMirror-selectednode {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Placeholders: always on an empty page, otherwise only on the line being edited. */
+.slate-prose .is-editor-empty:first-child::before,
+.slate-prose.ProseMirror-focused .is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-tertiary);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.slate-prose .is-editor-empty:first-child::before {
+  content: "Write something, or press '/' for commands…";
+}
+.slate-prose.ProseMirror-focused li > .is-empty::before {
+  content: "List";
+}
+.slate-prose.ProseMirror-focused li[data-checked] > div > .is-empty::before {
+  content: "To-do";
+}
+.slate-prose.ProseMirror-focused blockquote > .is-empty::before {
+  content: "Empty quote";
+}
+.slate-prose.ProseMirror-focused td .is-empty::before,
+.slate-prose.ProseMirror-focused th .is-empty::before {
+  content: none;
+}
+
+/* Tables */
+.slate-prose .tableWrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar);
+}
+/* Simple tables look like database tables: no outer box, row lines, faint
+   column dividers, a quiet header, and a soft hover on rows. Scoped to the
+   editor's own tables (.tableWrapper) so embedded databases keep their styles. */
+.slate-prose .tableWrapper table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.slate-prose .tableWrapper td,
+.slate-prose .tableWrapper th {
+  position: relative;
+  min-width: 80px;
+  /* Rows come out at the database tables' 34px (the font adds ~1px to the line). */
+  height: 34px;
+  padding: 5px 8px;
+  vertical-align: top;
+  text-align: left;
+  border: 0;
+  border-right: 1px solid var(--divider);
+  border-bottom: 1px solid var(--border);
+}
+.slate-prose .tableWrapper tr > :last-child {
+  border-right: 0;
+}
+.slate-prose .tableWrapper tr:first-child > * {
+  border-top: 1px solid var(--border);
+}
+.slate-prose .tableWrapper th {
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.slate-prose .tableWrapper tbody tr:hover > td {
+  background: var(--row-hover);
+}
+.slate-prose .tableWrapper td p,
+.slate-prose .tableWrapper th p {
+  line-height: 1.5;
+}
+.slate-prose td p,
+.slate-prose th p {
+  margin: 0;
+  padding: 0;
+}
+.slate-prose .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.slate-prose .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.slate-prose.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Code blocks (syntax colors match the Markdown mode) */
+.editor-code-block {
+  position: relative;
+  margin: 10px 0;
+  background: var(--code-block-bg);
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.code-block-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px 0 12px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  opacity: 0.6;
+  transition: opacity 0.12s;
+}
+.editor-code-block:hover .code-block-bar,
+.code-block-bar:focus-within {
+  opacity: 1;
+}
+.code-block-bar select {
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 12px var(--font);
+  outline: none;
+  cursor: pointer;
+}
+.code-block-bar select:hover {
+  background: var(--hover-strong);
+}
+.code-block-bar select option {
+  background: var(--bg-elevated);
+}
+.code-block-bar button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.code-block-bar button:hover {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+.editor-code-block pre {
+  margin: 0;
+  padding: 8px 16px 16px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  color: var(--syntax-text);
+  white-space: pre;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar);
+}
+.editor-code-block .code-content {
+  font: inherit;
+  white-space: pre;
+  min-height: 22px;
+}
+.editor-code-block .hljs-keyword,
+.editor-code-block .hljs-selector-tag,
+.editor-code-block .hljs-literal,
+.editor-code-block .hljs-built_in {
+  color: var(--syntax-keyword);
+}
+.editor-code-block .hljs-string,
+.editor-code-block .hljs-regexp,
+.editor-code-block .hljs-attr {
+  color: var(--syntax-string);
+}
+.editor-code-block .hljs-number,
+.editor-code-block .hljs-attribute,
+.editor-code-block .hljs-variable {
+  color: var(--syntax-number);
+}
+.editor-code-block .hljs-title,
+.editor-code-block .hljs-function,
+.editor-code-block .hljs-type {
+  color: var(--syntax-function);
+}
+.editor-code-block .hljs-comment,
+.editor-code-block .hljs-meta {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+
+/* Callouts and toggles */
+.editor-callout {
+  display: flex;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 14px 16px 14px 14px;
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.callout-icon {
+  margin-top: 4px;
+  flex-shrink: 0;
+  color: var(--icon);
+}
+.editor-callout .toggle-content {
+  flex: 1;
+  min-width: 0;
+}
+.editor-callout .toggle-content > p:first-child {
+  padding-top: 0;
+}
+.editor-toggle {
+  margin: 2px 0;
+}
+.editor-toggle-heading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -4px;
+}
+.editor-toggle-heading button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--icon);
+}
+.editor-toggle-heading button:hover {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+.editor-toggle-heading button svg {
+  transition: transform 0.15s var(--ease);
+}
+.editor-toggle-heading input {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text-strong);
+  flex: 1;
+  min-width: 0;
+  box-shadow: none !important;
+}
+.editor-toggle > .toggle-content {
+  margin-left: 24px;
+}
+.editor-toggle .is-closed {
+  display: none;
+}
+
+/* Embedded databases and page links */
+/* Inline databases sit in the text column like any other block. */
+.document-database-embed {
+  margin: 18px 0;
+  overflow: visible;
+  border-radius: var(--radius);
+}
+
+/* Page block: the subpage's icon and title, a row you click to open. Also used
+   for the "Pages inside" fallback list under a page. */
+.editor-page-reference {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% + 12px);
+  min-height: 34px;
+  padding: 4px 6px;
+  margin: 1px -6px;
+  border-radius: var(--radius);
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.12s;
+}
+.editor-page-reference > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.editor-page-reference > span.is-untitled {
+  color: var(--text-tertiary);
+}
+.editor-page-reference:hover {
+  background: var(--hover);
+}
+.editor-page-reference:hover > span {
+  text-decoration-color: var(--text-secondary);
+}
+.editor-page-reference:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+.editor-page-reference > svg:last-child:not(.page-icon) {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.editor-page-reference:hover > svg:last-child:not(.page-icon),
+.editor-page-reference:focus-visible > svg:last-child:not(.page-icon) {
+  opacity: 1;
+}
+.editor-page-reference.is-missing {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  cursor: default;
+}
+.editor-page-reference.is-missing > span {
+  text-decoration: none;
+}
+.editor-page-reference.is-missing:hover {
+  background: none;
+}
+/* A document page fills the window: the writing area grows into the spare space
+   (so a click anywhere below the text lands in the editor), and "Pages inside"
+   rests at the bottom. On long pages it simply follows the content. */
+.document-page .page-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.document-page .page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.document-page .page-body > .document-editor,
+.document-page .document-editor > div:has(> .slate-prose) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.document-page .document-editor .slate-prose {
+  flex: 1;
+  /* Filling the window replaces the fixed minimum, so short pages don't scroll. */
+  min-height: 0;
+}
+/* Markdown mode works like an editor pane: the box fills the window below the title
+   and never runs past it. The toolbar and status bar stay in view, and the source
+   scrolls inside the box (the cursor is kept in view while typing). If the window is
+   too short for a usable box, the page scrolls instead. */
+.document-page .page-content:has(.md-editor) {
+  height: 100%;
+  padding-bottom: 32px;
+}
+.document-page .document-editor:has(> .md-editor) {
+  min-height: 0;
+}
+.document-page .document-editor > .md-editor {
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 280px;
+}
+.document-page .md-editor > .markdown-source-editor {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.document-page .markdown-source-editor > .cm-editor {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.document-page .md-editor .cm-scroller {
+  overscroll-behavior: contain;
+}
+.document-page .md-editor > .md-toolbar,
+.document-page .md-editor > .md-status {
+  flex-shrink: 0;
+}
+/* With "Pages inside" below, the editor's own scroll room isn't needed. */
+.page-body:has(.pages-inside) .document-editor,
+.page-body:has(.pages-inside) .slate-prose {
+  min-height: 0;
+}
+.page-body:has(.pages-inside) .slate-prose {
+  padding-bottom: 48px;
+}
+.document-page .page-content:has(.pages-inside) {
+  padding-bottom: 40px;
+}
+/* Markdown mode is the page's source, a focused editing view: "Pages inside" isn't
+   part of the text, so it steps aside (it's back in Interactive). */
+.page-body:has(.md-editor) .pages-inside {
+  display: none;
+}
+.pages-inside {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+}
+.pages-inside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.pages-inside-head button {
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pages-inside-head button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.editor-reference {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.editor-reference span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.preserved-source {
+  margin: 8px 0;
+  padding: 12px 14px;
+  background: var(--field);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.preserved-source > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-secondary);
+}
+.preserved-source pre {
+  margin: 8px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow: auto;
+}
+.preserved-source small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* ---------- Block handles ---------- */
+.block-controls {
+  position: absolute;
+  left: calc(var(--editor-gutter) - 50px);
+  display: flex;
+  align-items: center;
+  z-index: 5;
+  height: calc(1.6em + 6px);
+  gap: 2px;
+  animation: appear 0.12s ease;
+}
+.block-controls button,
+.block-controls .block-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+}
+.block-controls button:hover,
+.block-controls .block-grip:hover {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+.block-controls .block-grip {
+  width: 18px;
+  cursor: grab;
+  outline: none;
+}
+.block-controls .block-grip:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.block-controls .block-grip.is-open {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+/* The block a menu or drag is about, and where a dragged block will land. */
+.block-target {
+  position: absolute;
+  left: calc(var(--editor-gutter) - 6px);
+  right: -6px;
+  z-index: 1;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.block-drop-line {
+  position: absolute;
+  left: var(--editor-gutter);
+  right: 0;
+  z-index: 6;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.is-dragging-block .prosemirror-dropcursor-block,
+.is-dragging-block .prosemirror-dropcursor-inline {
+  display: none;
+}
+.block-controls .block-grip:active {
+  cursor: grabbing;
+}
+
+/* ---------- Menus ---------- */
+/* Invisible click-outside catcher behind editor menus. It's a <button>, so it must opt
+   out of the global button hover fill, or hovering outside a menu tints the page. */
+.editor-menu-scrim,
+.editor-menu-scrim:hover {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  cursor: default;
+  background: transparent;
+}
+.editor-context-menu,
+.slash-command-menu,
+.editor-bubble,
+.editor-url-input {
+  animation: menu-in 0.12s var(--ease);
+}
+.editor-context-menu,
+.slash-command-menu {
+  position: absolute;
+  z-index: 20;
+  background: var(--bg-elevated);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  color: var(--text);
+  padding: 6px;
+  width: 248px;
+}
+.editor-context-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 14px;
+  border-radius: var(--radius);
+  text-align: left;
+}
+.editor-context-menu > button > span {
+  flex: 1;
+}
+.editor-context-menu > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.editor-context-menu > button:disabled:hover {
+  background: none;
+}
+.editor-context-menu kbd {
+  font: 11px var(--font);
+  color: var(--text-tertiary);
+}
+.editor-context-menu .menu-check {
+  color: var(--accent-text) !important;
+}
+.editor-menu-divider {
+  height: 1px;
+  margin: 6px -6px;
+  background: var(--divider);
+}
+.block-menu {
+  width: 260px;
+  max-height: min(460px, calc(100vh - 24px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar);
+}
+.editor-context-menu > button svg {
+  color: var(--icon);
+}
+.editor-context-menu > button:hover,
+.editor-context-menu > button:focus-visible {
+  background: var(--hover-strong);
+}
+.editor-context-menu > button.danger,
+.editor-context-menu > button.danger svg {
+  color: var(--danger-text);
+}
+.editor-menu-label {
+  padding: 6px 8px 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.slash-command-menu {
+  width: 320px;
+  max-height: 372px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar);
+}
+.slash-command-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+}
+.slash-command-menu > button.is-selected {
+  background: var(--hover-strong);
+}
+/* Scrolling to the highlighted option clears the group label above it and the
+   sticky footer below it, so the option is never half hidden. */
+.slash-command-menu > button {
+  scroll-margin-top: 30px;
+  scroll-margin-bottom: 46px;
+}
+.slash-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  color: var(--text);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 1px var(--border);
+  flex-shrink: 0;
+}
+.slash-command-menu strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-strong);
+  line-height: 1.4;
+}
+.slash-command-menu small {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+.slash-menu-footer {
+  position: sticky;
+  bottom: -6px;
+  display: flex;
+  justify-content: space-between;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--divider);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 8px 8px 6px;
+  margin: 6px -6px -6px;
+}
+.editor-no-results {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 16px 10px;
+}
+
+/* Selection toolbar */
+.editor-bubble {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-popover);
+}
+.editor-bubble-group {
+  display: flex;
+  gap: 1px;
+}
+.editor-bubble-group + .editor-bubble-group {
+  margin-left: 4px;
+  padding-left: 4px;
+  border-left: 1px solid var(--divider);
+}
+.editor-bubble button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.editor-bubble button:hover {
+  background: var(--hover-strong);
+}
+.editor-bubble button.is-active {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+/* ---------- Markdown source mode, styled like GitHub's editor ---------- */
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--border-strong);
+  overflow: hidden;
+}
+.md-editor:focus-within {
+  box-shadow:
+    0 0 0 1px var(--accent-border),
+    0 0 0 3px var(--accent-soft);
+}
+.md-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 10px;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border);
+}
+.md-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.md-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+/* A hairline between groups (headings · inline · blocks · lists) makes the bar scannable. */
+.md-tool-group + .md-tool-group {
+  padding-left: 8px;
+  border-left: 1px solid var(--divider);
+}
+.md-tool-group button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  transition: background-color 0.12s, color 0.12s;
+  border-radius: var(--radius);
+  color: var(--icon);
+}
+.md-tool-group button:hover {
+  background: var(--hover-strong);
+  color: var(--text-strong);
+}
+.markdown-source-editor .cm-editor {
+  min-height: 220px;
+}
+/* Fold arrows only when the gutter is pointed at, like code editors do. */
+.markdown-source-editor .cm-foldGutter .cm-gutterElement {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.markdown-source-editor .cm-gutters:hover .cm-foldGutter .cm-gutterElement {
+  opacity: 1;
+}
+.md-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--divider);
+  background: var(--bg-sidebar);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.md-supported {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.md-mark {
+  color: var(--text-secondary);
+}
+
+/* ---------- Link / image popover ---------- */
+.editor-url-input {
+  position: absolute;
+  /* Positioned next to the selection by the editor; this is only a fallback. */
+  top: 75px;
+  left: var(--editor-gutter);
+  z-index: 21;
+  width: min(360px, 100%);
+  background: var(--bg-elevated);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  padding: 12px;
+}
+.editor-url-input label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.editor-url-input input {
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--field);
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  color: var(--text-strong);
+  font-size: 13px;
+}
+.editor-url-input input:focus {
+  box-shadow:
+    inset 0 0 0 1px var(--accent-border),
+    0 0 0 2px var(--accent-soft);
+}
+.editor-url-input > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+.editor-url-input small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.editor-url-input button {
+  background: var(--accent);
+  border-radius: var(--radius);
+  height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-accent);
+}
+.editor-url-input button:hover {
+  background: var(--accent-hover);
+}
+.editor-url-input .editor-image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  margin: 0 0 10px;
+}
+.editor-image-upload .editor-upload-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text);
+}
+.editor-image-upload .editor-upload-button:hover {
+  background: var(--hover-strong);
+}
+.editor-image-upload .editor-upload-button:disabled {
+  cursor: wait;
+  color: var(--text-secondary);
+}
+.editor-image-upload > small {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.editor-upload-divider {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 4px 0;
+}
+.editor-upload-spinner {
+  animation: editor-spin 1s linear infinite;
+}
+.editor-url-input .editor-upload-error {
+  font-size: 12px;
+  color: var(--danger-text);
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+.editor-url-input input:disabled,
+.editor-url-input button:disabled {
+  opacity: 0.65;
+}
+@keyframes editor-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.editor-url-input input[type="file"] {
+  display: none;
+}
+
+@media (max-width: 650px) {
+  .document-editor {
+    --editor-gutter: 28px;
+  }
+  .block-controls {
+    left: 4px;
+  }
+  .block-controls > button:first-child {
+    display: none;
+  }
+  .editor-mode-bar {
+    margin-bottom: 18px;
+  }
+  .slash-command-menu {
+    max-width: calc(100vw - 70px);
+  }
+  .slate-prose {
+    font-size: 15px;
+  }
+  .md-supported {
+    display: none;
+  }
+}
+
+/* "/linked database" picker: same surface and rows as the slash menu. */
+.editor-db-picker {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  max-height: 380px;
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-popover);
+  color: var(--text);
+  animation: menu-in 0.12s var(--ease);
+}
+.editor-db-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.editor-db-picker-search:focus-within {
+  box-shadow: inset 0 0 0 1px var(--accent-border), 0 0 0 2px var(--accent-soft);
+}
+.editor-db-picker-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  box-shadow: none !important;
+}
+.editor-db-picker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar);
+}
+.editor-db-picker-list > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+  text-align: left;
+  scroll-margin: 30px 0 44px;
+}
+.editor-db-picker-list > button.is-selected {
+  background: var(--hover-strong);
+}
+.editor-db-picker-list > button > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.editor-db-picker-list strong,
+.editor-db-picker-list small {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.editor-db-picker-list strong {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-strong);
+}
+.editor-db-picker-list small {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+.editor-db-picker-list em {
+  flex-shrink: 0;
+  font-style: normal;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+.editor-db-picker-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text);
+}
+.editor-db-picker-icon.is-new {
+  color: var(--accent-text);
+}

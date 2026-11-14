@@ -1,0 +1,2 @@
+-- Workspaces are created by the auth.users trigger, never under a shared demo owner.
+-- Register using the UI after `supabase start` to create a real private local workspace.

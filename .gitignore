@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.open-next/
+.wrangler/
+.env*
+!.env.example
+.dev.vars
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+wrangler.deploy.generated-*.jsonc
+.next-auth-validation/
+supabase/.temp/
+supabase/.branches/
+.claude/launch.json

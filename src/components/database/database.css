@@ -1,0 +1,284 @@
+/* Database views: table, list, board, and their popovers. Colors come from globals.css tokens. */
+.database-view { --db-border: var(--border); --db-row: 34px; color: var(--text); width: 100%; min-width: 0; font-size: 14px; }
+.db-inline-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 650; color: var(--text-strong); padding: 18px 0 10px; }
+.db-inline-title > svg { color: var(--icon); }
+/* Embedded database heading: click the name to rename it; ↗ (on hover) opens it. */
+.db-inline-title-name { min-width: 0; max-width: 100%; margin: -2px -6px; padding: 2px 6px; border: 0; border-radius: var(--radius); background: none; color: inherit; font: inherit; text-align: left; cursor: text; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; transition: background .12s; }
+.db-inline-title-name:hover { background: var(--hover); }
+.db-inline-title-name.is-untitled { color: var(--text-tertiary); }
+.db-inline-title-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.db-inline-title-input { flex: 1; min-width: 120px; max-width: 520px; margin: -2px -6px; padding: 2px 6px; border: 0; border-radius: var(--radius); background: var(--field); box-shadow: inset 0 0 0 1px var(--accent-border), 0 0 0 2px var(--accent-soft); color: var(--text-strong); font: inherit; outline: none; }
+.db-inline-title-input::placeholder { color: var(--text-tertiary); }
+.db-inline-open { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; margin-left: 2px; padding: 0; border: 0; border-radius: var(--radius); background: none; color: var(--text-tertiary); cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; }
+.db-inline-open:hover { background: var(--hover-strong); color: var(--text); }
+.db-inline-title:hover .db-inline-open, .db-inline-open:focus-visible { opacity: 1; }
+.db-inline-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (hover: none) { .db-inline-open { opacity: 1; } }
+/* The name's hover background reaches 6px past it (negative margin); keep the chip clear. */
+.db-inline-title .db-linked-badge { margin-left: 6px; }
+.db-linked-badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; height: 20px; padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--text-secondary); background: var(--hover); cursor: default; }
+
+/* Toolbar: Notion-style view tabs with an underline on the active view. */
+.db-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; height: 42px; white-space: nowrap; border-bottom: 1px solid var(--divider); }
+.db-tabs { display: flex; align-items: center; gap: 2px; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; }
+.db-view-tab { position: relative; flex-shrink: 0; display: inline-flex; gap: 6px; align-items: center; height: 30px; border: 0; background: none; border-radius: var(--radius); padding: 0 8px; font-size: 14px; color: var(--text-secondary); cursor: pointer; font-weight: 500; }
+.db-view-tab svg { color: var(--icon); }
+.db-view-tab:hover { background: var(--hover); color: var(--text); }
+.db-view-tab.active { color: var(--text-strong); }
+.db-view-tab.active svg { color: var(--text); }
+.db-view-tab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -6px; height: 2px; border-radius: 2px; background: var(--text); }
+.db-tools { display: flex; flex-shrink: 0; gap: 2px; align-items: center; }
+.db-icon-button { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; height: 28px; width: 28px; border: 0; border-radius: var(--radius); background: transparent; color: var(--icon); cursor: pointer; }
+.db-icon-button:hover { background: var(--hover-strong); color: var(--text); }
+.db-icon-button.is-active { color: var(--accent-text); }
+.db-add-view { opacity: 0; transition: opacity 100ms; }
+.db-toolbar:hover .db-add-view, .db-add-view:focus-visible { opacity: 1; }
+.db-tool-count { font-size: 11px; padding-left: 2px; }
+.db-new-control { display: flex; height: 28px; border-radius: var(--radius); overflow: hidden; margin-left: 6px; }
+.db-primary { color: var(--on-accent); background: var(--accent); border: 0; font: inherit; font-size: 14px; font-weight: 500; padding: 0 10px; cursor: pointer; border-radius: var(--radius); line-height: 28px; }
+.db-primary:hover { background: var(--accent-hover); }
+.db-primary:disabled { cursor: default; opacity: .45; }
+.db-new-control .db-primary { border-radius: 0; }
+.db-new-chevron { border-left: 1px solid rgba(255, 255, 255, 0.25); padding: 0 6px; display: flex; align-items: center; }
+
+/* Table */
+.db-table-scroll { width: calc(100% + 1px); overflow-x: auto; overflow-y: visible; padding-left: 24px; margin-left: -24px; scrollbar-width: thin; scrollbar-color: var(--scrollbar); }
+/* On a database page a wide table scrolls out to the window edge instead of being
+   sliced at the content column, and the end padding lets the last column clear it. */
+.database-page .db-table-scroll { width: auto; margin-right: calc(-1 * var(--db-bleed, 0px)); padding-right: var(--db-bleed, 0px); }
+.db-virtual-scroll { max-height: 65vh; overflow-y: auto; }
+.db-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; text-align: left; color: var(--text); font-size: 14px; }
+.db-table th { position: relative; height: var(--db-row); padding: 0; color: var(--text-secondary); font-weight: 400; border-right: 1px solid var(--divider); border-bottom: 1px solid var(--db-border); overflow: visible; }
+.db-table th:last-child, .db-table td:last-child { border-right: 0; }
+.db-table th:hover { background: var(--hover); }
+.db-table th .db-column-trigger { width: 100%; height: calc(var(--db-row) - 1px); display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--text-secondary); font: inherit; font-size: 14px; text-align: left; border: 0; background: none; cursor: pointer; }
+.db-column-trigger svg { flex-shrink: 0; color: var(--icon); width: 16px; height: 16px; }
+.db-column-trigger span:not(.db-title-icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-property-info { font-size: 12px; opacity: .6; }
+.db-title-icon { font-weight: 600; letter-spacing: -.6px; font-size: 14px; flex-shrink: 0; line-height: 16px; color: var(--icon); }
+.db-table td { position: relative; height: var(--db-row); padding: 0; border-right: 1px solid var(--divider); border-bottom: 1px solid var(--db-border); vertical-align: middle; }
+.db-table tbody tr:hover { background: var(--row-hover); }
+.db-table tbody tr.db-dragging-row { opacity: .4; }
+/* Where a dragged row will land: a blue line above or below the row under the pointer. */
+.db-table tbody tr.db-drop-before > td { box-shadow: inset 0 2px 0 var(--accent); }
+.db-table tbody tr.db-drop-after > td { box-shadow: inset 0 -2px 0 var(--accent); }
+.db-table th.db-add-column { width: 45px; min-width: 45px; padding-left: 4px; }
+.db-column-resizer { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 2; touch-action: none; }
+.db-column-resizer:hover { background: var(--accent); }
+/* Name cell, Notion-style: clicking the name renames it in place; an "Open" pill at
+   the end of the cell (on row hover or focus) opens the record in the side panel. */
+.db-title-cell { position: relative; display: flex; height: calc(var(--db-row) - 1px); align-items: center; }
+/* The pill floats over the end of the cell, so names use the full width until you hover. */
+.db-table tr:hover .db-title-text, .db-title-cell:focus-within .db-title-text { padding-right: 76px; }
+.db-title-text { border: 0; display: flex; align-items: center; gap: 8px; padding: 0 8px; background: none; color: var(--text-strong); cursor: text; font: inherit; font-weight: 500; text-align: left; min-width: 0; height: 100%; flex: 1; }
+.db-title-text:hover { background: none; }
+.db-title-text svg { color: var(--icon); flex-shrink: 0; width: 16px; height: 16px; }
+.db-title-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-title-text span.is-untitled { color: var(--text-tertiary); }
+.db-title-text:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+.db-open-peek { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px 0 6px; border: 0; border-radius: var(--radius); background: var(--bg-elevated); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; }
+.db-open-peek svg { width: 14px; height: 14px; color: inherit; }
+.db-open-peek:hover { background: var(--bg-raised); color: var(--text-strong); }
+.db-open-peek:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.db-table tr:hover .db-open-peek, .db-open-peek:focus-visible, .db-title-cell:focus-within .db-open-peek { opacity: 1; }
+@media (hover: none) { .db-open-peek { opacity: 1; } }
+.db-cell-button { display: flex; align-items: center; gap: 4px; width: 100%; min-height: calc(var(--db-row) - 1px); padding: 4px 8px; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: text; }
+.db-cell-button:disabled { color: inherit; opacity: 1; cursor: default; }
+.db-cell-button.db-numeric { justify-content: flex-end; text-align: right; font-variant-numeric: tabular-nums; }
+.db-cell-button.db-error-value { color: var(--danger-text); font-size: 12px; }
+.db-cell-button:hover:not(:disabled) { background: var(--hover); }
+.db-inline-input { width: 100%; height: calc(var(--db-row) - 1px); padding: 0 8px; border: 0; outline: 0; box-shadow: inset 0 0 0 2px var(--accent-border); border-radius: 2px; background: var(--bg-elevated); color: var(--text-strong); font: inherit; }
+.db-checkbox-cell { height: calc(var(--db-row) - 1px); width: 100%; border: 0; background: none; display: flex; align-items: center; padding: 0 9px; cursor: pointer; }
+.db-checkbox-cell:hover { background: var(--hover); }
+.db-checkbox { height: 16px; width: 16px; border: 1.5px solid var(--text-tertiary); border-radius: 3px; display: flex; justify-content: center; align-items: center; }
+.db-checkbox.checked { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Option tags */
+.db-badge { display: inline-flex; align-items: center; gap: 2px; border-radius: 3px; padding: 0 6px; font-size: 14px; line-height: 20px; height: 20px; width: fit-content; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--tag-text); background: var(--tag-default-bg); }
+.tag-gray { background: var(--tag-gray-bg); }
+.tag-brown { background: var(--tag-brown-bg); }
+.tag-orange { background: var(--tag-orange-bg); }
+.tag-yellow { background: var(--tag-yellow-bg); }
+.tag-green { background: var(--tag-green-bg); }
+.tag-blue { background: var(--tag-blue-bg); }
+.tag-purple { background: var(--tag-purple-bg); }
+.tag-pink { background: var(--tag-pink-bg); }
+.tag-red { background: var(--tag-red-bg); }
+.db-badge-remove { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-right: -3px; padding: 0; border: 0; border-radius: 2px; background: none; color: inherit; opacity: .6; cursor: pointer; }
+.db-badge-remove:hover { opacity: 1; background: var(--hover-strong); }
+.db-select-trigger { gap: 6px; flex-wrap: nowrap; cursor: pointer; }
+.db-relation-trigger { cursor: pointer; }
+.db-empty-value { opacity: 0; color: var(--text-tertiary); font-size: 14px; }
+.db-cell-button:hover .db-empty-value { opacity: 1; }
+.db-relation-chip { display: inline-flex; align-items: center; gap: 5px; color: var(--text); border-bottom: 1px solid var(--border-strong); max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 14px; line-height: 1.4; }
+.db-relation-chip svg { color: var(--icon); }
+.db-link-value { text-decoration: underline; text-decoration-color: var(--text-tertiary); text-underline-offset: 3px; }
+
+/* Row affordances */
+.db-table td.db-row-actions { border-right: 0; width: 45px; min-width: 45px; }
+.db-row-menu-trigger { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; opacity: 0; padding: 0; color: var(--icon); background: none; border: 0; border-radius: var(--radius-sm); margin-left: 4px; cursor: pointer; }
+.db-row-menu-trigger:hover { background: var(--hover-strong); color: var(--text); }
+.db-row-menu-trigger:focus-visible, .db-table tr:hover .db-row-menu-trigger, .db-list-row:hover .db-row-menu-trigger, .db-board-card:hover .db-row-menu-trigger { opacity: 1; }
+.db-row-drag { position: absolute; left: -22px; top: 6px; width: 18px; height: 22px; display: flex; align-items: center; justify-content: center; padding: 0; opacity: 0; background: none; border: 0; border-radius: var(--radius-sm); color: var(--icon); cursor: grab; }
+.db-row-drag:hover { background: var(--hover-strong); }
+.db-row-drag:active { cursor: grabbing; }
+/* Sorted views order rows themselves; the handle says so instead of doing nothing. */
+.db-row-drag.is-locked { cursor: pointer; }
+.db-row-drag:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (hover: none) { .db-row-drag { opacity: 1; } }
+.db-table tr:hover .db-row-drag, .db-row-drag:focus-visible { opacity: 1; }
+.db-add-row { border: 0; display: flex; align-items: center; gap: 8px; height: var(--db-row); padding: 0 8px; color: var(--text-tertiary); background: none; cursor: pointer; font: inherit; font-size: 14px; width: 100%; text-align: left; border-bottom: 1px solid var(--divider); }
+.db-add-row:hover { background: var(--hover); color: var(--text-secondary); }
+.db-footer { color: var(--text-tertiary); min-height: 30px; padding: 8px 8px 0; font-size: 12px; opacity: 0; transition: opacity .15s; }
+.database-view:hover .db-footer { opacity: 1; }
+
+/* Popovers */
+.db-menu { background: var(--bg-elevated); color: var(--text); border: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-popover); width: 280px; padding: 6px; font-size: 14px; z-index: 150; max-height: min(640px, var(--radix-popover-content-available-height, calc(100vh - 40px))); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scrollbar); transform-origin: var(--radix-popover-content-transform-origin); animation: db-menu-in 120ms var(--ease); }
+@keyframes db-menu-in { from { opacity: 0; transform: scale(.97); } }
+.db-menu-heading { padding: 8px 8px 4px; color: var(--text-secondary); font-size: 12px; font-weight: 500; }
+.db-menu-heading > span { display: block; font-size: 12px; color: var(--text-tertiary); margin-top: 2px; font-weight: 400; }
+.db-menu-action { min-height: 28px; width: 100%; display: flex; gap: 8px; align-items: center; padding: 0 8px; border: 0; background: none; border-radius: var(--radius); cursor: pointer; color: var(--text); font: inherit; font-size: 14px; text-align: left; }
+.db-menu-action > svg, .db-menu-action > .db-title-icon { color: var(--icon); flex-shrink: 0; width: 16px; height: 16px; }
+.db-menu-action > span { display: flex; justify-content: space-between; gap: 6px; flex: 1; min-width: 0; align-items: center; }
+.db-menu-action > span > svg { color: var(--text-secondary); flex-shrink: 0; }
+.db-menu-action:hover:not(:disabled), .db-menu-action:focus-visible { background: var(--hover-strong); }
+.db-menu-action:disabled { opacity: .45; cursor: default; }
+.db-menu-action.danger, .db-menu-action.danger svg { color: var(--danger-text); }
+.db-menu-value { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; color: var(--text-secondary); font-size: 13px; }
+.db-menu-divider { height: 1px; background: var(--divider); margin: 6px -6px; }
+.db-menu-back { display: flex; align-items: center; gap: 6px; padding: 0 2px 4px; color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+.db-name-field { display: flex; align-items: center; gap: 8px; margin: 2px 2px 6px; padding: 0 8px; height: 32px; background: var(--field); border-radius: var(--radius); box-shadow: inset 0 0 0 1px var(--border); }
+.db-name-field:focus-within { box-shadow: inset 0 0 0 1px var(--accent-border), 0 0 0 2px var(--accent-soft); }
+.db-name-field > svg, .db-name-field > .db-title-icon { color: var(--icon); flex-shrink: 0; width: 16px; height: 16px; }
+.db-name-field input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: var(--text-strong); font: inherit; font-size: 14px; outline: none; box-shadow: none !important; }
+.db-menu-input, .db-menu-select, .db-formula-input { display: block; color: var(--text); background: var(--field); border: 0; box-shadow: inset 0 0 0 1px var(--border); border-radius: var(--radius); font: inherit; font-size: 13px; padding: 6px 8px; width: 100%; outline: none; }
+.db-menu-input::placeholder, .db-formula-input::placeholder, .db-name-field input::placeholder, .db-select-field input::placeholder { color: var(--text-tertiary); }
+.db-menu-input:focus, .db-menu-select:focus, .db-formula-input:focus { box-shadow: inset 0 0 0 1px var(--accent-border), 0 0 0 2px var(--accent-soft) !important; }
+.db-menu > .db-menu-input { width: calc(100% - 4px); margin: 2px 2px 4px; height: 32px; }
+.db-menu-select { height: 30px; margin-top: 4px; padding-right: 26px; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0a0a0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+.db-menu-select:hover { background-color: var(--hover-strong); }
+.db-menu-select option { background: var(--bg-elevated); color: var(--text); }
+.db-menu-label { display: block; font-size: 12px; padding: 6px 4px; color: var(--text-secondary); }
+.db-menu-label > .db-menu-input { margin-top: 4px; }
+.db-formula-input { min-height: 86px; resize: vertical; margin-top: 5px; font-family: var(--mono); font-size: 12px; line-height: 1.5; }
+.db-menu-hint { padding: 6px 8px; display: block; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.db-full-button { width: calc(100% - 4px); margin: 8px 2px 2px; font-size: 13px; line-height: 30px; }
+.db-options-scroll { max-height: 300px; overflow-y: auto; margin-top: 2px; scrollbar-width: thin; scrollbar-color: var(--scrollbar); }
+
+/* Select / status popover: chips live in an input-like field, options below. */
+.db-select-menu { width: 300px; padding: 0 0 6px; }
+.db-select-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; padding: 8px 10px; background: var(--field); border-bottom: 1px solid var(--divider); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.db-select-field input { flex: 1; min-width: 80px; border: 0; padding: 0; background: none; color: var(--text); font: inherit; font-size: 14px; outline: none; box-shadow: none !important; }
+.db-select-menu .db-menu-heading { padding: 10px 14px 4px; }
+.db-select-menu .db-options-scroll { padding: 0 6px; }
+.db-option-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 0 8px; border: 0; border-radius: var(--radius); background: none; color: var(--text); font: inherit; cursor: pointer; text-align: left; }
+.db-option-row:hover, .db-option-row:focus-visible { background: var(--hover-strong); }
+.db-option-row > svg { margin-left: auto; color: var(--text-secondary); flex-shrink: 0; }
+.db-create-label { font-size: 14px; color: var(--text-secondary); }
+.db-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 2px; max-height: 340px; }
+
+.db-relation-option { display: flex; align-items: center; gap: 2px; }
+.db-relation-option > button { display: flex; align-items: center; gap: 8px; min-height: 30px; background: none; color: var(--text); border: 0; padding: 0 8px; border-radius: var(--radius); font: inherit; font-size: 14px; cursor: pointer; }
+.db-relation-option > button svg { color: var(--icon); flex-shrink: 0; }
+.db-relation-option > button:first-child { flex: 1; min-width: 0; }
+.db-relation-option > button span { flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: left; }
+.db-relation-option > button:hover { background: var(--hover-strong); }
+.db-filter-rule, .db-sort-rule { display: grid; grid-template-columns: 1fr 1fr 28px; align-items: center; gap: 6px; padding: 4px 2px; }
+.db-filter-rule > .db-menu-input { grid-column: 1 / 3; }
+.db-filter-rule > .db-icon-button { grid-column: 3; grid-row: 1; }
+.db-filter-rule > .db-menu-select, .db-sort-rule > .db-menu-select { min-width: 0; margin: 0; font-size: 13px; }
+.db-search-row { display: flex; align-items: center; height: 36px; gap: 8px; color: var(--icon); border-bottom: 1px solid var(--divider); }
+.db-search-row input { border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; outline: none; min-width: 90px; flex: 1; box-shadow: none !important; }
+.db-search-row > span { font-size: 12px; color: var(--text-tertiary); }
+.db-active-rules { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 4px; }
+.db-active-rules > span { display: flex; align-items: center; gap: 5px; height: 24px; font-size: 13px; background: var(--accent-soft); color: var(--accent-text); border-radius: 12px; padding: 0 9px; }
+.db-active-rules button { display: flex; padding: 0; background: none; color: inherit; border: 0; cursor: pointer; opacity: .7; }
+.db-active-rules button:hover { opacity: 1; }
+.db-empty { padding: 20px 8px; color: var(--text-tertiary); font-size: 14px; }
+/* Empty-state and "New page" rows live inside the table so they match its width. */
+.db-table tr.db-empty-row:hover, .db-table tr.db-add-tr:hover { background: none; }
+.db-table .db-empty-row td, .db-table .db-add-tr td { border-right: 0; }
+.db-empty-row .db-empty { display: flex; align-items: center; gap: 12px; padding: 14px 8px; }
+.db-empty-row .db-empty button { padding: 2px 8px; border: 0; border-radius: var(--radius); background: var(--hover-strong); color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.db-empty-row .db-empty button:hover { color: var(--text); background: var(--bg-strong); }
+.db-add-tr .db-add-row { border-bottom: 0; }
+
+/* List and board */
+.db-list { border-top: 0; }
+.db-list-row { display: flex; align-items: center; height: 38px; border-bottom: 1px solid var(--divider); gap: 14px; padding: 0 6px; border-radius: 0; }
+.db-list-row:hover { background: var(--hover); }
+.db-list-title { display: flex; align-items: center; gap: 8px; color: var(--text-strong); background: none; border: 0; text-align: left; font: inherit; font-weight: 500; flex: 1; min-width: 0; cursor: pointer; }
+.db-list-title > svg { flex-shrink: 0; color: var(--icon); }
+.db-list-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-list-values { display: flex; gap: 10px; color: var(--text-secondary); align-items: center; }
+.db-list-values > div { min-width: 90px; overflow: hidden; }
+.db-board { display: flex; gap: 12px; overflow-x: auto; padding-top: 14px; padding-bottom: 20px; }
+.db-board-column { min-width: 260px; width: 260px; flex-shrink: 0; }
+.db-board-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 0 2px; height: 30px; }
+.db-board-heading > span:nth-child(2) { color: var(--text-tertiary); font-size: 14px; }
+.db-board-heading .db-icon-button { margin-left: auto; }
+.db-board-card { position: relative; background: var(--bg-elevated); border: 0; box-shadow: 0 0 0 1px var(--border), var(--shadow-card); border-radius: var(--radius); margin-bottom: 8px; padding: 10px; cursor: grab; transition: background .12s; }
+.db-board-card:hover { background: var(--bg-raised); }
+.db-board-card-title { display: flex; align-items: flex-start; gap: 7px; padding: 0 18px 4px 0; color: var(--text-strong); background: none; font: inherit; font-size: 14px; font-weight: 500; border: 0; text-align: left; line-height: 20px; cursor: pointer; }
+.db-board-card-title:hover { background: none; }
+.db-board-card-title svg { margin-top: 2px; color: var(--icon); flex-shrink: 0; }
+.db-board-property { display: flex; font-size: 12px; align-items: center; min-height: 26px; gap: 6px; }
+.db-board-property > span { color: var(--text-tertiary); width: 83px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+.db-board-property .db-cell-button { min-height: 24px; padding: 2px 4px; font-size: 12px; border-radius: var(--radius-sm); }
+.db-board-property .db-badge { font-size: 12px; height: 18px; line-height: 18px; }
+.db-board-property .db-inline-input { height: 24px; }
+.db-board-card > button.db-row-menu-trigger { position: absolute; top: 8px; right: 6px; width: 22px; height: 22px; background: var(--bg-elevated); }
+.database-view button:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 1px; }
+@media (max-width: 1100px) { .db-toolbar { gap: 7px; } .db-view-tab { padding: 0 6px; gap: 5px; font-size: 13px; } .db-automation-button { display: none; } }
+@media (max-width: 700px) { .db-toolbar { align-items: flex-start; flex-direction: column; height: auto; gap: 6px; padding-bottom: 6px; } .db-tabs { height: 34px; max-width: 100%; } .db-tools { width: 100%; justify-content: flex-end; } .db-menu { max-width: calc(100vw - 24px); } .db-list-values { display: none; } }
+
+/* Record properties (peek and full page) */
+.db-record-properties { padding: 4px 0 16px; border-bottom: 1px solid var(--divider); margin-bottom: 20px; font-size: 14px; }
+.db-record-property { display: flex; align-items: center; min-height: 34px; gap: 8px; }
+.db-record-property-label { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; margin-left: -6px; border-radius: var(--radius); color: var(--text-secondary); width: 170px; flex-shrink: 0; }
+.db-record-property-label > svg, .db-record-property-label > .db-title-icon { flex-shrink: 0; color: var(--icon); width: 16px; height: 16px; }
+.db-record-property-label > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-record-property-value { min-width: 0; flex: 1; }
+.db-record-property-value .db-numeric { justify-content: flex-start; text-align: left; }
+.db-record-property-value .db-cell-button { min-height: 30px; border-radius: var(--radius); }
+.db-record-property-value .db-checkbox-cell { height: 30px; border-radius: var(--radius); }
+.db-record-property-value .db-empty-value { opacity: 1; }
+@media (max-width: 500px) { .db-record-property-label { width: 120px; font-size: 13px; } }
+.db-options-editor { padding: 2px 0 4px; }
+.db-options-editor > .db-menu-input { width: calc(100% - 4px); margin: 4px 2px 0; height: 30px; }
+.db-option-static { cursor: default; }
+.db-option-static:hover { background: var(--hover); }
+.db-option-static > .db-icon-button { margin-left: auto; width: 22px; height: 22px; opacity: 0; }
+.db-option-static:hover > .db-icon-button, .db-option-static > .db-icon-button:focus-visible { opacity: 1; }
+
+/* Hover-only triggers stay visible (and their row highlighted) while their menu is open. */
+.db-row-menu-trigger[data-state="open"], .db-row-drag[data-state="open"], .db-add-view[data-state="open"] { opacity: 1; background: var(--hover-strong); color: var(--text); }
+.db-table tbody tr:has(.db-row-drag[data-state="open"]), .db-list-row:has(.db-row-menu-trigger[data-state="open"]) { background: var(--hover); }
+.db-icon-button[data-state="open"] { background: var(--hover-strong); color: var(--text); }
+.db-table th:has(.db-column-trigger[data-state="open"]) { background: var(--hover); }
+
+/* Inline databases (inside a page) stay calm like Notion's: the view tabs and New
+   are always there; the tool icons appear on hover or keyboard focus, and stay
+   while a filter/sort is on or a menu is open. Touch screens always show them. */
+@media (hover: hover) {
+  .db-compact .db-tools > :not(.db-new-control) { opacity: 0; transition: opacity .15s; }
+  .db-compact:hover .db-tools > *,
+  .db-compact:focus-within .db-tools > *,
+  .db-compact .db-tools > .is-active,
+  .db-compact .db-tools > [data-state="open"],
+  .db-compact .db-tools > :has(.is-active, [data-state="open"]) { opacity: 1; }
+  /* The sideways scrollbar shows while you're over the table, not as a stray bar. */
+  .db-compact .db-table-scroll { scrollbar-color: transparent transparent; }
+  .db-compact:hover .db-table-scroll { scrollbar-color: var(--scrollbar); }
+}
+.db-compact .db-inline-title { padding-top: 6px; }
+/* The table scroller reaches 24px left (room for row drag handles); widen it by
+   the same amount so its right edge, and its scrollbar's, meet the text column. */
+.db-compact .db-table-scroll { width: calc(100% + 24px); }
+/* "Open records in": a two-option switch in View settings. */
+.db-open-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 2px 6px 0; padding: 2px; border-radius: var(--radius); background: var(--field); box-shadow: inset 0 0 0 1px var(--divider); }
+.db-open-mode button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; border: 0; border-radius: calc(var(--radius) - 2px); background: none; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.db-open-mode button:hover { color: var(--text); background: transparent; }
+.db-open-mode button.active { color: var(--text-strong); background: var(--bg-elevated); box-shadow: 0 0 0 1px var(--border), var(--shadow-chip); }
+.db-open-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.db-open-mode + .db-menu-hint { padding-top: 6px; color: var(--text-tertiary); }

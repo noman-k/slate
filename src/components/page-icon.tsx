@@ -1,0 +1,277 @@
+import {
+  Activity, Anchor, Apple, Archive, Atom, Award, Baby, Banknote, Bell, Bike, BookOpen, Bookmark,
+  Box, Brain, Briefcase, Bug, Building2, Bus, Calculator, Calendar, Camera, Car, Cat, ChartColumn,
+  ChartLine, ChartPie, CircleDollarSign, ClipboardList, Clock, Cloud, Code, Coffee, Compass, Cpu,
+  CreditCard, Crown, Database, Dna, Dog, DollarSign, Dumbbell, Feather, File, FileSignature,
+  FileText, Film, Flag, FlaskConical, Flame, Folder, Gamepad2, Gavel, Gem, Gift, Globe,
+  GraduationCap, Hammer, Handshake, Hash, Headphones, Heart, HeartPulse, Hexagon, Hotel, House,
+  Inbox, Infinity as InfinityIcon, Key, Landmark, Layers, Leaf, Library, Lightbulb, Link, ListTodo, Lock, Mail,
+  Map as MapIcon, MapPin, Medal, Megaphone, MessageCircle, Microscope, Monitor, Moon, Mountain, Music,
+  Newspaper, Notebook, Package, Palette, Paperclip, Pencil, PenTool, Percent, PiggyBank, Pill,
+  Plane, Presentation, Puzzle, Receipt, Rocket, Ruler, Scale, Scissors, Search, Server, Settings,
+  Shapes, Shield, Ship, ShoppingCart, Smartphone, Smile, Sparkles, SquareCheckBig, Star,
+  Stethoscope, Sun, Table2, Tag, Target, Telescope, Tent, Terminal, Ticket, Train, TreePine,
+  Trophy, Truck, Umbrella, User, Users, Utensils, Wallet, Wifi, Wrench, Zap, type LucideIcon,
+} from "lucide-react";
+import type { Page } from "@/lib/types";
+
+type IconEntry = { name: string; Icon: LucideIcon; keywords: string };
+
+/** Line icons a page can use, grouped for the picker. `name` is what gets stored. */
+export const PAGE_ICON_GROUPS: { label: string; icons: IconEntry[] }[] = [
+  { label: "Documents", icons: [
+    { name: "file-text", Icon: FileText, keywords: "document page doc text note" },
+    { name: "notebook", Icon: Notebook, keywords: "notes journal diary" },
+    { name: "book-open", Icon: BookOpen, keywords: "read reading wiki guide docs" },
+    { name: "library", Icon: Library, keywords: "books collection knowledge" },
+    { name: "bookmark", Icon: Bookmark, keywords: "save later reading list" },
+    { name: "newspaper", Icon: Newspaper, keywords: "news article blog post" },
+    { name: "clipboard", Icon: ClipboardList, keywords: "list checklist plan" },
+    { name: "todo", Icon: ListTodo, keywords: "tasks to do checklist" },
+    { name: "check", Icon: SquareCheckBig, keywords: "done complete task checkbox" },
+    { name: "signature", Icon: FileSignature, keywords: "contract sign agreement legal" },
+    { name: "pencil", Icon: Pencil, keywords: "edit write draft" },
+    { name: "pen", Icon: PenTool, keywords: "design write draw" },
+    { name: "feather", Icon: Feather, keywords: "writing poem story" },
+    { name: "paperclip", Icon: Paperclip, keywords: "attachment file" },
+    { name: "folder", Icon: Folder, keywords: "directory files project" },
+    { name: "archive", Icon: Archive, keywords: "storage old box" },
+    { name: "inbox", Icon: Inbox, keywords: "mail incoming queue" },
+    { name: "table", Icon: Table2, keywords: "database spreadsheet grid" },
+    { name: "database", Icon: Database, keywords: "data storage records" },
+    { name: "layers", Icon: Layers, keywords: "stack levels" },
+  ] },
+  { label: "Work & money", icons: [
+    { name: "briefcase", Icon: Briefcase, keywords: "work job business office" },
+    { name: "building", Icon: Building2, keywords: "company office property apartment" },
+    { name: "house", Icon: House, keywords: "home property rent real estate" },
+    { name: "landmark", Icon: Landmark, keywords: "bank government institution" },
+    { name: "wallet", Icon: Wallet, keywords: "money finance budget" },
+    { name: "piggy-bank", Icon: PiggyBank, keywords: "savings money deposit" },
+    { name: "banknote", Icon: Banknote, keywords: "cash money payment" },
+    { name: "dollar", Icon: DollarSign, keywords: "money price cost" },
+    { name: "coin", Icon: CircleDollarSign, keywords: "money currency revenue" },
+    { name: "card", Icon: CreditCard, keywords: "payment credit card" },
+    { name: "receipt", Icon: Receipt, keywords: "invoice bill expense rent ledger" },
+    { name: "calculator", Icon: Calculator, keywords: "math accounting tax" },
+    { name: "percent", Icon: Percent, keywords: "discount rate interest" },
+    { name: "chart-line", Icon: ChartLine, keywords: "growth trend analytics stats" },
+    { name: "chart-bar", Icon: ChartColumn, keywords: "report analytics metrics" },
+    { name: "chart-pie", Icon: ChartPie, keywords: "share breakdown budget" },
+    { name: "presentation", Icon: Presentation, keywords: "slides meeting deck" },
+    { name: "handshake", Icon: Handshake, keywords: "deal partner client" },
+    { name: "scale", Icon: Scale, keywords: "legal law balance" },
+    { name: "gavel", Icon: Gavel, keywords: "legal court law" },
+    { name: "cart", Icon: ShoppingCart, keywords: "shopping store buy" },
+    { name: "package", Icon: Package, keywords: "shipping product delivery" },
+    { name: "truck", Icon: Truck, keywords: "delivery shipping logistics" },
+    { name: "tag", Icon: Tag, keywords: "label price category" },
+  ] },
+  { label: "Plans & goals", icons: [
+    { name: "calendar", Icon: Calendar, keywords: "date schedule event meeting" },
+    { name: "clock", Icon: Clock, keywords: "time deadline hours" },
+    { name: "target", Icon: Target, keywords: "goal objective aim" },
+    { name: "flag", Icon: Flag, keywords: "milestone goal report" },
+    { name: "trophy", Icon: Trophy, keywords: "win award achievement" },
+    { name: "award", Icon: Award, keywords: "badge achievement prize" },
+    { name: "medal", Icon: Medal, keywords: "win sport achievement" },
+    { name: "crown", Icon: Crown, keywords: "best king premium" },
+    { name: "star", Icon: Star, keywords: "favorite important rating" },
+    { name: "rocket", Icon: Rocket, keywords: "launch startup ship fast" },
+    { name: "zap", Icon: Zap, keywords: "lightning quick energy" },
+    { name: "flame", Icon: Flame, keywords: "fire hot trending" },
+    { name: "lightbulb", Icon: Lightbulb, keywords: "idea brainstorm insight" },
+    { name: "sparkles", Icon: Sparkles, keywords: "magic new ai shine" },
+    { name: "brain", Icon: Brain, keywords: "think mind knowledge" },
+    { name: "puzzle", Icon: Puzzle, keywords: "problem solve piece" },
+    { name: "compass", Icon: Compass, keywords: "direction explore strategy" },
+    { name: "map", Icon: MapIcon, keywords: "roadmap plan travel" },
+    { name: "bell", Icon: Bell, keywords: "reminder notification alert" },
+    { name: "megaphone", Icon: Megaphone, keywords: "announcement marketing" },
+  ] },
+  { label: "People & places", icons: [
+    { name: "user", Icon: User, keywords: "person profile tenant contact" },
+    { name: "users", Icon: Users, keywords: "team people group tenants" },
+    { name: "baby", Icon: Baby, keywords: "child family kids" },
+    { name: "chat", Icon: MessageCircle, keywords: "message conversation talk" },
+    { name: "mail", Icon: Mail, keywords: "email letter inbox" },
+    { name: "smile", Icon: Smile, keywords: "happy emoji face fun" },
+    { name: "heart", Icon: Heart, keywords: "love favorite health" },
+    { name: "globe", Icon: Globe, keywords: "world web international" },
+    { name: "pin", Icon: MapPin, keywords: "location place address" },
+    { name: "hotel", Icon: Hotel, keywords: "stay travel booking" },
+    { name: "tent", Icon: Tent, keywords: "camping outdoor trip" },
+    { name: "plane", Icon: Plane, keywords: "travel flight trip" },
+    { name: "train", Icon: Train, keywords: "travel commute rail" },
+    { name: "bus", Icon: Bus, keywords: "transit commute" },
+    { name: "car", Icon: Car, keywords: "drive vehicle auto" },
+    { name: "bike", Icon: Bike, keywords: "cycling ride" },
+    { name: "ship", Icon: Ship, keywords: "boat cruise shipping" },
+    { name: "anchor", Icon: Anchor, keywords: "boat harbor stable" },
+    { name: "ticket", Icon: Ticket, keywords: "event concert pass" },
+  ] },
+  { label: "Tech & tools", icons: [
+    { name: "code", Icon: Code, keywords: "programming dev software" },
+    { name: "terminal", Icon: Terminal, keywords: "command line shell cli" },
+    { name: "bug", Icon: Bug, keywords: "issue error debug" },
+    { name: "cpu", Icon: Cpu, keywords: "hardware chip computer" },
+    { name: "server", Icon: Server, keywords: "backend infrastructure host" },
+    { name: "monitor", Icon: Monitor, keywords: "computer desktop screen" },
+    { name: "phone", Icon: Smartphone, keywords: "mobile app device" },
+    { name: "wifi", Icon: Wifi, keywords: "network internet" },
+    { name: "link", Icon: Link, keywords: "url web reference" },
+    { name: "hash", Icon: Hash, keywords: "number channel tag" },
+    { name: "settings", Icon: Settings, keywords: "config preferences gear" },
+    { name: "wrench", Icon: Wrench, keywords: "fix repair maintenance tool" },
+    { name: "hammer", Icon: Hammer, keywords: "build construct repair" },
+    { name: "ruler", Icon: Ruler, keywords: "measure design spec" },
+    { name: "scissors", Icon: Scissors, keywords: "cut craft" },
+    { name: "key", Icon: Key, keywords: "password access secret" },
+    { name: "lock", Icon: Lock, keywords: "private secure password" },
+    { name: "shield", Icon: Shield, keywords: "security protect insurance" },
+    { name: "search", Icon: Search, keywords: "find research look" },
+    { name: "box", Icon: Box, keywords: "package container 3d" },
+  ] },
+  { label: "Science & learning", icons: [
+    { name: "graduation", Icon: GraduationCap, keywords: "school study course education" },
+    { name: "flask", Icon: FlaskConical, keywords: "science lab experiment" },
+    { name: "atom", Icon: Atom, keywords: "physics science" },
+    { name: "dna", Icon: Dna, keywords: "biology genetics" },
+    { name: "microscope", Icon: Microscope, keywords: "research lab biology" },
+    { name: "telescope", Icon: Telescope, keywords: "space astronomy explore" },
+    { name: "shapes", Icon: Shapes, keywords: "geometry design" },
+    { name: "hexagon", Icon: Hexagon, keywords: "shape structure" },
+    { name: "infinity", Icon: InfinityIcon, keywords: "forever loop math" },
+  ] },
+  { label: "Health & life", icons: [
+    { name: "activity", Icon: Activity, keywords: "health fitness pulse" },
+    { name: "heart-pulse", Icon: HeartPulse, keywords: "health medical heartbeat" },
+    { name: "stethoscope", Icon: Stethoscope, keywords: "doctor medical health" },
+    { name: "pill", Icon: Pill, keywords: "medicine pharmacy health" },
+    { name: "dumbbell", Icon: Dumbbell, keywords: "gym workout fitness" },
+    { name: "apple", Icon: Apple, keywords: "food fruit nutrition" },
+    { name: "utensils", Icon: Utensils, keywords: "food recipe dinner meal" },
+    { name: "coffee", Icon: Coffee, keywords: "cafe break drink" },
+    { name: "gift", Icon: Gift, keywords: "present birthday holiday" },
+    { name: "dog", Icon: Dog, keywords: "pet animal" },
+    { name: "cat", Icon: Cat, keywords: "pet animal" },
+  ] },
+  { label: "Creative & nature", icons: [
+    { name: "palette", Icon: Palette, keywords: "art design color paint" },
+    { name: "camera", Icon: Camera, keywords: "photo picture" },
+    { name: "film", Icon: Film, keywords: "movie video" },
+    { name: "music", Icon: Music, keywords: "song audio playlist" },
+    { name: "headphones", Icon: Headphones, keywords: "audio podcast listen" },
+    { name: "gamepad", Icon: Gamepad2, keywords: "games play fun" },
+    { name: "gem", Icon: Gem, keywords: "diamond premium value" },
+    { name: "leaf", Icon: Leaf, keywords: "nature plant green eco" },
+    { name: "tree", Icon: TreePine, keywords: "nature forest outdoor" },
+    { name: "mountain", Icon: Mountain, keywords: "nature hike outdoor" },
+    { name: "sun", Icon: Sun, keywords: "weather day summer" },
+    { name: "moon", Icon: Moon, keywords: "night sleep" },
+    { name: "cloud", Icon: Cloud, keywords: "weather sky storage" },
+    { name: "umbrella", Icon: Umbrella, keywords: "rain weather insurance" },
+  ] },
+];
+
+export const PAGE_ICON_SET: Record<string, LucideIcon> = Object.fromEntries(
+  PAGE_ICON_GROUPS.flatMap((group) => group.icons.map((icon) => [icon.name, icon.Icon])),
+);
+export const PAGE_ICON_KEYWORDS: Record<string, string> = Object.fromEntries(
+  PAGE_ICON_GROUPS.flatMap((group) =>
+    group.icons.map((icon) => [icon.name, `${icon.name.replace(/-/g, " ")} ${icon.keywords}`]),
+  ),
+);
+
+/** Notion's icon colors, tuned for the dark theme (see --icon-* tokens in globals.css). */
+export const PAGE_ICON_COLORS = [
+  "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red",
+] as const;
+export type PageIconColor = (typeof PAGE_ICON_COLORS)[number];
+
+/** Emoji icons from earlier versions, converted to the closest line icon. */
+const EMOJI_ICONS: Record<string, string> = {
+  "📄": "file-text:gray", "📝": "notebook:gray", "📚": "library:brown", "📌": "pin:red",
+  "🔖": "bookmark:red", "🗂️": "folder:yellow", "📁": "folder:yellow", "🗃️": "archive:brown",
+  "💡": "lightbulb:yellow", "🎯": "target:red", "🧩": "puzzle:green", "🧭": "compass:blue",
+  "🚀": "rocket:purple", "⚡": "zap:yellow", "✨": "sparkles:yellow", "✦": "sparkles:gray",
+  "🏡": "house:orange", "🏠": "house:orange", "🏘️": "building:brown", "🏢": "building:gray",
+  "💼": "briefcase:brown", "💰": "wallet:green", "📈": "chart-line:green", "📊": "chart-bar:blue",
+  "🧾": "receipt:green", "📅": "calendar:red", "📆": "calendar:red", "⏰": "clock:orange",
+  "✅": "check:green", "📋": "clipboard:brown", "💬": "chat:blue", "📣": "megaphone:orange",
+  "🔍": "search:gray", "🔒": "lock:gray", "🛠️": "wrench:gray", "⚙️": "settings:gray",
+  "🧪": "flask:purple", "💻": "monitor:blue", "🎨": "palette:pink", "🎵": "music:pink",
+  "📷": "camera:gray", "🎬": "film:red", "🌿": "leaf:green", "🌱": "leaf:green",
+  "☀️": "sun:yellow", "🌙": "moon:blue", "🌊": "globe:blue", "🔥": "flame:orange",
+  "❤️": "heart:red", "⭐": "star:yellow", "🎉": "gift:pink", "🧠": "brain:pink",
+  "☕": "coffee:brown",
+};
+
+/** Normalizes any stored icon to "" or "icon:<name>:<color>" (emoji are converted). */
+export function normalizePageIcon(value: string | undefined | null): string {
+  const icon = (value || "").trim();
+  if (!icon || icon === "file") return "";
+  if (icon.startsWith("icon:")) return parsePageIcon(icon).kind === "icon" ? icon : "";
+  const mapped = EMOJI_ICONS[icon] ?? EMOJI_ICONS[icon.replace(/️/g, "")];
+  return mapped ? `icon:${mapped}` : "";
+}
+
+export type ParsedIcon =
+  | { kind: "none" }
+  | { kind: "icon"; name: string; color: PageIconColor; Icon: LucideIcon };
+
+/** `page.icon` is "" (no icon) or "icon:<name>:<color>"; old emoji values are mapped. */
+export function parsePageIcon(value: string | undefined | null): ParsedIcon {
+  let icon = (value || "").trim();
+  if (icon && !icon.startsWith("icon:")) icon = normalizePageIcon(icon);
+  if (!icon.startsWith("icon:")) return { kind: "none" };
+  const [, name = "", color = "gray"] = icon.split(":");
+  const Icon = PAGE_ICON_SET[name];
+  if (!Icon) return { kind: "none" };
+  const safe = (PAGE_ICON_COLORS as readonly string[]).includes(color)
+    ? (color as PageIconColor)
+    : "gray";
+  return { kind: "icon", name, color: safe, Icon };
+}
+
+export function iconValue(name: string, color: PageIconColor) {
+  return `icon:${name}:${color}`;
+}
+
+/**
+ * The one way a page's icon is drawn: its colored line icon, or the page-type default.
+ * `fallback` picks the default glyph when the page has no icon (null draws nothing).
+ */
+export function PageIcon({
+  page,
+  size = 16,
+  fallback = "auto",
+  className = "",
+}: {
+  page: Pick<Page, "icon" | "kind">;
+  size?: number;
+  fallback?: "auto" | "record" | null;
+  className?: string;
+}) {
+  const parsed = parsePageIcon(page.icon);
+  if (parsed.kind === "icon")
+    return (
+      <parsed.Icon
+        size={size}
+        className={`page-icon page-icon-color-${parsed.color} ${className}`}
+        aria-hidden
+      />
+    );
+  if (!fallback) return null;
+  // Defaults are neutral (the theme's icon color): a page sheet for documents and
+  // records, a database cylinder for databases.
+  const Default =
+    fallback === "record" ? File : page.kind === "database" ? Database : FileText;
+  return (
+    <Default
+      size={size}
+      className={`page-icon page-icon-default ${className}`}
+      aria-hidden
+    />
+  );
+}
