@@ -23,6 +23,8 @@ import {
   CircleHelp,
   HardDrive,
   X,
+  Compass,
+  Play,
 } from "lucide-react";
 import {
   DndContext,
@@ -73,6 +75,12 @@ interface Props {
   recentIds: string[];
   /** Shows the dismissible "local demo" card when set. */
   onDismissDemoCard?: () => void;
+  /** Pages that are playbooks: they get a Run button, and the Playbooks entry appears. */
+  playbookIds?: Set<string>;
+  onRunPlaybook?: (pageId: string) => void;
+  onPlaybooks?: () => void;
+  /** The Playbooks view is open. */
+  playbooksOpen?: boolean;
 }
 export function PageActions({
   page,
@@ -127,7 +135,10 @@ function TreeRow({
   onPageAction,
   recordCount,
   drop,
+  onRun,
 }: {
+  /** Set for a playbook: a Run button among the row's actions. */
+  onRun?: () => void;
   page: Page;
   depth: number;
   hasChildren: boolean;
@@ -208,6 +219,16 @@ function TreeRow({
         )}
       </button>
       <span className="tree-actions">
+        {onRun && (
+          <button
+            className="icon-button"
+            aria-label={`Run ${page.title || "Untitled"}`}
+            title="Run"
+            onClick={onRun}
+          >
+            <Play size={14} />
+          </button>
+        )}
         <Menu
           side="right"
           align="start"
@@ -373,6 +394,7 @@ export function Sidebar(p: Props) {
             onExpand={() => p.onExpand(page.id)}
             onNew={() => p.onNew(page.id)}
             onPageAction={p.onPageAction}
+            onRun={p.playbookIds?.has(page.id) && p.onRunPlaybook ? () => p.onRunPlaybook!(page.id) : undefined}
             recordCount={
               page.kind === "database" && page.database_id
                 ? recordCounts.get(page.database_id) || 0
@@ -520,6 +542,17 @@ export function Sidebar(p: Props) {
             <House size={18} />
             <span>Home</span>
           </button>
+          {p.playbookIds && p.playbookIds.size > 0 && p.onPlaybooks && (
+            <button
+              className={`nav-row ${p.playbooksOpen ? "is-current" : ""}`}
+              aria-current={p.playbooksOpen ? "page" : undefined}
+              onClick={p.onPlaybooks}
+            >
+              <Compass size={18} />
+              <span>Playbooks</span>
+              <small className="nav-count">{p.playbookIds.size}</small>
+            </button>
+          )}
           <button className="nav-row" onClick={() => p.onNew(null)}>
             <SquarePen size={18} />
             <span>New page</span>

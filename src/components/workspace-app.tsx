@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Cloud,
@@ -35,6 +35,7 @@ import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@
 import { templateMarkdown, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
 import { PlaybookBuilder } from "./playbook-builder";
+import { PLAYBOOKS_VIEW, PlaybooksView, isPlaybookPage } from "./playbooks-view";
 import { serializePlaybook } from "@/lib/playbook-model";
 import { RunStartDialog, RunView } from "./run-mode";
 import {
@@ -221,7 +222,8 @@ export function WorkspaceApp() {
   const recordParent = state.pages.find(
     (p) => p.database_id === record?.database_id,
   );
-  const page =
+  // The Playbooks view isn't a page: nothing falls back to the first page behind it.
+  const page = activeId === PLAYBOOKS_VIEW ? undefined :
     (record
       ? recordAsPage
         ? recordPage
@@ -595,6 +597,13 @@ export function WorkspaceApp() {
     toast(`“${title}” created`, { action: { label: "Open", onClick: () => open(made.pageId) } });
     return made.pageId;
   };
+  /** Every playbook page, for the sidebar's Playbooks entry and Run buttons. */
+  const playbookIds = useMemo(
+    () => new Set(state.pages.filter((p) => isPlaybookPage(state, p)).map((p) => p.id)),
+    // Only pages, documents and records decide what's a playbook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.pages, state.documents, state.records],
+  );
   /** A playbook or runbook: has steps or inputs, so it's edited as blocks only. */
   const isStructured = (pageId: string) => {
     const procedure = procedureOf(pageId);
@@ -967,6 +976,10 @@ export function WorkspaceApp() {
         onDismissDemoCard={
           demoCardHidden ? undefined : () => setDemoCardHidden(true)
         }
+        playbookIds={playbookIds}
+        onRunPlaybook={(pageId) => openRunStart(pageId)}
+        onPlaybooks={() => open(PLAYBOOKS_VIEW)}
+        playbooksOpen={activeId === PLAYBOOKS_VIEW}
       />
       {!collapsed && (
         <button
@@ -989,6 +1002,14 @@ export function WorkspaceApp() {
               </button>
             )}
             <nav className="breadcrumbs" aria-label="Breadcrumb">
+              {activeId === PLAYBOOKS_VIEW && (
+                <span>
+                  <button onClick={() => open(PLAYBOOKS_VIEW)}>
+                    <Compass size={16} />
+                    <span>Playbooks</span>
+                  </button>
+                </span>
+              )}
               {chain.map((p, i) => (
                 <span key={p.id}>
                   {i > 0 && <span className="breadcrumb-separator">/</span>}
@@ -1143,6 +1164,20 @@ export function WorkspaceApp() {
               <BrandMark size={40} />
               <span>Opening your workspace…</span>
             </div>
+          ) : activeId === PLAYBOOKS_VIEW ? (
+            <article className="page-content playbooks-page">
+              <PlaybooksView
+                state={state}
+                timeAgo={timeAgo}
+                onOpen={open}
+                onRun={(pageId) => openRunStart(pageId)}
+                onResume={(pageId, recordId) => setActiveRun({ pageId, recordId })}
+                onNew={() => {
+                  requestNew(null);
+                  setGalleryOpen(true);
+                }}
+              />
+            </article>
           ) : page ? (
             <article className="page-content">
               <IconPickerPopover

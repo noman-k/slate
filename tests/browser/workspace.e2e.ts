@@ -1195,3 +1195,40 @@ test("checklists first: a plain list, advanced steps on request, and to-do lists
   await expect(page.locator(".pb-step-text")).toHaveText(["Mow the lawn", "Fix the gate", "All done"]);
   await expect(page.getByRole("region", { name: "Outline" })).toContainText("Ready to run");
 });
+test("playbooks: one place to find and run them all, and Run from the sidebar", async ({ page }) => {
+  const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+  // No playbooks yet: no entry.
+  await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toHaveCount(0);
+  await startFromTemplate(page, "Playbook", /Monthly rent check/);
+  await startFromTemplate(page, "Playbook", /Tenant move-in/);
+  await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toContainText("2");
+  // Run one from the sidebar without opening it.
+  await sidebar.getByRole("button", { name: "Getting started", exact: true }).click();
+  const row = sidebar.locator(".tree-row", { hasText: "Monthly rent check" });
+  await row.hover();
+  await row.getByRole("button", { name: "Run Monthly rent check" }).click();
+  const form = page.getByRole("dialog", { name: "Run Monthly rent check" });
+  await form.getByRole("button", { name: "Start run" }).click();
+  const run = page.locator(".run-surface");
+  await run.getByRole("button", { name: "Passed" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
+  // The Playbooks view lists both, with last run and the run in progress.
+  await sidebar.getByRole("button", { name: /^Playbooks/ }).click();
+  await expect(page).toHaveURL(/\/p\/playbooks$/);
+  const list = page.getByRole("list", { name: "Playbooks" });
+  await expect(list.locator(".playbook-row")).toHaveCount(2);
+  const rent = list.locator(".playbook-row", { hasText: "Monthly rent check" });
+  await expect(rent).toContainText("1 run, last just now");
+  await expect(rent).toContainText("At the start of each month");
+  await expect(list.locator(".playbook-row", { hasText: "Tenant move-in" })).toContainText("never run");
+  // Resume picks the run up where it was.
+  await rent.getByRole("button", { name: "Resume" }).click();
+  await expect(run.locator(".run-card-kind")).toContainText("Step 2 of");
+  await page.keyboard.press("Escape");
+  // Open goes to the playbook; Back returns here.
+  await rent.getByRole("button", { name: /^Monthly rent check/ }).click();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Monthly rent check");
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Playbooks", level: 1 })).toBeVisible();
+});
