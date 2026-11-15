@@ -252,6 +252,29 @@ test("on a phone, Select in a row's menu starts selecting, and taps select rows"
   await expect(rows).toHaveCount(total - 2);
 });
 
+test("on a phone, filters open one after another and fit the screen", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.ledger}`);
+  await page.getByRole("button", { name: "Filter records" }).first().tap();
+  await page.getByRole("dialog", { name: "Filter by" }).getByRole("button", { name: "Status" }).tap();
+  // Picking a property opens its new rule, which stays open.
+  const rule = page.getByRole("dialog", { name: "Filter", exact: true });
+  await expect(rule).toBeVisible();
+  await rule.getByRole("combobox", { name: "Filter value" }).selectOption("Pending");
+  await page.locator(".db-rules-bar").getByRole("button", { name: "Filter", exact: true }).tap();
+  await page.getByRole("dialog", { name: "Add a filter" }).getByRole("button", { name: "Add advanced filter" }).tap();
+  const advanced = page.getByRole("dialog", { name: "Advanced filter" });
+  await expect(advanced).toBeVisible();
+  await page.waitForTimeout(400);
+  await expect(advanced).toBeVisible();
+  await advanced.getByRole("combobox", { name: "Match" }).selectOption("or");
+  await expect(advanced).toBeVisible();
+  // Inside the screen, with nothing wider than it.
+  const box = (await advanced.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("a page block opens on the first tap, and a tap reveals nothing before it's used", async ({ page }) => {
   await page.goto(`/p/${account!.ids.hub}`);
   // Safari treats a tap that makes something appear before its click as a hover, and

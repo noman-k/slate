@@ -1185,27 +1185,6 @@
     background: var(--hover-strong);
   }
 }
-.db-filter-rule,
-.db-sort-rule {
-  display: grid;
-  grid-template-columns: 1fr 1fr 28px;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 2px;
-}
-.db-filter-rule > .db-menu-input {
-  grid-column: 1 / 3;
-}
-.db-filter-rule > .db-icon-button {
-  grid-column: 3;
-  grid-row: 1;
-}
-.db-filter-rule > .db-menu-select,
-.db-sort-rule > .db-menu-select {
-  min-width: 0;
-  margin: 0;
-  font-size: 13px;
-}
 .db-search-row {
   display: flex;
   align-items: center;
@@ -1228,37 +1207,6 @@
 .db-search-row > span {
   font-size: 12px;
   color: var(--text-tertiary);
-}
-.db-active-rules {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px 0 4px;
-}
-.db-active-rules > span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  font-size: 13px;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  border-radius: 12px;
-  padding: 0 9px;
-}
-.db-active-rules button {
-  display: flex;
-  padding: 0;
-  background: none;
-  color: inherit;
-  border: 0;
-  cursor: pointer;
-  opacity: 0.7;
-}
-@media (hover: hover) {
-  .db-active-rules button:hover {
-    opacity: 1;
-  }
 }
 .db-empty {
   padding: 20px 8px;
@@ -1946,5 +1894,323 @@
   .db-selection-action {
     height: 36px;
     padding: 0 12px;
+  }
+}
+
+/* Sorts and filters: pills under the toolbar, and their editors (see view-rules.tsx). */
+.db-rules-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 6px;
+}
+.db-rule-pill,
+.db-rules-add-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  max-width: 280px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.db-rule-pill {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+.db-rule-pill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-rule-pill svg {
+  flex-shrink: 0;
+}
+/* A rule without a value yet: outlined, until it filters anything. */
+.db-rule-pill.is-unfinished {
+  color: var(--text-secondary);
+  background: none;
+  border-color: var(--line, var(--divider));
+}
+.db-rules-add-pill {
+  color: var(--text-tertiary);
+  background: none;
+}
+@media (hover: hover) {
+  .db-rule-pill:hover {
+    background: var(--accent-soft-strong);
+  }
+  .db-rule-pill.is-unfinished:hover,
+  .db-rules-add-pill:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.db-rule-pill[data-state="open"] {
+  background: var(--accent-soft-strong);
+}
+.db-rules-add-pill[data-state="open"] {
+  background: var(--hover);
+  color: var(--text);
+}
+.db-rule-pill:focus-visible,
+.db-rules-add-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.db-rules-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--divider);
+}
+
+/* Popovers */
+.db-menu.db-rules-menu {
+  width: auto;
+  min-width: 260px;
+  max-width: min(720px, calc(100vw - 24px));
+  /* A long filter scrolls inside the room there is, so its last row is never cut off. */
+  max-height: min(70vh, var(--radix-popover-content-available-height, 70vh));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+.db-menu.db-rules-advanced {
+  min-width: min(600px, calc(100vw - 24px));
+}
+.db-menu.db-rules-row-menu {
+  min-width: 200px;
+  padding: 4px;
+}
+.db-rules-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.db-rules-group.is-nested {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  background: var(--bg-secondary, var(--hover));
+}
+.db-rule-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 28px;
+  align-items: start;
+  gap: 8px;
+}
+.db-rule-row > .db-rule-joiner,
+.db-rule-row > .db-rule-joiner-choice,
+.db-rule-row > .db-rule-more {
+  margin-top: 2px;
+}
+.db-rule-joiner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 30px;
+  padding-right: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.db-rule-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.db-rule-fields.is-single {
+  flex-wrap: nowrap;
+}
+.db-rule-choice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 220px;
+}
+.db-rule-choice select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  height: 30px;
+  padding: 0 26px 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.db-rule-choice > svg {
+  position: absolute;
+  right: 8px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.db-rule-choice.is-placeholder select {
+  color: var(--text-tertiary);
+}
+.db-rule-joiner-choice select {
+  width: 72px;
+}
+@media (hover: hover) {
+  .db-rule-choice select:hover {
+    background: var(--hover);
+  }
+}
+.db-rule-choice select:focus-visible,
+.db-rule-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.db-rule-input {
+  flex: 1;
+  min-width: 120px;
+  max-width: 220px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.db-rule-input[type="date"] {
+  color-scheme: light dark;
+}
+.db-rule-more {
+  width: 28px;
+  height: 28px;
+}
+.db-rules-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.db-rules-add-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .db-rules-add-button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .db-rules-add-button.is-danger:hover {
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+}
+.db-rules-add-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.db-sorts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.db-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.db-sort-row.is-dragging {
+  opacity: 0.5;
+}
+.db-sort-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 28px;
+  color: var(--icon);
+  cursor: grab;
+}
+.db-rules-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 240px;
+}
+.db-rules-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+}
+.db-rules-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.db-rules-search:focus-within {
+  border-color: var(--accent);
+}
+
+/* Phones: each rule's fields wrap under its Where/And/Or, and controls grow to tap size;
+   16px text so Safari doesn't zoom in on them. */
+@media (max-width: 600px) {
+  .db-rule-row {
+    grid-template-columns: 56px minmax(0, 1fr) 28px;
+    gap: 6px;
+  }
+  .db-rule-joiner-choice select {
+    width: 56px;
+  }
+  .db-rule-fields.is-single {
+    flex-wrap: wrap;
+  }
+}
+@media (hover: none) {
+  .db-rule-choice select,
+  .db-rule-input,
+  .db-rules-search input {
+    height: 36px;
+    font-size: 16px;
+  }
+  .db-rule-pill,
+  .db-rules-add-pill {
+    height: 32px;
+    border-radius: 16px;
+  }
+  .db-rules-add-button {
+    height: 36px;
   }
 }

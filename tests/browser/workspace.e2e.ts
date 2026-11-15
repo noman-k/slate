@@ -485,6 +485,64 @@ test("table rows can be selected together and moved to the Trash, with Undo", as
   await expect(rows).toHaveCount(total - 1);
 });
 
+test("filters and sorts work like Notion: pills, And/Or groups, typed values and several sorts", async ({ page }) => {
+  const rows = page.locator(".db-table tbody tr:not(.db-add-tr):not(.db-empty-row)");
+  await expect(rows.first()).toBeVisible();
+  const total = await rows.count();
+  const bar = page.getByRole("toolbar", { name: "Sorts and filters" });
+
+  // Filter: pick a property, then its value from its own choices. The pill says what it does.
+  await page.getByRole("button", { name: "Filter records" }).click();
+  await page.getByRole("dialog", { name: "Filter by" }).getByRole("button", { name: "Status" }).click();
+  const rule = page.getByRole("dialog", { name: "Filter", exact: true });
+  // Until it has a value it hides nothing.
+  await expect(rows).toHaveCount(total);
+  await rule.getByRole("combobox", { name: "Filter value" }).selectOption("Pending");
+  await expect(bar.getByRole("button", { name: "Status: Pending" })).toBeVisible();
+  await expect(page.getByText("No records match your view.")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Advanced: Status is Pending, or (Amount Received > 1400).
+  await bar.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("dialog", { name: "Add a filter" }).getByRole("button", { name: "Add advanced filter" }).click();
+  const advanced = page.getByRole("dialog", { name: "Advanced filter" });
+  await advanced.getByRole("combobox", { name: "Match" }).selectOption("or");
+  const grouped = advanced.locator(".db-rules-group.is-nested");
+  await grouped.getByRole("combobox", { name: "Filter property" }).selectOption({ label: "Amount Received" });
+  await grouped.getByRole("combobox", { name: "Filter condition" }).selectOption(">");
+  await grouped
+    .getByRole("textbox", { name: "Filter value" })
+    .or(grouped.getByRole("spinbutton", { name: "Filter value" }))
+    .fill("1400");
+  await expect(rows).toHaveCount(2);
+  await expect(bar.getByRole("button", { name: "2 rules" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Sorts: pick a property, then change direction; it's kept when the page reloads.
+  await page.getByRole("button", { name: "Sort records" }).click();
+  await page.getByRole("dialog", { name: "Sort by" }).getByRole("button", { name: "Amount Received" }).click();
+  const sorts = page.getByRole("dialog", { name: "Sorts" });
+  await sorts.getByRole("combobox", { name: "Sort direction" }).selectOption("desc");
+  await sorts.getByRole("button", { name: "Add sort" }).click();
+  await expect(sorts.getByRole("combobox", { name: "Sort property" })).toHaveCount(2);
+  await page.keyboard.press("Escape");
+  await expect(bar.getByRole("button", { name: "2 sorts" })).toBeVisible();
+  await expect(rows.first()).toContainText("$2,600.00");
+  await page.reload();
+  await expect(
+    page.getByRole("toolbar", { name: "Sorts and filters" }).getByRole("button", { name: "2 rules" }),
+  ).toBeVisible();
+  await expect(rows).toHaveCount(2);
+
+  // Delete filter and sort: everything shows again, in its own order.
+  await page.getByRole("button", { name: "2 rules" }).click();
+  await page.getByRole("dialog", { name: "Advanced filter" }).getByRole("button", { name: "Delete filter" }).click();
+  await page.getByRole("button", { name: "2 sorts" }).click();
+  await page.getByRole("dialog", { name: "Sorts" }).getByRole("button", { name: "Delete sort" }).click();
+  await expect(rows).toHaveCount(total);
+  await expect(page.getByRole("toolbar", { name: "Sorts and filters" })).toHaveCount(0);
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.

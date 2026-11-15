@@ -117,7 +117,7 @@ describe("recursive page duplication", () => {
     expect(copiedRentRecords.every((record) => record.values[relation.id]?.toString() === tenant.id)).toBe(true);
     expect(tenant.values[inverse.id]).toEqual(copiedRentRecords.map((record) => record.id));
     const paid = result.views.find((view) => view.database_id === rent.id && view.name === "Paid")!;
-    expect(paid.filters[0].property_id).toBe(propertyFor(result, rent.id, "Status").id);
+    expect((paid.filters[0] as { property_id: string }).property_id).toBe(propertyFor(result, rent.id, "Status").id);
     expect(paid).toMatchObject({
       property_order: result.properties
         .filter((property) => property.database_id === rent.id)

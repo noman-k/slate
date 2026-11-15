@@ -30,6 +30,7 @@ import {
 import { ToolError, describeView, type ToolDefinition, type ToolResult } from "./agent-tools";
 import { agentIcon, iconProp } from "./agent-icons";
 import { evaluateFormula, renameProperty } from "./database";
+import { allRules, filterTree, operatorsFor, storedFilters, takesValue } from "./view-filters";
 import { serializePlaybook, parsePlaybook } from "./playbook-model";
 import { parseProcedure } from "./runner";
 import { runsOf } from "./runs";
@@ -72,6 +73,24 @@ const EDITS = { readOnlyHint: false, destructiveHint: false, idempotentHint: tru
 const MAX_REPLACEMENTS = 50;
 
 /** Column types an agent can add; relations, formulas and rollups need a little more. */
+const FILTER_OPERATORS: ViewFilter["operator"][] = [
+  "equals",
+  "not_equals",
+  "contains",
+  "not_contains",
+  "starts_with",
+  "ends_with",
+  "greater_than",
+  "less_than",
+  "greater_or_equal",
+  "less_or_equal",
+  "before",
+  "after",
+  "on_or_before",
+  "on_or_after",
+  "is_empty",
+  "is_not_empty",
+];
 const NEW_PROPERTY_TYPES = [...AGENT_PROPERTY_TYPES, "relation", "formula", "rollup"] as const;
 type NewPropertyType = (typeof NEW_PROPERTY_TYPES)[number];
 const AGGREGATIONS = ["count", "sum", "average", "min", "max", "values"] as const;
@@ -257,20 +276,30 @@ export const EDIT_TOOLS: ToolDefinition[] = [
         filters: {
           type: "array",
           maxItems: 20,
-          description: "Rows shown must match all of them.",
+          description: "Rows shown must match all of them (or any, with match).",
           items: {
             type: "object",
             properties: {
               property: { type: "string", description: "Property name." },
               operator: {
                 type: "string",
-                enum: ["equals", "not_equals", "contains", "greater_than", "less_than", "is_empty"],
+                enum: [...FILTER_OPERATORS],
+                description:
+                  "What suits the property: text contains/starts_with…, numbers greater_than/less_or_equal…, dates before/after/on_or_before…, select and status equals/not_equals, multi_select and relation contains/not_contains, checkbox equals true or false; any can be is_empty or is_not_empty.",
               },
-              value: { type: ["string", "number", "boolean"] },
+              value: {
+                type: ["string", "number", "boolean"],
+                description: "A choice's name, a date like 2026-12-01, or for a relation a linked row's title or id.",
+              },
             },
             required: ["property", "operator"],
             additionalProperties: false,
           },
+        },
+        match: {
+          type: "string",
+          enum: ["all", "any"],
+          description: "Whether rows must match all of the filters (default) or any of them.",
         },
         sorts: {
           type: "array",
@@ -863,15 +892,6 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
 
 /* ---------- update_database_view ---------- */
 
-const FILTER_OPERATORS: ViewFilter["operator"][] = [
-  "equals",
-  "not_equals",
-  "contains",
-  "greater_than",
-  "less_than",
-  "is_empty",
-];
-
 function updateDatabaseView(state: WorkspaceState, args: Record<string, unknown>, newId: () => string): PlannedEdit {
   const database = findDatabase(state, args.database);
   const views = state.views.filter((v) => v.database_id === database.id && !v.placement);
@@ -928,19 +948,51 @@ function updateDatabaseView(state: WorkspaceState, args: Record<string, unknown>
       throw new ToolError("layout must be table, board or list.");
     patch.type = args.layout;
   }
-  if (args.filters !== undefined)
-    patch.filters = list(args.filters, "filters").map((raw, index) => {
-      const item = record(raw, "filters");
-      const target = property(item.property, `filter ${index + 1}`);
-      const operator = item.operator as ViewFilter["operator"];
-      if (!FILTER_OPERATORS.includes(operator))
-        throw new ToolError(`Filter ${index + 1} needs an operator: one of ${FILTER_OPERATORS.join(", ")}.`);
-      if (operator !== "is_empty" && (item.value === undefined || item.value === null || item.value === ""))
-        throw new ToolError(`Filter ${index + 1} (${target.name} ${operator}) needs a value.`);
-      if ((operator === "greater_than" || operator === "less_than") && !Number.isFinite(Number(item.value)))
-        throw new ToolError(`Filter ${index + 1}: ${operator.replace("_", " ")} compares numbers.`);
-      return { property_id: target.id, operator, value: operator === "is_empty" ? "" : String(item.value) };
-    });
+  if (args.match !== undefined && args.match !== "all" && args.match !== "any")
+    throw new ToolError('match must be "all" or "any".');
+  if (args.filters !== undefined || args.match !== undefined) {
+    const current = filterTree(view.filters);
+    const rules: ViewFilter[] =
+      args.filters === undefined
+        ? allRules(current)
+        : list(args.filters, "filters").map((raw, index) => {
+            const item = record(raw, "filters");
+            const target = property(item.property, `filter ${index + 1}`);
+            const operator = item.operator as ViewFilter["operator"];
+            const allowed = operatorsFor(target.type).map((o) => o.value);
+            if (!allowed.includes(operator))
+              throw new ToolError(
+                `Filter ${index + 1}: “${target.name}” is a ${target.type} property; its operators are ${allowed.join(", ")}.`,
+              );
+            if (!takesValue(operator)) return { property_id: target.id, operator, value: "" };
+            if (item.value === undefined || item.value === null || item.value === "")
+              throw new ToolError(`Filter ${index + 1} (${target.name} ${operator}) needs a value.`);
+            let value = String(item.value);
+            if ((target.type === "number" || target.type === "currency") && !Number.isFinite(Number(value)))
+              throw new ToolError(`Filter ${index + 1}: “${target.name}” compares numbers.`);
+            if (
+              ["date", "datetime", "created_time", "updated_time"].includes(target.type) &&
+              !/^\d{4}-\d{2}-\d{2}/.test(value)
+            )
+              throw new ToolError(`Filter ${index + 1}: “${target.name}” compares dates like 2026-12-01.`);
+            if (target.type === "relation") {
+              const rows = state.records.filter((r) => r.database_id === target.config.related_database_id);
+              const found =
+                rows.find((r) => r.id === value || r.page_id === value) ??
+                rows.find(
+                  (r) =>
+                    (state.pages.find((p) => p.id === r.page_id)?.title ?? "").toLowerCase() === value.toLowerCase(),
+                );
+              if (!found)
+                throw new ToolError(`Filter ${index + 1}: no row “${value}” is linked through “${target.name}”.`);
+              value = found.id;
+            }
+            if (target.type === "checkbox") value = String(value === "true");
+            return { property_id: target.id, operator, value };
+          });
+    const conjunction = args.match === undefined ? current.conjunction : args.match === "any" ? "or" : "and";
+    patch.filters = storedFilters({ type: "group", conjunction, rules });
+  }
   if (args.sorts !== undefined)
     patch.sorts = list(args.sorts, "sorts").map((raw, index) => {
       const item = record(raw, "sorts");
@@ -984,7 +1036,7 @@ function updateDatabaseView(state: WorkspaceState, args: Record<string, unknown>
   else if (Object.keys(patch).length) edit.views.push({ id: view.id, ...patch });
   else
     throw new ToolError(
-      "Nothing to change: send a name, layout, filters, sorts, visible_properties or group_by (or create a view).",
+      "Nothing to change: send a name, layout, filters, match, sorts, visible_properties or group_by (or create a view).",
     );
   return {
     edit,

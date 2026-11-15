@@ -10,6 +10,7 @@ import { cellValue, recordTitle } from "./database";
 import { splitMarkdown } from "./markdown";
 import { STEP_LABELS, labelOf, parseProcedure, type Param, type StepType } from "./runner";
 import { breadcrumbs } from "./tree";
+import { describeFilter, filterTree } from "./view-filters";
 import type { CellValue, DatabaseView, DbRecord, Page, Property, WorkspaceState } from "./types";
 
 export interface ToolDefinition {
@@ -133,15 +134,7 @@ export function describeView(state: WorkspaceState, view: DatabaseView) {
   const parts = [
     `${view.name} (${view.type}${view.type === "board" && view.group_by ? `, grouped by ${name(view.group_by)}` : ""})`,
   ];
-  if (view.filters.length)
-    parts.push(
-      `filters: ${view.filters
-        .map(
-          (f) =>
-            `${name(f.property_id)} ${f.operator.replace("_", " ")}${f.operator === "is_empty" ? "" : ` ${f.value}`}`,
-        )
-        .join(" and ")}`,
-    );
+  if (view.filters.length) parts.push(`filters: ${describeFilter(filterTree(view.filters), name)}`);
   if (view.sorts.length)
     parts.push(
       `sorted by ${view.sorts.map((s) => `${name(s.property_id)} ${s.direction === "asc" ? "ascending" : "descending"}`).join(", then ")}`,

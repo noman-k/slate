@@ -1,3 +1,4 @@
+import { filterTree, mapStoredRules, treeMatches } from "./view-filters";
 import type { CellValue, DatabaseView, DbRecord, Property, WorkspaceState } from "./types";
 import { descendants, trashPage } from "./tree";
 
@@ -304,6 +305,7 @@ export function orderProperties(properties: Property[], order: string[] = []): P
 
 export function visibleRecords(databaseId: string, view: DatabaseView, state: WorkspaceState, search = "") {
   const properties = state.properties.filter((p) => p.database_id === databaseId);
+  const tree = filterTree(view.filters);
   const get = (record: DbRecord, propertyId: string) => {
     const p = properties.find((item) => item.id === propertyId);
     return p ? cellValue(record, p, state) : null;
@@ -324,23 +326,9 @@ export function visibleRecords(databaseId: string, view: DatabaseView, state: Wo
         ),
     )
     .filter((record) =>
-      view.filters.every((filter) => {
-        const value = get(record, filter.property_id);
-        const text = String(value ?? "").toLowerCase();
-        switch (filter.operator) {
-          case "contains":
-            return text.includes(filter.value.toLowerCase());
-          case "equals":
-            return text === filter.value.toLowerCase();
-          case "not_equals":
-            return text !== filter.value.toLowerCase();
-          case "is_empty":
-            return value === null || value === "" || (Array.isArray(value) && value.length === 0);
-          case "greater_than":
-            return Number(value) > Number(filter.value);
-          case "less_than":
-            return Number(value) < Number(filter.value);
-        }
+      treeMatches(tree, (propertyId) => {
+        const property = properties.find((item) => item.id === propertyId);
+        return property ? { type: property.type, value: cellValue(record, property, state) } : undefined;
       }),
     )
     .sort((a, b) => {
@@ -549,7 +537,7 @@ export function removeProperty(state: WorkspaceState, propertyId: string): Works
     }),
     views: next.views.map((view) => ({
       ...view,
-      filters: view.filters.filter((filter) => filter.property_id !== propertyId),
+      filters: mapStoredRules(view.filters, (filter) => (filter.property_id === propertyId ? null : filter)),
       sorts: view.sorts.filter((sort) => sort.property_id !== propertyId),
       hidden_properties: view.hidden_properties.filter((id) => id !== propertyId),
       property_order: view.property_order?.filter((id) => id !== propertyId),

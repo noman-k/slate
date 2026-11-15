@@ -1,3 +1,4 @@
+import { mapStoredRules } from "./view-filters";
 import type { CellValue, Document, Property, WorkspaceState } from "./types";
 import { decodeDirective, encodeDirective, joinMarkdown, splitMarkdown } from "./markdown";
 
@@ -290,7 +291,7 @@ export function duplicatePageSubtree(
         id: viewMap.get(view.id)!,
         database_id: databaseMap.get(view.database_id) ?? view.database_id,
         ...(view.placement ? { placement: placementMap.get(view.placement) ?? view.placement } : {}),
-        filters: view.filters.map((filter) => ({
+        filters: mapStoredRules(view.filters, (filter) => ({
           ...filter,
           property_id: propertyMap.get(filter.property_id) ?? filter.property_id,
           value:

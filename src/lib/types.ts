@@ -80,8 +80,32 @@ export interface DbRecord {
 }
 export interface ViewFilter {
   property_id: string;
-  operator: "contains" | "equals" | "not_equals" | "is_empty" | "greater_than" | "less_than";
+  operator:
+    | "contains"
+    | "not_contains"
+    | "equals"
+    | "not_equals"
+    | "starts_with"
+    | "ends_with"
+    | "is_empty"
+    | "is_not_empty"
+    | "greater_than"
+    | "less_than"
+    | "greater_or_equal"
+    | "less_or_equal"
+    | "before"
+    | "after"
+    | "on_or_before"
+    | "on_or_after";
   value: string;
+}
+/** Rules joined by And or Or (see lib/view-filters.ts). */
+export interface ViewFilterGroup {
+  type: "group";
+  conjunction: "and" | "or";
+  rules: (ViewFilter | ViewFilterGroup)[];
+  /** The stored root of a filter that isn't just "all of these rules". */
+  root?: boolean;
 }
 export interface DatabaseView {
   id: string;
@@ -90,7 +114,7 @@ export interface DatabaseView {
     string | null;
   name: string;
   type: "table" | "list" | "board";
-  filters: ViewFilter[];
+  filters: (ViewFilter | ViewFilterGroup)[];
   sorts: { property_id: string; direction: "asc" | "desc" }[];
   hidden_properties: string[];
   property_order?: string[];

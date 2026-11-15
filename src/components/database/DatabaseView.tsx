@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   Maximize2,
   PanelRightOpen,
-  ArrowDownUp,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -69,6 +68,7 @@ import {
 import { PageIcon } from "../page-icon";
 import "./database.css";
 import { RowCheckbox, SelectionBar, useRowSelection } from "./row-selection";
+import { FilterButton, SortButton, ViewRulesBar, filterProperty, type OpenRules } from "./view-rules";
 import { useKeys, useTouchOnly } from "../keys";
 
 interface Props {
@@ -784,6 +784,7 @@ function PropertyMenu({
   onChange,
   view,
   updateView,
+  onFilter,
 }: {
   property: Property;
   properties: Property[];
@@ -791,6 +792,8 @@ function PropertyMenu({
   onChange: Props["onChange"];
   view: View;
   updateView: (patch: Partial<View>) => void;
+  /** "Filter this property": a new rule for it, opened under the toolbar. */
+  onFilter: (property: Property) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1068,8 +1071,8 @@ function PropertyMenu({
           <MenuAction
             icon={<Filter size={16} />}
             onClick={() => {
-              updateView({ filters: [...view.filters, { property_id: property.id, operator: "contains", value: "" }] });
               setOpen(false);
+              onFilter(property);
             }}
           >
             Filter this property
@@ -1281,6 +1284,8 @@ export function DatabaseView({
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  /** Which sort or filter pill (under the toolbar) is open. */
+  const [openRules, setOpenRules] = useState<OpenRules>(null);
   const touch = useTouchOnly();
   const database = state.databases.find(
     (db) => db.id === databaseId && !state.pages.find((page) => page.id === db.page_id)?.deleted_at,
@@ -1758,168 +1763,8 @@ export function DatabaseView({
           </Menu>
         </div>
         <div className="db-tools">
-          <Menu
-            align="end"
-            label="Filter records"
-            trigger={
-              <button
-                className={`db-icon-button ${view.filters.length ? "is-active" : ""}`}
-                title="Filter"
-                aria-label="Filter records"
-              >
-                <ListFilter size={18} />
-                {view.filters.length > 0 && <span className="db-tool-count">{view.filters.length}</span>}
-              </button>
-            }
-          >
-            <div className="db-menu-heading">
-              Filters <span>Only show matching records</span>
-            </div>
-            {view.filters.map((filter, index) => (
-              <div className="db-filter-rule" key={index}>
-                <select
-                  className="db-menu-select"
-                  aria-label="Filter property"
-                  value={filter.property_id}
-                  onChange={(e) =>
-                    updateView({
-                      filters: view.filters.map((f, i) => (i === index ? { ...f, property_id: e.target.value } : f)),
-                    })
-                  }
-                >
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="db-menu-select"
-                  aria-label="Filter condition"
-                  value={filter.operator}
-                  onChange={(e) =>
-                    updateView({
-                      filters: view.filters.map((f, i) =>
-                        i === index ? { ...f, operator: e.target.value as typeof f.operator } : f,
-                      ),
-                    })
-                  }
-                >
-                  {[
-                    ["contains", "Contains"],
-                    ["equals", "Is"],
-                    ["not_equals", "Is not"],
-                    ["is_empty", "Is empty"],
-                    ["greater_than", "Greater than"],
-                    ["less_than", "Less than"],
-                  ].map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                {filter.operator !== "is_empty" && (
-                  <input
-                    className="db-menu-input"
-                    aria-label="Filter value"
-                    placeholder="Value…"
-                    value={filter.value}
-                    onChange={(e) =>
-                      updateView({
-                        filters: view.filters.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)),
-                      })
-                    }
-                  />
-                )}
-                <button
-                  className="db-icon-button"
-                  aria-label="Remove filter"
-                  onClick={() => updateView({ filters: view.filters.filter((_, i) => i !== index) })}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-            <MenuAction
-              icon={<Plus size={16} />}
-              onClick={() =>
-                updateView({
-                  filters: [...view.filters, { property_id: properties[0]?.id || "", operator: "contains", value: "" }],
-                })
-              }
-            >
-              Add filter
-            </MenuAction>
-            {view.filters.length > 0 && (
-              <MenuAction onClick={() => updateView({ filters: [] })}>Clear filters</MenuAction>
-            )}
-          </Menu>
-          <Menu
-            align="end"
-            label="Sort records"
-            trigger={
-              <button
-                className={`db-icon-button ${view.sorts.length ? "is-active" : ""}`}
-                title="Sort"
-                aria-label="Sort records"
-              >
-                <ArrowDownUp size={16} />
-              </button>
-            }
-          >
-            <div className="db-menu-heading">Sort</div>
-            {view.sorts.map((sort, index) => (
-              <div className="db-sort-rule" key={index}>
-                <select
-                  className="db-menu-select"
-                  aria-label="Sort property"
-                  value={sort.property_id}
-                  onChange={(e) =>
-                    updateView({
-                      sorts: view.sorts.map((s, i) => (i === index ? { ...s, property_id: e.target.value } : s)),
-                    })
-                  }
-                >
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="db-menu-select"
-                  aria-label="Sort direction"
-                  value={sort.direction}
-                  onChange={(e) =>
-                    updateView({
-                      sorts: view.sorts.map((s, i) =>
-                        i === index ? { ...s, direction: e.target.value as "asc" | "desc" } : s,
-                      ),
-                    })
-                  }
-                >
-                  <option value="asc">Ascending</option>
-                  <option value="desc">Descending</option>
-                </select>
-                <button
-                  className="db-icon-button"
-                  aria-label="Remove sort"
-                  onClick={() => updateView({ sorts: view.sorts.filter((_, i) => i !== index) })}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-            <MenuAction
-              icon={<Plus size={16} />}
-              onClick={() =>
-                updateView({ sorts: [...view.sorts, { property_id: properties[0]?.id || "", direction: "asc" }] })
-              }
-            >
-              Add sort
-            </MenuAction>
-            {view.sorts.length > 0 && <MenuAction onClick={() => updateView({ sorts: [] })}>Clear sorting</MenuAction>}
-          </Menu>
+          <FilterButton view={view} properties={properties} updateView={updateView} setOpen={setOpenRules} />
+          <SortButton view={view} properties={properties} updateView={updateView} setOpen={setOpenRules} />
           <Menu
             align="end"
             label="Database actions"
@@ -2134,35 +1979,14 @@ export function DatabaseView({
           </button>
         </div>
       )}
-      {(view.filters.length > 0 || view.sorts.length > 0) && (
-        <div className="db-active-rules">
-          {view.filters.map((filter, index) => (
-            <span key={`f-${index}`}>
-              <Filter size={12} />
-              {properties.find((p) => p.id === filter.property_id)?.name} {filter.operator.replaceAll("_", " ")}{" "}
-              {filter.value}
-              <button
-                aria-label="Remove filter"
-                onClick={() => updateView({ filters: view.filters.filter((_, i) => i !== index) })}
-              >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-          {view.sorts.map((sort, index) => (
-            <span key={`s-${index}`}>
-              <ArrowDownUp size={12} />
-              {properties.find((p) => p.id === sort.property_id)?.name}
-              <button
-                aria-label="Remove sort"
-                onClick={() => updateView({ sorts: view.sorts.filter((_, i) => i !== index) })}
-              >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+      <ViewRulesBar
+        view={view}
+        properties={properties}
+        state={state}
+        updateView={updateView}
+        open={openRules}
+        setOpen={setOpenRules}
+      />
       {view.type === "table" && (
         <div ref={scrollRef} className={`db-table-scroll ${rows.length > 100 ? "db-virtual-scroll" : ""}`}>
           <table className="db-table" style={{ width: table.getTotalSize() + 45 }}>
@@ -2196,6 +2020,11 @@ export function DatabaseView({
                           onChange={onChange}
                           view={view}
                           updateView={updateView}
+                          onFilter={(target) => {
+                            const next = filterProperty(view, target);
+                            updateView({ filters: next.filters });
+                            setOpenRules(next.open);
+                          }}
                         />
                         <div
                           className="db-column-resizer"
