@@ -212,6 +212,8 @@ function MenuAction({
     </button>
   );
 }
+/** The view last shown for each database (and linked block), while the app is open. */
+const lastViews = new Map<string, string>();
 const TAG_COLORS = ["brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"] as const;
 /** Stable option color: meaningful words get a fitting color, everything else hashes to one. */
 export function tagColor(value: string) {
@@ -1278,7 +1280,12 @@ export function DatabaseView({
 }: Props) {
   const shortcut = useKeys();
   const touchOnly = useTouchOnly();
-  const [activeId, setActiveId] = useState("");
+  // The view last shown here comes back (for this visit), as in Notion.
+  const viewMemoryKey = `${databaseId}:${placement ?? ""}`;
+  const [activeId, setActiveId] = useState(() => lastViews.get(viewMemoryKey) ?? "");
+  useEffect(() => {
+    if (activeId) lastViews.set(viewMemoryKey, activeId);
+  }, [activeId, viewMemoryKey]);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [propertyName, setPropertyName] = useState("");

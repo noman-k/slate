@@ -967,7 +967,9 @@ export function WorkspaceApp() {
         )}
         <main
           className={`page-scroll ${page?.kind === "database" ? "database-page" : "document-page"}`}
-          key={activeId}
+          // Keyed by the page shown, not the address: a record opening in the side panel over
+          // its database keeps the database as it is (its view, its scroll) underneath.
+          key={page?.id ?? activeId}
           ref={pageScrollRef}
           onScroll={(e) => scrollMemory.current.set(entryKey.current, e.currentTarget.scrollTop)}
         >

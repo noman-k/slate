@@ -560,6 +560,12 @@ test("a record opens over its database without scrolling it, and lists every lin
   expect(before).toBeGreaterThan(100);
   await expect(scroller).toBeVisible();
 
+  // On another view than the first; the database underneath must stay exactly as it is.
+  await page.getByRole("tab", { name: "Paid" }).click();
+  await expect(page.getByRole("tab", { name: "Paid" })).toHaveAttribute("aria-selected", "true");
+  await page.evaluate(() => {
+    (document.querySelector(".database-view") as HTMLElement).dataset.probe = "same";
+  });
   // Link a second tenant to a row, then open it in the side panel.
   const row = page.locator(".db-table tbody tr").filter({ hasText: "2026-06 — Basement" });
   const trigger = row.locator(".db-relation-trigger");
@@ -573,8 +579,13 @@ test("a record opens over its database without scrolling it, and lists every lin
   await row.getByRole("button", { name: "Open 2026-06 — Basement", exact: true }).click();
   const panel = page.getByRole("dialog").filter({ has: page.getByLabel("Record title") });
   await expect(panel.getByLabel("Record title")).toHaveValue("2026-06 — Basement");
-  // The database behind stays where it was.
+  // The database behind stays where it was: same view, same scroll, not rebuilt. (The
+  // panel hides the page behind from screen readers, so look at the tab itself.)
   expect(await scrollTop()).toBe(kept);
+  await expect(page.locator(".db-view-tab.active")).toHaveText("Paid");
+  expect(await page.evaluate(() => (document.querySelector(".database-view") as HTMLElement).dataset.probe)).toBe(
+    "same",
+  );
   // Every linked record, one per line (no "+1").
   const chips = panel.locator(".db-record-properties .db-relation-chip");
   await expect(chips).toHaveText(["Alex Morgan", "Bea Brown"]);
@@ -587,6 +598,13 @@ test("a record opens over its database without scrolling it, and lists every lin
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
   expect(await scrollTop()).toBe(kept);
+  await expect(page.getByRole("tab", { name: "Paid" })).toHaveAttribute("aria-selected", "true");
+  // Away and back: the database opens on the view it was left on.
+  await page.locator("aside.sidebar").getByText("Getting started", { exact: true }).click();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
+  await page.goBack();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
+  await expect(page.getByRole("tab", { name: "Paid" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("a database can open its records as full pages", async ({ page }) => {
