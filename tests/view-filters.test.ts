@@ -199,3 +199,56 @@ describe("view order", () => {
     expect(moved.views.filter((v) => !ids.includes(v.id))).toEqual(state.views.filter((v) => !ids.includes(v.id)));
   });
 });
+
+describe("new rows in a filtered view", () => {
+  it("start with what the filter names, so they belong there", async () => {
+    const { valuesForFilter } = await import("../src/lib/view-filters");
+    const properties = [
+      { id: "title", type: "title" as const },
+      { id: "type", type: "select" as const },
+      { id: "status", type: "status" as const },
+      { id: "tags", type: "multi_select" as const },
+      { id: "done", type: "checkbox" as const },
+      { id: "due", type: "date" as const },
+      { id: "cost", type: "number" as const },
+      { id: "project", type: "relation" as const },
+    ];
+    const tree: FilterGroup = {
+      type: "group",
+      conjunction: "and",
+      rules: [
+        rule("title", "contains", "Horse"),
+        rule("type", "equals", "Task"),
+        rule("status", "not_equals", "Done"),
+        rule("tags", "contains", "API"),
+        rule("done", "equals", "false"),
+        rule("due", "on_or_after", "2026-12-01"),
+        rule("cost", "greater_than", "10"),
+        { type: "group", conjunction: "and", rules: [rule("project", "contains", "rec-1")] },
+        // Unfinished, and under Or: nothing to go on.
+        rule("type", "equals", ""),
+        { type: "group", conjunction: "or", rules: [rule("tags", "contains", "X"), rule("tags", "contains", "Y")] },
+      ],
+    };
+    expect(valuesForFilter(tree, properties)).toEqual({
+      type: "Task",
+      tags: ["API"],
+      done: false,
+      due: "2026-12-01",
+      project: ["rec-1"],
+    });
+    expect(valuesForFilter({ ...tree, conjunction: "or" }, properties)).toEqual({});
+  });
+
+  it("stay in the view they were added to, even before they match", () => {
+    const state = createSeedState();
+    const status = state.properties.find((p) => p.database_id === SEED_IDS.database && p.name === "Status")!;
+    const view = {
+      ...state.views.find((v) => v.database_id === SEED_IDS.database)!,
+      filters: [rule(status.id, "equals", "Overdue")],
+    };
+    const row = state.records.find((r) => r.database_id === SEED_IDS.database)!;
+    expect(visibleRecords(SEED_IDS.database, view, state).map((r) => r.id)).not.toContain(row.id);
+    expect(visibleRecords(SEED_IDS.database, view, state, "", new Set([row.id])).map((r) => r.id)).toContain(row.id);
+  });
+});

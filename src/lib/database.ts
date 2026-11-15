@@ -303,7 +303,17 @@ export function orderProperties(properties: Property[], order: string[] = []): P
   return fallback.sort((a, b) => positions.get(a.id)! - positions.get(b.id)!);
 }
 
-export function visibleRecords(databaseId: string, view: DatabaseView, state: WorkspaceState, search = "") {
+/**
+ * The rows a view shows, filtered, searched and sorted. Rows in `keep` (just added here)
+ * show anyway, so a new row doesn't vanish before it's filled in.
+ */
+export function visibleRecords(
+  databaseId: string,
+  view: DatabaseView,
+  state: WorkspaceState,
+  search = "",
+  keep?: ReadonlySet<string>,
+) {
   const properties = state.properties.filter((p) => p.database_id === databaseId);
   const tree = filterTree(view.filters);
   const get = (record: DbRecord, propertyId: string) => {
@@ -317,6 +327,7 @@ export function visibleRecords(databaseId: string, view: DatabaseView, state: Wo
     .filter(
       (record) =>
         !search ||
+        keep?.has(record.id) ||
         properties.some(
           (property) =>
             !property.config.system &&
@@ -325,11 +336,13 @@ export function visibleRecords(databaseId: string, view: DatabaseView, state: Wo
               .includes(search.toLowerCase()),
         ),
     )
-    .filter((record) =>
-      treeMatches(tree, (propertyId) => {
-        const property = properties.find((item) => item.id === propertyId);
-        return property ? { type: property.type, value: cellValue(record, property, state) } : undefined;
-      }),
+    .filter(
+      (record) =>
+        keep?.has(record.id) ||
+        treeMatches(tree, (propertyId) => {
+          const property = properties.find((item) => item.id === propertyId);
+          return property ? { type: property.type, value: cellValue(record, property, state) } : undefined;
+        }),
     )
     .sort((a, b) => {
       for (const sort of view.sorts) {

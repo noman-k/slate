@@ -264,3 +264,65 @@ export function describeFilter(tree: FilterGroup, nameOf: (propertyId: string) =
   };
   return tree.rules.map(part).join(` ${tree.conjunction} `);
 }
+
+/* ---------- New rows ---------- */
+
+/**
+ * The values a new row starts with in a filtered view, so it belongs there (as in Notion):
+ * what an "is" rule names (a choice, text, a number, a date, checked or not), and what a
+ * "contains" rule names for lists and relations. Only rules that must all hold count: under
+ * Or, no single value is the one meant. Rules like "is not" or "greater than" don't name a
+ * value, so they leave it as it is.
+ */
+export function valuesForFilter(
+  tree: FilterGroup,
+  properties: { id: string; type: PropertyType }[],
+): Record<string, CellValue> {
+  const values: Record<string, CellValue> = {};
+  const walk = (group: FilterGroup) => {
+    if (group.conjunction === "or" && group.rules.length > 1) return;
+    for (const node of group.rules) {
+      if (isGroup(node)) {
+        walk(node);
+        continue;
+      }
+      const property = properties.find((p) => p.id === node.property_id);
+      if (!property || !isFinished(node)) continue;
+      const value = node.value;
+      switch (property.type) {
+        case "select":
+        case "status":
+        case "text":
+        case "url":
+        case "email":
+        case "phone":
+          if (node.operator === "equals") values[property.id] = value;
+          break;
+        case "title":
+          // The title is what people type; a filter's word isn't a name for the row.
+          break;
+        case "number":
+        case "currency":
+          if (node.operator === "equals" && Number.isFinite(Number(value))) values[property.id] = Number(value);
+          break;
+        case "checkbox":
+          values[property.id] = value === "true";
+          break;
+        case "date":
+        case "datetime":
+          if (["equals", "on_or_before", "on_or_after"].includes(node.operator))
+            values[property.id] = value.slice(0, 10);
+          break;
+        case "multi_select":
+        case "relation":
+          if (node.operator === "contains" || node.operator === "equals") {
+            const list = Array.isArray(values[property.id]) ? (values[property.id] as string[]) : [];
+            if (!list.includes(value)) values[property.id] = [...list, value];
+          }
+          break;
+      }
+    }
+  };
+  walk(tree);
+  return values;
+}

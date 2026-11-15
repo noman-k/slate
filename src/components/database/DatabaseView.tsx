@@ -71,6 +71,7 @@ import { PageIcon } from "../page-icon";
 import "./database.css";
 import { RowCheckbox, SelectionBar, useRowSelection } from "./row-selection";
 import { FilterButton, SortButton, ViewRulesBar, filterProperty, type OpenRules } from "./view-rules";
+import { filterTree, valuesForFilter } from "@/lib/view-filters";
 import { useKeys, useTouchOnly } from "../keys";
 
 interface Props {
@@ -1358,7 +1359,18 @@ export function DatabaseView({
     [baseProperties, view.property_order],
   );
   const visible = properties.filter((property) => !view.hidden_properties.includes(property.id));
-  const records = useMemo(() => visibleRecords(databaseId, view, state, search), [databaseId, view, state, search]);
+  /**
+   * Rows added in this view stay in it while you're here, even before they match its filter
+   * (a filter like "Status is not Done" can't fill one in); they're filtered next time.
+   */
+  const [kept, setKept] = useState<{ view: string; ids: Set<string> }>({ view: "", ids: new Set() });
+  // Leaving the view lets them go: back on it, they're filtered like any row.
+  if (kept.view && kept.view !== view.id) setKept({ view: "", ids: new Set() });
+  const keep = kept.view === view.id ? kept.ids : undefined;
+  const records = useMemo(
+    () => visibleRecords(databaseId, view, state, search, keep),
+    [databaseId, view, state, search, keep],
+  );
   const updateView = (patch: Partial<View>) =>
     onChange((current) => ({
       ...current,
@@ -1372,7 +1384,12 @@ export function DatabaseView({
       pageId = token(),
       recordId = token();
     const titleProperty = properties.find((p) => p.type === "title");
-    const values = { ...(titleProperty ? { [titleProperty.id]: "" } : {}), ...initial };
+    // It starts with what the view's filter asks for (Type: Task…), so it belongs here.
+    const values = {
+      ...(titleProperty ? { [titleProperty.id]: "" } : {}),
+      ...valuesForFilter(filterTree(view.filters), properties),
+      ...initial,
+    };
     const record: DbRecord = {
       id: recordId,
       database_id: databaseId,
@@ -1411,6 +1428,10 @@ export function DatabaseView({
       }
       return next;
     });
+    setKept((current) => ({
+      view: view.id,
+      ids: new Set([...(current.view === view.id ? current.ids : []), recordId]),
+    }));
     return record;
   };
   const duplicateRecord = (record: DbRecord) => {

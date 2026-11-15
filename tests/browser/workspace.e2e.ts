@@ -700,6 +700,46 @@ test("pages and databases move to another workspace, with everything in them", a
   await expect(sidebar.getByText("Getting started", { exact: true })).toBeVisible();
 });
 
+test("a row added in a filtered view starts with what the filter asks, and stays in view", async ({ page }) => {
+  const rows = page.locator(".db-table tbody tr:not(.db-add-tr):not(.db-empty-row)");
+  await expect(rows.first()).toBeVisible();
+  // Status is Pending: nothing matches yet.
+  await page.getByRole("button", { name: "Filter records" }).click();
+  await page.getByRole("dialog", { name: "Filter by" }).getByRole("button", { name: "Status" }).click();
+  await page
+    .getByRole("dialog", { name: "Filter", exact: true })
+    .getByRole("combobox", { name: "Filter value" })
+    .selectOption("Pending");
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("No records match your view.")).toBeVisible();
+  // A new row is Pending, so it's right there to type in.
+  await page.getByRole("button", { name: "New page" }).last().click();
+  await page.keyboard.type("Late fee");
+  await page.keyboard.press("Enter");
+  const added = rows.filter({ hasText: "Late fee" });
+  await expect(added).toHaveCount(1);
+  await expect(added).toContainText("Pending");
+  // A rule that can't be filled in ("Amount Due > 999999") still leaves new rows in view while you're here…
+  await page.getByRole("button", { name: "Filter records" }).click();
+  await page.getByRole("dialog", { name: "Filter by" }).getByRole("button", { name: "Amount Due" }).click();
+  const amount = page.getByRole("dialog", { name: "Filter", exact: true });
+  await amount.getByRole("combobox", { name: "Filter condition" }).selectOption(">");
+  await amount.getByRole("spinbutton", { name: "Filter value" }).fill("999999");
+  await page.keyboard.press("Escape");
+  // Only the row just added is left (it was added here, so it stays).
+  await expect(rows).toHaveCount(1);
+  await page.getByRole("button", { name: "New page" }).last().click();
+  await page.keyboard.type("Deposit refund");
+  await page.keyboard.press("Enter");
+  await expect(rows.filter({ hasText: "Deposit refund" })).toHaveCount(1);
+  // …and once you leave the view and come back, it's filtered like any row.
+  const tabs = page.getByRole("tablist", { name: "Database views" }).getByRole("tab");
+  const current = (await page.locator(".db-view-tab.active").textContent())!.trim();
+  await tabs.filter({ hasNotText: current }).first().click();
+  await tabs.filter({ hasText: current }).first().click();
+  await expect(rows.filter({ hasText: "Deposit refund" })).toHaveCount(0);
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.
