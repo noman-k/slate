@@ -543,6 +543,52 @@ test("filters and sorts work like Notion: pills, And/Or groups, typed values and
   await expect(page.getByRole("toolbar", { name: "Sorts and filters" })).toHaveCount(0);
 });
 
+test("a record opens over its database without scrolling it, and lists every linked record", async ({ page }) => {
+  // A short window, so the database page scrolls.
+  await page.setViewportSize({ width: 1280, height: 520 });
+  const scroller = page.locator("main.page-scroll, main").first();
+  const scrollTop = () =>
+    page.evaluate(() => {
+      const main = [...document.querySelectorAll("main")].find((el) => el.scrollHeight > el.clientHeight);
+      return main ? Math.round(main.scrollTop) : -1;
+    });
+  await page.evaluate(() => {
+    const main = [...document.querySelectorAll("main")].find((el) => el.scrollHeight > el.clientHeight)!;
+    main.scrollTop = 260;
+  });
+  const before = await scrollTop();
+  expect(before).toBeGreaterThan(100);
+  await expect(scroller).toBeVisible();
+
+  // Link a second tenant to a row, then open it in the side panel.
+  const row = page.locator(".db-table tbody tr").filter({ hasText: "2026-06 — Basement" });
+  const trigger = row.locator(".db-relation-trigger");
+  const box = (await trigger.boundingBox())!;
+  await trigger.click({ position: { x: box.width - 8, y: box.height / 2 } });
+  const picker = page.locator(".db-menu", { has: page.getByLabel("Search related records") });
+  await picker.getByLabel("Search related records").fill("Bea Brown");
+  await picker.getByRole("button", { name: /Create “Bea Brown” in Tenants/ }).click();
+  await expect(row.locator(".db-cell-anchor")).toHaveText("Alex Morgan+1");
+  const kept = await scrollTop();
+  await row.getByRole("button", { name: "Open 2026-06 — Basement", exact: true }).click();
+  const panel = page.getByRole("dialog").filter({ has: page.getByLabel("Record title") });
+  await expect(panel.getByLabel("Record title")).toHaveValue("2026-06 — Basement");
+  // The database behind stays where it was.
+  expect(await scrollTop()).toBe(kept);
+  // Every linked record, one per line (no "+1").
+  const chips = panel.locator(".db-record-properties .db-relation-chip");
+  await expect(chips).toHaveText(["Alex Morgan", "Bea Brown"]);
+  await expect(panel.locator(".db-record-properties .db-relation-more")).toHaveCount(0);
+  const [first, second] = [(await chips.nth(0).boundingBox())!, (await chips.nth(1).boundingBox())!];
+  expect(second.y).toBeGreaterThan(first.y + first.height - 2);
+  // A name opens that record; the empty space beside the names opens the picker.
+  await chips.nth(1).click();
+  await expect(panel.getByLabel("Record title")).toHaveValue("Bea Brown");
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  expect(await scrollTop()).toBe(kept);
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.

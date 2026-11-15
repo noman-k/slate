@@ -144,6 +144,7 @@ function Menu({
   open,
   onOpenChange,
   overlay,
+  anchorClassName = "",
 }: {
   trigger: React.ReactNode;
   children: React.ReactNode;
@@ -153,12 +154,13 @@ function Menu({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Shown over the trigger (and anchoring the menu with it): relation chips. */ overlay?: React.ReactNode;
+  anchorClassName?: string;
 }) {
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
       {overlay ? (
         <Popover.Anchor asChild>
-          <span className="db-cell-anchor">
+          <span className={`db-cell-anchor ${anchorClassName}`}>
             <Popover.Trigger asChild>{trigger}</Popover.Trigger>
             {overlay}
           </span>
@@ -376,6 +378,7 @@ function RelationCell({
   value,
   onChange,
   onOpenLinked,
+  expanded = false,
 }: {
   record: DbRecord;
   property: Property;
@@ -383,6 +386,8 @@ function RelationCell({
   value: CellValue;
   onChange: Props["onChange"];
   onOpenLinked: (record: DbRecord) => void;
+  /** Every linked record, one per line (a record's properties), rather than the first and "+N". */
+  expanded?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -468,19 +473,23 @@ function RelationCell({
           {!linked.length && <span className="db-empty-value">{one ? "Choose a record" : "Link records"}</span>}
         </button>
       }
+      anchorClassName={expanded ? "is-list" : ""}
       overlay={
         linked.length > 0 && (
           <span className="db-relation-chips">
-            <button
-              type="button"
-              className="db-relation-chip"
-              title={`Open ${recordTitle(linked[0], state)}`}
-              onClick={() => onOpenLinked(linked[0])}
-            >
-              <RecordIcon record={linked[0]} state={state} size={14} />
-              <span>{recordTitle(linked[0], state)}</span>
-            </button>
-            {linked.length > 1 && (
+            {(expanded ? linked : linked.slice(0, 1)).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="db-relation-chip"
+                title={`Open ${recordTitle(item, state)}`}
+                onClick={() => onOpenLinked(item)}
+              >
+                <RecordIcon record={item} state={state} size={14} />
+                <span>{recordTitle(item, state)}</span>
+              </button>
+            ))}
+            {!expanded && linked.length > 1 && (
               <span className="db-relation-more" aria-hidden>
                 +{linked.length - 1}
               </span>
@@ -552,6 +561,7 @@ function Cell({
   onOpenLinked,
   autoEdit,
   onAutoEdited,
+  expanded = false,
 }: {
   record: DbRecord;
   property: Property;
@@ -561,6 +571,8 @@ function Cell({
   onOpenLinked?: (record: DbRecord) => void;
   /** Start in edit mode (a row you just added). */ autoEdit?: boolean;
   onAutoEdited?: () => void;
+  /** In a record's properties, with room: everything shows (every linked record, one per line). */
+  expanded?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -615,6 +627,7 @@ function Cell({
         value={value}
         onChange={onChange}
         onOpenLinked={onOpenLinked ?? ((r) => onOpenRecord(r))}
+        expanded={expanded}
       />
     );
   if (["select", "multi_select", "status"].includes(property.type)) {
@@ -2398,6 +2411,7 @@ export function RecordProperties({
               onChange={onChange}
               onOpenRecord={onOpenRecord}
               onOpenLinked={onOpenLinked}
+              expanded
             />
           </div>
         </div>

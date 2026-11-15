@@ -205,6 +205,14 @@ export function WorkspaceApp() {
     (pageId: string, push = true) => {
       if (!pageId) return;
       const rec = state.records.find((r) => r.page_id === pageId);
+      // The page shown behind a record opened in the side panel is its database's.
+      const behind = (id: string) => {
+        const row = state.records.find((r) => r.page_id === id);
+        return (row && state.pages.find((p) => p.database_id === row.database_id)?.id) || id;
+      };
+      // Opening a record over its database (or closing it again) leaves the database where
+      // it was, rather than jumping to the top as a new page would.
+      const keepScroll = behind(pageId) === (recordAsPage ? activeId : behind(activeId));
       setActiveId(pageId);
       setRecordId(rec?.id || null);
       setRecordAsPage(false);
@@ -217,12 +225,12 @@ export function WorkspaceApp() {
       // Re-opening the page you're on doesn't add a history entry (Back would seem dead).
       if (push && window.history.state?.pageId !== pageId) {
         entryKey.current = id();
-        restoreScroll.current = 0;
+        restoreScroll.current = keepScroll ? (pageScrollRef.current?.scrollTop ?? 0) : 0;
         window.history.pushState({ pageId, key: entryKey.current }, "", `/p/${pageId}`);
       }
       if (window.innerWidth < 760) setCollapsed(true);
     },
-    [state.records, remember],
+    [state.records, state.pages, remember, activeId, recordAsPage],
   );
   /**
    * Where to return to in a workspace: the page last open there, if it's still around,

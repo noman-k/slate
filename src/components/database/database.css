@@ -1455,7 +1455,8 @@
 }
 .db-record-property {
   display: flex;
-  align-items: center;
+  /* Labels stay at the top of a tall value (a list of linked records). */
+  align-items: flex-start;
   min-height: 34px;
   gap: 8px;
 }
@@ -1465,7 +1466,7 @@
   gap: 8px;
   height: 30px;
   padding: 0 6px;
-  margin-left: -6px;
+  margin: 2px 0 0 -6px;
   border-radius: var(--radius);
   color: var(--text-secondary);
   width: 170px;
@@ -1486,6 +1487,7 @@
 .db-record-property-value {
   min-width: 0;
   flex: 1;
+  padding: 2px 0;
 }
 .db-record-property-value .db-numeric {
   justify-content: flex-start;
@@ -2213,4 +2215,36 @@
   .db-rules-add-button {
     height: 36px;
   }
+}
+
+/* A record's properties list every linked record, one per line (as Notion does), instead of
+   the first and "+N". The chips sit in the flow; the picker button fills the space behind
+   them, so empty room still opens it and each name still opens its record. */
+.db-cell-anchor.is-list {
+  display: flex;
+}
+.db-cell-anchor.is-list .db-relation-trigger {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+.db-cell-anchor.is-list .db-relation-chips {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 8px;
+  min-height: 30px;
+  justify-content: center;
+}
+.db-cell-anchor.is-list .db-relation-chip {
+  max-width: 100%;
+  padding: 2px 0;
+}
+.db-cell-anchor.is-list .db-relation-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
