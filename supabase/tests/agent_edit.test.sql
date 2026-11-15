@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(13);
+select plan(23);
 
 insert into auth.users(id, email, raw_user_meta_data) values
  ('d0000000-0000-4000-8000-000000000001', 'edit-owner@example.test', '{}'),
@@ -66,6 +66,40 @@ select lives_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object
     'record_id', 'd1000000-0000-4000-8000-000000000007', 'property_id', 'd1000000-0000-4000-8000-000000000006', 'value', null))))$$, 'A value can be cleared');
 select is((select count(*)::integer from public.record_values where record_id = 'd1000000-0000-4000-8000-000000000007'
   and property_id = 'd1000000-0000-4000-8000-000000000006'), 0, '…and is gone');
+
+-- Customizing: an icon, a column renamed, a relation (here, rows of Tasks linking Tasks), a view.
+select lives_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object(
+  'pages', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-000000000002', 'icon', 'icon:rocket:purple')),
+  'databases', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-000000000003', 'open_mode', 'page')),
+  'property_names', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-000000000006', 'name', 'Finished')),
+  'new_properties', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-00000000000b', 'database_id', 'd1000000-0000-4000-8000-000000000003',
+    'name', 'Blocks', 'type', 'relation', 'position', 3, 'config', jsonb_build_object('related_database_id', 'd1000000-0000-4000-8000-000000000003'))),
+  'values', jsonb_build_array(jsonb_build_object('record_id', 'd1000000-0000-4000-8000-000000000007', 'property_id', 'd1000000-0000-4000-8000-00000000000b',
+    'value', jsonb_build_array('d1000000-0000-4000-8000-00000000000a'))),
+  'new_views', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-00000000000c', 'database_id', 'd1000000-0000-4000-8000-000000000003',
+    'name', 'Open', 'type', 'board', 'filters', jsonb_build_array(jsonb_build_object('property_id', 'd1000000-0000-4000-8000-000000000006',
+    'operator', 'equals', 'value', 'false')), 'sorts', '[]'::jsonb, 'hidden_properties', '[]'::jsonb, 'property_order', '[]'::jsonb))))$$,
+  'Icons, row opening, column names, relations and views can be changed');
+select is((select icon from public.pages where id = 'd1000000-0000-4000-8000-000000000002'), 'icon:rocket:purple', 'The icon is set');
+select is((select name from public.database_properties where id = 'd1000000-0000-4000-8000-000000000006'), 'Finished', 'The column is renamed');
+select is((select value from public.record_values where record_id = 'd1000000-0000-4000-8000-000000000007' and property_id = 'd1000000-0000-4000-8000-00000000000b'),
+  '["d1000000-0000-4000-8000-00000000000a"]'::jsonb, 'The rows are linked');
+select is((select type || ' ' || jsonb_array_length(filters) from public.database_views where id = 'd1000000-0000-4000-8000-00000000000c'), 'board 1', 'The view is added');
+select lives_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object('views', jsonb_build_array(jsonb_build_object(
+  'id', 'd1000000-0000-4000-8000-00000000000c', 'filters', '[]'::jsonb, 'type', 'list'))))$$, 'A view can be changed');
+select is((select type || ' ' || jsonb_array_length(filters) || ' ' || name from public.database_views where id = 'd1000000-0000-4000-8000-00000000000c'),
+  'list 0 Open', '…keeping what wasn''t sent');
+select throws_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object('pages', jsonb_build_array(jsonb_build_object(
+  'id', 'd1000000-0000-4000-8000-000000000002', 'icon', '<script>'))))$$, '22023', null, 'An icon must be one of Slate''s');
+select throws_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object(
+  'new_properties', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-00000000000d', 'database_id', 'd1000000-0000-4000-8000-000000000003',
+    'name', 'Spy', 'type', 'relation', 'position', 4, 'config', jsonb_build_object('related_database_id',
+    'd9000000-0000-4000-8000-000000000001')))))$$,
+  '42501', null, 'A relation can''t point at a database outside the workspace');
+select throws_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object('values', jsonb_build_array(jsonb_build_object(
+  'record_id', 'd1000000-0000-4000-8000-000000000007', 'property_id', 'd1000000-0000-4000-8000-00000000000b',
+  'value', jsonb_build_array((select id::text from public.database_records where workspace_id = (select theirs from ws) limit 1))))))$$,
+  '42501', null, 'A relation can''t link someone else''s rows');
 
 -- Trash, never gone.
 select public.agent_update(repeat('b', 64), jsonb_build_object('pages', jsonb_build_array(jsonb_build_object('id', 'd1000000-0000-4000-8000-000000000001', 'trash', true))));

@@ -112,6 +112,8 @@ Keys have a scope: `read` (the default) or `write`. A write key also gets `creat
 claude mcp add --transport http slate https://slate.noman.io/api/mcp --header "Authorization: Bearer slate_YOUR_KEY"
 ```
 
+Keys and connections allowed to *edit* (scope `edit`) also get `update_page`, `update_database`, `update_database_view`, `update_playbook` and `trash_page` (`src/lib/agent-edits.ts`), applied by `agent_update` in one transaction. They change titles, icons, descriptions and text (only if unchanged since the agent read it), database columns and rows, relations (two-way by default; both sides are kept in sync), formulas and rollups, and views (layout, filters, sorts, visible columns, board grouping). `agent_update` checks that everything an edit touches, or points at, is in the key's workspace. Nothing is deleted for good: `trash_page` moves pages to the Trash.
+
 ## Development checks
 
 ```sh

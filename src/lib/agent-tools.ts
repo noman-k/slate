@@ -10,7 +10,7 @@ import { cellValue, recordTitle } from "./database";
 import { splitMarkdown } from "./markdown";
 import { STEP_LABELS, labelOf, parseProcedure, type Param, type StepType } from "./runner";
 import { breadcrumbs } from "./tree";
-import type { CellValue, DbRecord, Page, Property, WorkspaceState } from "./types";
+import type { CellValue, DatabaseView, DbRecord, Page, Property, WorkspaceState } from "./types";
 
 export interface ToolDefinition {
   name: string;
@@ -126,6 +126,29 @@ export const AGENT_TOOLS: ToolDefinition[] = [
 ];
 
 /* ---------- Helpers ---------- */
+
+/** A view in words: "Board (board), grouped by Status; Status equals Done; sorted by Due ascending". */
+export function describeView(state: WorkspaceState, view: DatabaseView) {
+  const name = (id: string) => state.properties.find((p) => p.id === id)?.name ?? "?";
+  const parts = [
+    `${view.name} (${view.type}${view.type === "board" && view.group_by ? `, grouped by ${name(view.group_by)}` : ""})`,
+  ];
+  if (view.filters.length)
+    parts.push(
+      `filters: ${view.filters
+        .map(
+          (f) =>
+            `${name(f.property_id)} ${f.operator.replace("_", " ")}${f.operator === "is_empty" ? "" : ` ${f.value}`}`,
+        )
+        .join(" and ")}`,
+    );
+  if (view.sorts.length)
+    parts.push(
+      `sorted by ${view.sorts.map((s) => `${name(s.property_id)} ${s.direction === "asc" ? "ascending" : "descending"}`).join(", then ")}`,
+    );
+  if (view.hidden_properties.length) parts.push(`hidden: ${view.hidden_properties.map(name).join(", ")}`);
+  return parts.join("; ");
+}
 
 const live = (state: WorkspaceState) => state.pages.filter((p) => !p.deleted_at);
 const markdownOf = (state: WorkspaceState, pageId: string) =>
@@ -357,7 +380,17 @@ function listDatabases(state: WorkspaceState): ToolResult {
           name: p.name,
           type: p.type,
           ...(p.config.options?.length ? { options: p.config.options } : {}),
+          ...(p.type === "relation"
+            ? {
+                links_to: state.databases.find((other) => other.id === p.config.related_database_id)?.name ?? null,
+                ...(p.config.limit === 1 ? { limit: "one" } : {}),
+              }
+            : {}),
+          ...(p.type === "formula" ? { expression: p.config.expression ?? "" } : {}),
         })),
+        views: state.views
+          .filter((v) => v.database_id === d.id && !v.placement)
+          .map((v) => ({ id: v.id, name: v.name, layout: v.type, summary: describeView(state, v) })),
       };
     });
   return {
@@ -366,7 +399,9 @@ function listDatabases(state: WorkspaceState): ToolResult {
       databases
         .map(
           (d) =>
-            `- ${d.name} (id ${d.id}${d.path ? `, in ${d.path}` : ""}): ${d.records} records; properties: ${d.properties.map((p) => `${p.name} (${p.type})`).join(", ")}`,
+            `- ${d.name} (id ${d.id}${d.path ? `, in ${d.path}` : ""}): ${d.records} records; properties: ${d.properties
+              .map((p) => `${p.name} (${p.type}${"links_to" in p && p.links_to ? ` to ${p.links_to}` : ""})`)
+              .join(", ")}${d.views.length ? `; views: ${d.views.map((v) => v.summary).join(" | ")}` : ""}`,
         )
         .join("\n") || "There are no databases.",
   };

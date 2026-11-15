@@ -416,7 +416,8 @@ export default async function McpDocs() {
               embedded subpages and databases where they are. A page is only changed if nobody changed it since the
               agent read it, so edits you&apos;re making aren&apos;t overwritten. A playbook is checked like a new one,
               and can&apos;t be changed while a run of it is in progress. Removing moves pages to the Trash, where you
-              can restore them.
+              can restore them. Agents can also set icons, link databases with relations (shown on both sides, kept in
+              sync), add formulas and rollups, and set up views: filters, sorts, the columns shown and board grouping.
             </p>
             <div className="docs-tools">
               {EDIT_TOOLS.map((tool) => (

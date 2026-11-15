@@ -7,6 +7,7 @@
  * database applies them in one transaction through `agent_create`, which checks the key
  * and that every row lands in the owner's own workspace.
  */
+import { agentIcon, ICON_HINT, iconProp } from "./agent-icons";
 import { ToolError, type ToolDefinition, type ToolResult } from "./agent-tools";
 import { checkPlaybook } from "./playbook-checks";
 import { serializePlaybook, type BuilderSection, type BuilderStep, type PlaybookModel } from "./playbook-model";
@@ -110,6 +111,7 @@ export const WRITE_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "The page's title.", maxLength: TITLE_MAX },
+        icon: iconProp,
         content: { type: "string", description: "The page's text, in Markdown.", maxLength: TEXT_MAX },
         parent_page_id: parentProp,
       },
@@ -129,6 +131,7 @@ export const WRITE_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "The database's name.", maxLength: TITLE_MAX },
+        icon: iconProp,
         description: { type: "string", description: "A line about what it holds (optional).", maxLength: 2000 },
         parent_page_id: parentProp,
         title_property: { type: "string", description: "Name of the title column (default “Name”)." },
@@ -183,6 +186,7 @@ export const WRITE_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         title: { type: "string", maxLength: TITLE_MAX },
+        icon: { ...iconProp, description: `${ICON_HINT} Default: a blue compass.` },
         when_to_use: {
           type: "string",
           description: "When someone should run it, e.g. “A customer asks for a refund.”",
@@ -384,7 +388,8 @@ function createPage(context: Context, args: Record<string, unknown>): Planned {
   const where = placement(context, args.parent_page_id);
   const creation = emptyCreation();
   const id = context.newId();
-  addPage(creation, where, { id, title, kind: "document", markdown: markdown ? `${markdown}\n` : "" });
+  const icon = agentIcon(args.icon ?? "");
+  addPage(creation, where, { id, title, icon, kind: "document", markdown: markdown ? `${markdown}\n` : "" });
   return {
     creation,
     pageId: id,
@@ -472,7 +477,15 @@ function createDatabase(context: Context, args: Record<string, unknown>): Planne
   const byName = new Map(properties.map((p) => [p.name.toLowerCase(), p]));
 
   const creation = emptyCreation();
-  addPage(creation, where, { id: pageId, title, kind: "database", database_id: databaseId, description, markdown: "" });
+  addPage(creation, where, {
+    id: pageId,
+    title,
+    icon: agentIcon(args.icon ?? ""),
+    kind: "database",
+    database_id: databaseId,
+    description,
+    markdown: "",
+  });
   creation.databases.push({ id: databaseId, workspace_id: where.workspace, page_id: pageId, name: title });
 
   const rows = list(args.rows, "rows");
@@ -710,7 +723,7 @@ function createPlaybook(context: Context, args: Record<string, unknown>): Planne
     id,
     title,
     kind: "document",
-    icon: "icon:compass:blue",
+    icon: args.icon === undefined ? "icon:compass:blue" : agentIcon(args.icon),
     description: whenToUseLine(whenToUse),
     markdown: serializePlaybook(model),
   });

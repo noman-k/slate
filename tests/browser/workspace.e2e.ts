@@ -1647,6 +1647,64 @@ test("an agent allowed to edit changes pages and rows, without losing what you'r
   expect(trashed.content[0].text).toContain("can be restored");
   await agent.dispose();
 });
+
+test("an agent links databases both ways, sets icons and sets up a view", async ({ page, playwright, baseURL }) => {
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const agents = page.getByRole("region", { name: "AI agents" });
+  await agents.getByRole("textbox").fill("Organizer");
+  await agents.getByRole("radio", { name: /Read, create and edit/ }).check();
+  await agents.getByRole("button", { name: "Create key" }).click();
+  const key = (await agents.locator(".agent-created code").first().textContent())!.trim();
+  await page.keyboard.press("Escape");
+  const agent = await playwright.request.newContext({ baseURL });
+  const call = async (name: string, args: object) =>
+    (
+      await (
+        await agent.post("/api/mcp", {
+          headers: { Authorization: `Bearer ${key}` },
+          data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } },
+        })
+      ).json()
+    ).result;
+
+  // A relation from units to tenants, filled in by title: it shows on both databases.
+  const linked = await call("update_database", {
+    database: "Properties & Units",
+    icon: "house:orange",
+    add_properties: [{ name: "Tenant", type: "relation", related_database: "Tenants", limit: "one" }],
+    update_rows: [
+      {
+        row_id: (await call("query_database", { database: "Properties & Units" })).structuredContent.rows[0].id,
+        values: { Tenant: "Alex Morgan" },
+      },
+    ],
+  });
+  expect(linked.isError, linked.content[0].text).toBe(false);
+  expect(linked.content[0].text).toContain("added to Tenants");
+  // A view of tenants with only their email showing.
+  const view = await call("update_database_view", {
+    database: "Tenants",
+    create: true,
+    name: "Contacts",
+    visible_properties: ["Email", "Properties & Units"],
+    sorts: [{ property: "Tenant name" }],
+  });
+  expect(view.isError, view.content[0].text).toBe(false);
+  const listed = await call("list_databases", {});
+  expect(listed.content[0].text).toMatch(/Tenant \(relation to Tenants\)/);
+  expect(listed.content[0].text).toContain("Contacts (table)");
+
+  await page.goto(`/p/${account!.ids.tenants}`);
+  await expect(page.getByRole("tab", { name: "Contacts" })).toBeVisible();
+  await page.getByRole("tab", { name: "Contacts" }).click();
+  const table = page.locator(".database-view").first();
+  await expect(table.locator(".db-column-trigger", { hasText: "Properties & Units" })).toBeVisible();
+  await expect(table.locator(".db-relation-chip", { hasText: "Basement" })).toBeVisible();
+  await page.goto(`/p/${account!.ids.units}`);
+  await expect(page.locator(".db-relation-chip", { hasText: "Alex Morgan" }).first()).toBeVisible();
+  await expect(page.locator(".page-icon-color-orange").first()).toBeVisible();
+  await agent.dispose();
+});
 test("going to the front page and back returns to the page you were on, in each workspace", async ({ page }) => {
   const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
   const title = page.getByLabel("Page title", { exact: true });

@@ -142,7 +142,11 @@ describe("update_database", () => {
     );
     fails(
       () => edit(state, "update_database", { database: "Rent Ledger", add_rows: [{ Tenant: "x" }] }),
-      /relation property/,
+      /no row “x” in Tenants/,
+    );
+    fails(
+      () => edit(state, "update_database", { database: "Rent Ledger", add_rows: [{ Balance: 3 }] }),
+      /formula property; Slate works it out/,
     );
     fails(
       () => edit(state, "update_database", { database: "Rent Ledger", update_rows: [{ row_id: "nope", values: {} }] }),
@@ -150,6 +154,193 @@ describe("update_database", () => {
     );
     fails(() => edit(state, "update_database", { database: "Nope" }), /no database/);
     fails(() => edit(state, "update_database", { database: "Rent Ledger" }), /Nothing to change/);
+  });
+});
+
+describe("icons", () => {
+  it('takes a name, a color, a describing word or an emoji, and "" removes it', () => {
+    const state = createSeedState();
+    const icon = (value: unknown) =>
+      edit(state, "update_page", { page_id: SEED_IDS.guide, icon: value }).edit.pages[0].icon;
+    expect(icon("rocket:purple")).toBe("icon:rocket:purple");
+    expect(icon("Rocket")).toBe("icon:rocket:gray");
+    expect(icon("money:green")).toBe("icon:wallet:green");
+    expect(icon("🚀")).toBe("icon:rocket:purple");
+    expect(icon("")).toBe("");
+    fails(() => icon("rocket:teal"), /isn't an icon color/);
+    fails(() => icon("xyzzy"), /There's no icon “xyzzy”. Icons: .*rocket/);
+  });
+
+  it("can be set when creating, and on a database", () => {
+    const state = createSeedState();
+    const created = planCreation(
+      state,
+      "create_page",
+      {
+        title: "Launch plan",
+        icon: "rocket:blue",
+      },
+      ids,
+    );
+    expect(created.creation.pages[0].icon).toBe("icon:rocket:blue");
+    const db = edit(state, "update_database", { database: "Tenants", icon: "users:orange" });
+    expect(db.edit.pages[0]).toMatchObject({ id: SEED_IDS.tenants, icon: "icon:users:orange" });
+  });
+});
+
+describe("relations, formulas and rollups", () => {
+  const units = SEED_IDS.units;
+
+  it("adds a relation on both databases, and links rows both ways by title", () => {
+    const state = createSeedState();
+    const unit = state.records.find(
+      (r) => r.page_id !== units && r.database_id === state.databases.find((d) => d.page_id === units)!.id,
+    )!;
+    const tenant = state.records.find((r) => r.values && Object.values(r.values).includes("Alex Morgan"))!;
+    const planned = edit(state, "update_database", {
+      database: "Properties & Units",
+      add_properties: [{ name: "Tenant", type: "relation", related_database: "Tenants", limit: "one" }],
+      update_rows: [{ row_id: unit.id, values: { Tenant: "alex morgan" } }],
+    });
+    const [here, there] = planned.edit.new_properties;
+    expect(here).toMatchObject({
+      name: "Tenant",
+      type: "relation",
+      config: { limit: 1, reciprocal_property_id: there.id },
+    });
+    expect(there).toMatchObject({
+      name: "Properties & Units",
+      database_id: tenant.database_id,
+      config: { related_database_id: unit.database_id, reciprocal_property_id: here.id },
+    });
+    expect(planned.edit.values).toContainEqual({ record_id: unit.id, property_id: here.id, value: [tenant.id] });
+    expect(planned.edit.values).toContainEqual({ record_id: tenant.id, property_id: there.id, value: [unit.id] });
+    expect(planned.result.text).toContain("added to Tenants");
+  });
+
+  it("keeps a one-way relation one way, and respects limit one", () => {
+    const state = createSeedState();
+    const tenant = state.records.find((r) => Object.values(r.values).includes("Alex Morgan"))!;
+    const planned = edit(state, "update_database", {
+      database: "Properties & Units",
+      add_properties: [
+        { name: "Occupant", type: "relation", related_database: "Tenants", two_way: false, limit: "one" },
+      ],
+      add_rows: [{ "Property name": "Loft", Occupant: tenant.page_id }],
+    });
+    expect(planned.edit.new_properties).toHaveLength(1);
+    expect(planned.edit.values).toContainEqual(expect.objectContaining({ value: [tenant.id] }));
+    fails(
+      () =>
+        edit(state, "update_database", {
+          database: "Properties & Units",
+          add_properties: [{ name: "Occupant", type: "relation", related_database: "Tenants", limit: "one" }],
+          add_rows: [{ "Property name": "Loft", Occupant: ["Alex Morgan", tenant.id, "Sam"] }],
+        }),
+      /no row “Sam”/,
+    );
+  });
+
+  it("checks formulas and builds rollups through a relation", () => {
+    const state = createSeedState();
+    fails(
+      () =>
+        edit(state, "update_database", {
+          database: "Rent Ledger",
+          add_properties: [{ name: "Yearly", type: "formula", expression: 'prop("Nope") * 12' }],
+        }),
+      /The formula “Yearly” doesn't work/,
+    );
+    const planned = edit(state, "update_database", {
+      database: "Tenants",
+      add_properties: [
+        { name: "Ledger", type: "relation", related_database: "Rent Ledger", two_way: false },
+        { name: "Total due", type: "rollup", relation: "Ledger", property: "Amount Due", calculate: "sum" },
+        { name: "Shout", type: "formula", expression: 'upper(prop("Tenant name"))' },
+      ],
+    });
+    const [ledger, total] = planned.edit.new_properties;
+    expect(total.config).toMatchObject({ relation_property_id: ledger.id, aggregation: "sum" });
+  });
+
+  it("renames a column, and formulas that use it follow", () => {
+    const state = createSeedState();
+    const planned = edit(state, "update_database", {
+      database: "Rent Ledger",
+      update_properties: [
+        { property: "Amount Due", name: "Rent due" },
+        { property: "Status", add_options: ["Waived"] },
+      ],
+    });
+    expect(planned.edit.property_names).toContainEqual(expect.objectContaining({ name: "Rent due" }));
+    const balance = planned.edit.property_configs.find((c) => typeof c.config.expression === "string");
+    expect(balance?.config.expression).toContain('prop("Rent due")');
+    expect(planned.edit.property_configs.some((c) => c.config.options?.includes("Waived"))).toBe(true);
+  });
+
+  it("sets how rows open", () => {
+    const state = createSeedState();
+    const planned = edit(state, "update_database", { database: "Tenants", rows_open_as: "full_page" });
+    expect(planned.edit.databases).toEqual([{ id: expect.any(String), open_mode: "page" }]);
+  });
+});
+
+describe("update_database_view", () => {
+  it("sets filters, sorts, the columns shown and a board's grouping", () => {
+    const state = createSeedState();
+    const planned = edit(state, "update_database_view", {
+      database: "Rent Ledger",
+      view: "all rent",
+      layout: "board",
+      group_by: "Status",
+      filters: [{ property: "Amount Due", operator: "greater_than", value: 100 }],
+      sorts: [{ property: "Created", direction: "descending" }],
+      visible_properties: ["Status", "Amount Due"],
+    });
+    const [change] = planned.edit.views;
+    const prop = (name: string) =>
+      state.properties.find((p) => p.database_id === SEED_IDS.database && p.name === name)!.id;
+    expect(change).toMatchObject({
+      type: "board",
+      group_by: prop("Status"),
+      filters: [{ property_id: prop("Amount Due"), operator: "greater_than", value: "100" }],
+      sorts: [{ property_id: prop("Created"), direction: "desc" }],
+    });
+    expect(change.property_order!.slice(0, 3)).toEqual([prop("Rent Entry"), prop("Status"), prop("Amount Due")]);
+    expect(change.hidden_properties).toContain(prop("Tenant"));
+    expect(change.hidden_properties).not.toContain(prop("Status"));
+    expect(planned.result.text).toContain("grouped by Status");
+  });
+
+  it("adds a view, and explains mistakes", () => {
+    const state = createSeedState();
+    const planned = edit(state, "update_database_view", {
+      database: "Rent Ledger",
+      create: true,
+      name: "Unpaid",
+      filters: [{ property: "Status", operator: "not_equals", value: "Paid" }],
+    });
+    expect(planned.edit.new_views[0]).toMatchObject({ name: "Unpaid", type: "table", database_id: expect.any(String) });
+    fails(
+      () => edit(state, "update_database_view", { database: "Rent Ledger", create: true, name: "Paid" }),
+      /already has a view/,
+    );
+    fails(
+      () => edit(state, "update_database_view", { database: "Rent Ledger", view: "Nope", layout: "list" }),
+      /Its views are/,
+    );
+    fails(
+      () => edit(state, "update_database_view", { database: "Rent Ledger", group_by: "Amount Due" }),
+      /select or status/,
+    );
+    fails(
+      () =>
+        edit(state, "update_database_view", {
+          database: "Rent Ledger",
+          filters: [{ property: "Status", operator: "equals" }],
+        }),
+      /needs a value/,
+    );
   });
 });
 
