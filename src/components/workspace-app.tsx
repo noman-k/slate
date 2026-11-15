@@ -885,6 +885,11 @@ export function WorkspaceApp() {
       action: { label: "Undo", onClick: () => relocate(before.parentId, before.index) },
     });
   };
+  /** On a phone, what opens from the sidebar drawer closes the drawer behind it. */
+  const fromDrawer = (show: () => void) => () => {
+    if (isPhoneWidth()) setCollapsed(true);
+    show();
+  };
   const workspaceSwitch = (workspaceId: string) => {
     change((s) => ({ ...s, active_workspace_id: workspaceId }));
     const target = returnPage(workspaceId);
@@ -962,10 +967,10 @@ export function WorkspaceApp() {
         onNew={requestNew}
         onPageAction={action}
         onWorkspace={workspaceSwitch}
-        onCreateWorkspace={dialogs.newWorkspace}
-        onSearch={() => setSearch(true)}
-        onSettings={dialogs.settings}
-        onTrash={dialogs.trash}
+        onCreateWorkspace={fromDrawer(dialogs.newWorkspace)}
+        onSearch={fromDrawer(() => setSearch(true))}
+        onSettings={fromDrawer(dialogs.settings)}
+        onTrash={fromDrawer(dialogs.trash)}
         onMovePage={movePage}
         recentIds={recent}
         playbookIds={playbookIds}

@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
+import { useTouchOnly } from "./keys";
 import { IconPicker } from "./icon-picker";
 import { ThemeSwitcher } from "./theme-switcher";
 import { AgentKeysSection } from "./agent-keys-section";
@@ -192,6 +193,7 @@ function MovePageDialog({
     moveToWorkspace: WorkspaceDialogsProps["moveToWorkspace"];
   }) {
   const [query, setQuery] = useState("");
+  const touch = useTouchOnly();
   // Which workspace to move it within (or into): its own to begin with.
   const [workspaceId, setWorkspaceId] = useState(page.workspace_id);
   const elsewhere = workspaceId !== page.workspace_id;
@@ -359,7 +361,8 @@ function MovePageDialog({
       <label className="move-search">
         <Search size={16} />
         <input
-          autoFocus
+          // On a phone the keyboard would cover the list: tap the field to search.
+          autoFocus={!touch}
           aria-label="Find a destination"
           placeholder={elsewhere ? `Find a page in ${workspaceName}…` : "Find a page…"}
           value={query}
@@ -447,6 +450,7 @@ function TrashDialog({ state, close, change }: CommonProps & { change: ChangeSta
   const deletedPages = state.pages.filter((page) => page.deleted_at && page.workspace_id === state.active_workspace_id);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const touch = useTouchOnly();
   const roots = deletedPages
     .filter((page) => !state.pages.find((parent) => parent.id === page.parent_id)?.deleted_at)
     .sort((a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at)))
@@ -463,7 +467,7 @@ function TrashDialog({ state, close, change }: CommonProps & { change: ChangeSta
         <label className="move-search">
           <Search size={16} />
           <input
-            autoFocus
+            autoFocus={!touch}
             aria-label="Search the trash"
             placeholder="Search deleted pages…"
             value={query}
@@ -512,14 +516,17 @@ function TrashDialog({ state, close, change }: CommonProps & { change: ChangeSta
               ) : (
                 <span className="trash-actions">
                   <button
-                    className="secondary-button"
+                    className="secondary-button trash-restore"
+                    aria-label={`Restore ${page.title || "Untitled"}`}
+                    title="Restore"
                     onClick={() => {
                       change((current) => trashPage(current, page.id, true));
                       toast.success("Page restored");
                     }}
                   >
                     <RotateCcw size={14} />
-                    Restore
+                    {/* Just the icon on a phone, so titles have room. */}
+                    <span className="trash-restore-label">Restore</span>
                   </button>
                   <button
                     className="icon-button"

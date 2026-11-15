@@ -98,7 +98,7 @@ test("deleted page trees can be restored from Trash", async ({ page }) => {
   await page.getByRole("menuitem", { name: "Move to trash", exact: true }).click();
   await page.getByRole("button", { name: "Trash", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("Recoverable note");
-  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.getByRole("button", { name: "Restore Recoverable note", exact: true }).click();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   // The restored page is also the open page, so its name appears in the breadcrumb too.
   await page

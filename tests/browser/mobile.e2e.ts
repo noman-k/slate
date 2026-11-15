@@ -291,6 +291,59 @@ test("on a phone, pressing beside the open sidebar doesn't flash the screen grey
   await expect(page.locator(".sidebar-scrim.is-open")).toHaveCount(0);
 });
 
+test("on a phone, dialogs are sheets from the bottom: Settings and Trash fit, and a swipe down closes them", async ({
+  page,
+}) => {
+  await page.goto(`/p/${account!.ids.log}`);
+  await page.getByRole("button", { name: "Page options" }).tap();
+  await page.getByRole("menuitem", { name: "Move to trash" }).tap();
+  await page.goto(`/p/${account!.ids.guide}`);
+  // Settings, from the sidebar: the drawer gets out of the way, and the sheet sits on the bottom edge.
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await page.getByRole("button", { name: "Settings" }).tap();
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings).toBeVisible();
+  await expect(page.locator(".sidebar-scrim.is-open")).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const box = (await settings.boundingBox())!;
+      return Math.round(box.y + box.height);
+    })
+    .toBe(844);
+  // Its title and close button stay put while it scrolls.
+  await settings.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const heading = settings.locator(".modal-heading");
+  expect((await heading.boundingBox())!.y).toBeLessThan((await settings.boundingBox())!.y + 2);
+  await expect(settings.getByRole("button", { name: "Close" })).toBeInViewport();
+  // A swipe down on the header closes it.
+  const top = (await heading.boundingBox())!;
+  await page.mouse.move(top.x + 120, top.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(top.x + 120, top.y + 80, { steps: 4 });
+  await page.mouse.move(top.x + 120, top.y + 260, { steps: 6 });
+  await page.mouse.up();
+  await expect(settings).toBeHidden();
+
+  // Trash: the keyboard stays down, titles have room, and Restore is its icon.
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await page.getByRole("button", { name: "Trash" }).tap();
+  const trash = page.getByRole("dialog", { name: "Trash" });
+  await expect(trash).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement?.matches("input"))).toBe(false);
+  const restore = trash.getByRole("button", { name: "Restore Tenant Rent Log" });
+  expect((await restore.boundingBox())!.width).toBeLessThanOrEqual(44);
+  await restore.tap();
+  await expect(page.getByText("Page restored")).toBeVisible();
+  // A short drag springs back instead of closing.
+  const header = (await trash.locator(".modal-heading").boundingBox())!;
+  await page.mouse.move(header.x + 120, header.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(header.x + 120, header.y + 40, { steps: 3 });
+  await page.mouse.up();
+  await expect(trash).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("a page block opens on the first tap, and a tap reveals nothing before it's used", async ({ page }) => {
   await page.goto(`/p/${account!.ids.hub}`);
   // Safari treats a tap that makes something appear before its click as a hover, and

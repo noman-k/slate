@@ -172,3 +172,85 @@
   color: var(--text-strong);
   box-shadow: none !important;
 }
+
+/* Phones: dialogs are sheets that rise from the bottom edge, as phones' own are. A handle
+   and the header drag it down to close; the header stays put while the rest scrolls; it
+   rides above the on-screen keyboard (--keyboard-inset, set by Modal) and clears the home
+   indicator. Search has its own full-screen layout. */
+.modal-grabber {
+  display: none;
+}
+@media (max-width: 640px) {
+  .modal-surface:not(.search-dialog) {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: var(--keyboard-inset, 0px);
+    transform: none;
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - var(--keyboard-inset, 0px) - max(24px, env(safe-area-inset-top)));
+    border-radius: 16px 16px 0 0;
+    padding: 0 18px calc(18px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+    animation: sheet-in 0.28s var(--ease);
+    transition: transform 0.22s var(--ease);
+  }
+  .modal-surface:not(.search-dialog)[data-state="closed"] {
+    animation: sheet-out 0.2s var(--ease-in) forwards;
+  }
+  .modal-surface:not(.search-dialog) > .modal-heading {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -18px 6px;
+    padding: 24px 10px 8px 18px;
+    background: var(--bg-elevated);
+    touch-action: none;
+  }
+  .modal-surface:not(.search-dialog) > .modal-heading h2 {
+    font-size: 17px;
+  }
+  .modal-surface:not(.search-dialog) > .modal-heading .icon-button {
+    width: 36px;
+    height: 36px;
+  }
+  .modal-grabber {
+    display: block;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
+    transform: translateX(-50%);
+    background: color-mix(in srgb, var(--text) 18%, transparent);
+  }
+  /* Room to tap, and 16px text so Safari doesn't zoom into fields. */
+  .modal-surface:not(.search-dialog) input:not([type="checkbox"]):not([type="radio"]),
+  .modal-surface:not(.search-dialog) textarea {
+    font-size: 16px;
+  }
+  .modal-surface:not(.search-dialog) .modal-footer {
+    position: sticky;
+    bottom: calc(-18px - env(safe-area-inset-bottom));
+    margin: 14px -18px calc(-18px - env(safe-area-inset-bottom));
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--divider);
+  }
+  .modal-surface:not(.search-dialog) .modal-footer button {
+    flex: 1;
+    height: 44px;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
