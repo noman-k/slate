@@ -377,7 +377,8 @@ export function WorkspaceApp() {
     if (!target) return;
     const key = id();
     entryKey.current = key;
-    window.history.replaceState({ pageId: target, key }, "", `/p/${target}`);
+    // Keep Next's own entry state (its router reads it): replace only the address and ours.
+    window.history.replaceState({ ...window.history.state, pageId: target, key }, "", `/p/${target}`);
     queueMicrotask(() => {
       setActiveId(target);
       setRecordAsPage(opensAsPage(stateRef.current, target));

@@ -1708,7 +1708,10 @@ test("relation cells: one record replaces, any number adds, linked ones can be u
   await picker.getByRole("button", { name: "Unlink Alex Morgan" }).click();
   await page.keyboard.press("Escape");
   await expect(cell(2)).toHaveText("Bea Brown");
-  // It all saves.
+  // It all saves (the app keeps a draft until the server has everything).
+  await expect
+    .poll(() => page.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith("slate-pending:"))))
+    .toBe(false);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.reload();
   await expect(cell(1)).toHaveText("Alex Morgan");
@@ -1769,4 +1772,14 @@ test("code blocks: colored syntax, a searchable language picker that detects the
   await expect(picker).toHaveText("Python");
   await page.getByRole("button", { name: "Markdown" }).click();
   await expect(page.locator(".cm-content")).toContainText("```python");
+});
+test("the phone's keyboard toolbar never shows with a mouse and keyboard (Tab nests instead)", async ({ page }) => {
+  await createPage(page, "Errands");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("[] Groceries");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Milk");
+  await expect(page.getByRole("toolbar", { name: "Editing" })).toHaveCount(0);
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Page content", { exact: true }).locator('ul[data-type="taskList"] ul[data-type="taskList"] > li')).toHaveCount(1);
 });

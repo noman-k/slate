@@ -87,6 +87,7 @@ import { EditorUrlPopover } from "./EditorUrlPopover";
 import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
 import { isTouchOnly, useKeys } from "../keys";
+import { KeyboardToolbar, changeIndent } from "./keyboard-toolbar";
 
 export interface DocumentEditorProps {
   pageId: string;
@@ -431,31 +432,11 @@ export function DocumentEditor(props: DocumentEditorProps) {
             linkRef.current();
             return true;
           }
+          // Tab nests list items and to-dos (and indents code); on a phone, the keyboard
+          // toolbar's Indent and Outdent do the same.
           if (event.key === "Tab" && current) {
-            if (current.isActive("codeBlock")) {
-              event.preventDefault();
-              if (!event.shiftKey) current.commands.insertContent("  ");
-              else {
-                const { $from } = current.state.selection;
-                const before = $from.parent.textBetween(0, $from.parentOffset);
-                const count = before.endsWith("  ")
-                  ? 2
-                  : before.endsWith("\t")
-                    ? 1
-                    : 0;
-                if (count)
-                  current.commands.deleteRange({
-                    from: $from.pos - count,
-                    to: $from.pos,
-                  });
-              }
-              return true;
-            }
-            const type = current.isActive("taskItem") ? "taskItem" : "listItem";
-            const changed = event.shiftKey
-              ? current.commands.liftListItem(type)
-              : current.commands.sinkListItem(type);
-            if (changed) {
+            const inCode = current.isActive("codeBlock");
+            if (changeIndent(current, event.shiftKey) || inCode) {
               event.preventDefault();
               return true;
             }
@@ -1574,6 +1555,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
       {mode === "interactive" ? (
         <EmbedContext.Provider value={{ renderDatabase, onOpenPage, resolvePage, listDatabases }}>
           <EditorContent editor={editor} />
+          <KeyboardToolbar editor={editor} />
         </EmbedContext.Provider>
       ) : (
         <>

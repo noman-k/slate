@@ -382,3 +382,33 @@ test("search on a phone fills the screen, with Cancel and clear, and no keyboard
   await dialog.getByRole("button", { name: "Cancel" }).tap();
   await expect(dialog).toBeHidden();
 });
+
+test("on a phone, a toolbar above the keyboard indents and outdents to-dos (there's no Tab key)", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.hub}`);
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
+  await page.getByRole("button", { name: "New page", exact: true }).first().tap();
+  await page.getByLabel("Page title", { exact: true }).fill("Errands");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("[] Groceries");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Milk");
+  const toolbar = page.getByRole("toolbar", { name: "Editing" });
+  await expect(toolbar).toBeVisible();
+  const editor = page.getByLabel("Page content", { exact: true });
+  const nested = editor.locator('ul[data-type="taskList"] ul[data-type="taskList"] > li');
+  await expect(nested).toHaveCount(0);
+  // Indent nests "Milk" under "Groceries"; the cursor (and keyboard) stay in the text.
+  await toolbar.getByRole("button", { name: "Indent" }).tap();
+  await expect(nested).toHaveCount(1);
+  await expect(nested).toContainText("Milk");
+  expect(await page.evaluate(() => !!document.activeElement?.closest(".ProseMirror"))).toBe(true);
+  // Outdent brings it back (as Shift+Tab does).
+  await toolbar.getByRole("button", { name: "Outdent" }).tap();
+  await expect(nested).toHaveCount(0);
+  await expect(editor.locator('ul[data-type="taskList"] > li')).toHaveCount(2);
+  // Done puts the keyboard (and the toolbar) away.
+  await toolbar.getByRole("button", { name: "Done" }).tap();
+  await expect(toolbar).toBeHidden();
+  expect(await page.evaluate(() => !!document.activeElement?.closest(".ProseMirror"))).toBe(false);
+});
