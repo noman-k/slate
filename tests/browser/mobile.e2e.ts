@@ -235,6 +235,23 @@ test("on a phone a database row opens as a full page, without raising the keyboa
   await expect(page.getByRole("radiogroup", { name: "Open records in" })).toHaveCount(0);
 });
 
+test("on a phone, Select in a row's menu starts selecting, and taps select rows", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.ledger}`);
+  const rows = page.locator(".db-table tbody tr:not(.db-add-tr)");
+  await expect(rows.filter({ hasText: "2026-04 — Basement" })).toHaveCount(1);
+  const total = await rows.count();
+  await page.getByRole("button", { name: "Actions for 2026-04 — Basement", exact: true }).tap();
+  await page.getByRole("dialog", { name: "Record actions" }).getByText("Select", { exact: true }).tap();
+  const bar = page.getByRole("toolbar", { name: "Selected rows" });
+  await expect(bar).toContainText("1 selected");
+  // A tap on another row selects it instead of opening it.
+  await rows.filter({ hasText: "2026-05 — Basement" }).locator("td").nth(1).tap();
+  await expect(bar).toContainText("2 selected");
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
+  await bar.getByRole("button", { name: "Delete" }).tap();
+  await expect(rows).toHaveCount(total - 2);
+});
+
 test("a page block opens on the first tap, and a tap reveals nothing before it's used", async ({ page }) => {
   await page.goto(`/p/${account!.ids.hub}`);
   // Safari treats a tap that makes something appear before its click as a hover, and

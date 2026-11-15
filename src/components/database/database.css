@@ -1786,3 +1786,165 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Selecting rows: a checkbox beside each row (between the ⋮⋮ grip and the row), shown on
+   hover and on every row once something is selected; selected rows are tinted. */
+.db-row-check {
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  z-index: 1;
+}
+.db-row-check-box {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 3px;
+  color: #fff;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.db-row-check.is-checked .db-row-check-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+@media (hover: hover) {
+  .db-row-check:hover .db-row-check-box {
+    border-color: var(--text-secondary);
+  }
+  .db-row-check.is-checked:hover .db-row-check-box {
+    border-color: var(--accent);
+  }
+  .db-table tbody tr:hover .db-row-check,
+  .db-table thead tr:hover .db-row-check {
+    opacity: 1;
+  }
+  /* The grip moves out a step to make room for the checkbox. */
+  .db-table-scroll {
+    padding-left: 48px;
+    margin-left: -48px;
+  }
+  .db-row-drag {
+    left: -46px;
+  }
+}
+.db-row-check:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.db-selecting .db-row-check,
+.db-row-check.is-checked {
+  opacity: 1;
+}
+/* Comes after the hover tint, so a selected row stays tinted under the pointer. */
+.db-table tbody tr.is-selected {
+  background: var(--accent-soft);
+}
+.db-head-check {
+  left: -24px;
+}
+/* Touch: "Select" in a row's menu starts selecting; then the checkbox takes the grip's place. */
+@media (hover: none) {
+  .db-selecting .db-row-drag {
+    display: none;
+  }
+  /* Until then the (hidden) checkbox must not take the grip's taps. */
+  .database-view:not(.db-selecting) .db-row-check {
+    pointer-events: none;
+  }
+  .db-table-scroll {
+    padding-left: 28px;
+    margin-left: -28px;
+  }
+  .db-row-check {
+    left: -26px;
+  }
+}
+
+/* While rows are selected, this bar covers the view tabs. */
+.db-toolbar {
+  position: relative;
+}
+.db-selection-bar {
+  position: absolute;
+  /* Down over the toolbar's bottom edge, so the active tab's underline doesn't show. */
+  inset: 0 0 -1px;
+  border-bottom: 1px solid var(--divider);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  animation: db-selection-in 0.14s var(--ease, ease-out);
+}
+.db-selection-count {
+  margin-right: 8px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-text, var(--accent));
+}
+.db-selection-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.db-selection-action:last-child {
+  margin-left: auto;
+}
+@media (hover: hover) {
+  .db-selection-action:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+  .db-selection-action.is-danger:hover {
+    color: var(--danger-text);
+    background: var(--danger-soft, var(--hover-strong));
+  }
+}
+.db-selection-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+@keyframes db-selection-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .db-selection-bar {
+    animation: none;
+  }
+}
+@media (hover: none) {
+  .db-selection-action {
+    height: 36px;
+    padding: 0 12px;
+  }
+}

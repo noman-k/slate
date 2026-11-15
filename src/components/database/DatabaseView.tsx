@@ -68,6 +68,7 @@ import {
 } from "@/lib/database";
 import { PageIcon } from "../page-icon";
 import "./database.css";
+import { RowCheckbox, SelectionBar, useRowSelection } from "./row-selection";
 import { useKeys, useTouchOnly } from "../keys";
 
 interface Props {
@@ -1279,6 +1280,8 @@ export function DatabaseView({
   const doneTyping = useCallback(() => setTypingRecordId(null), []);
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const touch = useTouchOnly();
   const database = state.databases.find(
     (db) => db.id === databaseId && !state.pages.find((page) => page.id === db.page_id)?.deleted_at,
   );
@@ -1426,12 +1429,25 @@ export function DatabaseView({
     setNewViewOpen(false);
     setViewName("");
   };
-  const trashRecord = (record: DbRecord) => {
+  const trashRecord = (record: DbRecord) => trashRecords([record.id]);
+  /** Moves rows to the Trash (with the pages inside them), with Undo. */
+  const trashRecords = (ids: string[]) => {
     const before = state;
-    onChange((current) => removeRecord(current, record.id));
-    toast(`“${recordTitle(record, state)}” moved to Trash`, {
-      action: { label: "Undo", onClick: () => onChange((current) => restoreRemovedRecord(current, before, record.id)) },
-    });
+    const gone = ids.map((id) => state.records.find((r) => r.id === id)).filter((r): r is DbRecord => !!r);
+    if (!gone.length) return;
+    onChange((current) => gone.reduce((next, record) => removeRecord(next, record.id), current));
+    toast(
+      gone.length === 1 ? `“${recordTitle(gone[0], state)}” moved to Trash` : `${gone.length} rows moved to Trash`,
+      {
+        action: {
+          label: "Undo",
+          onClick: () =>
+            onChange((current) =>
+              gone.reduce((next, record) => restoreRemovedRecord(next, before, record.id), current),
+            ),
+        },
+      },
+    );
   };
   const download = () => {
     const blob = new Blob([csvExport(records, visible, state)], { type: "text/csv;charset=utf-8;" });
@@ -1509,6 +1525,12 @@ export function DatabaseView({
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({ data: records, columns, getCoreRowModel: getCoreRowModel() });
   const rows = table.getRowModel().rows;
+  const selection = useRowSelection({
+    ids: view.type === "table" ? rows.map((row) => row.original.id) : [],
+    resetKey: view.id,
+    root: rootRef,
+    onDelete: trashRecords,
+  });
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
@@ -1553,6 +1575,11 @@ export function DatabaseView({
         <MenuAction icon={<OpenModeIcon mode={openMode} />} onClick={() => onOpenRecord(record)}>
           {OPEN_LABEL[openMode]}
         </MenuAction>
+        {view.type === "table" && (
+          <MenuAction icon={<CheckSquare size={16} />} onClick={() => selection.toggle(record.id)}>
+            {selection.isSelected(record.id) ? "Deselect" : "Select"}
+          </MenuAction>
+        )}
         <MenuAction icon={<Copy size={16} />} onClick={() => duplicateRecord(record)}>
           Duplicate
         </MenuAction>
@@ -1644,7 +1671,10 @@ export function DatabaseView({
     );
   };
   return (
-    <div className={`database-view ${compact ? "db-compact" : ""}`}>
+    <div
+      ref={rootRef}
+      className={`database-view ${compact ? "db-compact" : ""} ${selection.count ? "db-selecting" : ""}`}
+    >
       {compact && (
         <InlineTitle
           database={database}
@@ -1658,6 +1688,9 @@ export function DatabaseView({
         />
       )}
       <div className="db-toolbar">
+        {selection.count > 0 && (
+          <SelectionBar count={selection.count} onDelete={selection.remove} onClear={selection.clear} />
+        )}
         <div className="db-tabs" role="tablist" aria-label="Database views">
           {(views.length ? views : [fallback]).slice(0, 4).map((item) => (
             <button
@@ -2147,6 +2180,15 @@ export function DatabaseView({
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => dropColumn(property)}
                       >
+                        {header.index === 0 && rows.length > 0 && (
+                          <RowCheckbox
+                            className="db-head-check"
+                            checked={selection.all}
+                            mixed={selection.count > 0 && !selection.all}
+                            label={selection.all ? "Deselect all rows" : "Select all rows"}
+                            onToggle={selection.toggleAll}
+                          />
+                        )}
                         <PropertyMenu
                           property={property}
                           properties={properties}
@@ -2233,7 +2275,15 @@ export function DatabaseView({
                 return (
                   <tr
                     key={record.id}
-                    className={`${draggedRecord === record.id ? "db-dragging-row" : ""} ${dropHint?.id === record.id ? (dropHint.after ? "db-drop-after" : "db-drop-before") : ""}`}
+                    aria-selected={selection.count ? selection.isSelected(record.id) : undefined}
+                    className={`${draggedRecord === record.id ? "db-dragging-row" : ""} ${dropHint?.id === record.id ? (dropHint.after ? "db-drop-after" : "db-drop-before") : ""} ${selection.isSelected(record.id) ? "is-selected" : ""}`}
+                    // On a touch screen, while selecting, a tap on a row selects it.
+                    onClickCapture={(e) => {
+                      if (!touch || !selection.count) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      selection.toggle(record.id);
+                    }}
                     onDragOver={(e) => {
                       if (!draggedRecord) return;
                       e.preventDefault();
@@ -2259,7 +2309,16 @@ export function DatabaseView({
                           maxWidth: cell.column.getSize(),
                         }}
                       >
-                        {cellIndex === 0 && rowActions(record, rowGrip(record))}
+                        {cellIndex === 0 && (
+                          <>
+                            {rowActions(record, rowGrip(record))}
+                            <RowCheckbox
+                              checked={selection.isSelected(record.id)}
+                              label={`Select ${recordTitle(record, state)}`}
+                              onToggle={(range) => selection.toggle(record.id, range)}
+                            />
+                          </>
+                        )}
                         <Cell
                           record={record}
                           property={visible.find((property) => property.id === cell.column.id)!}

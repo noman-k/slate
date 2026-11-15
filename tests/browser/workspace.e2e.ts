@@ -442,6 +442,49 @@ test("a table row's grip opens its menu on click", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog", { name: "Record actions" })).toBeVisible();
 });
+test("table rows can be selected together and moved to the Trash, with Undo", async ({ page }) => {
+  const rows = page.locator(".db-table tbody tr:not(.db-add-tr)");
+  const total = await rows.count();
+  const bar = page.getByRole("toolbar", { name: "Selected rows" });
+  // A checkbox beside each row; Shift-click selects everything in between.
+  await rows.nth(0).hover();
+  await rows.nth(0).getByRole("checkbox").click();
+  await expect(bar).toContainText("1 selected");
+  await expect(rows.nth(0)).toHaveClass(/is-selected/);
+  await rows
+    .nth(2)
+    .getByRole("checkbox")
+    .click({ modifiers: ["Shift"] });
+  await expect(bar).toContainText("3 selected");
+  await expect(page.getByRole("checkbox", { name: "Select all rows" })).toHaveAttribute("aria-checked", "mixed");
+  // Esc lets go.
+  await page.keyboard.press("Escape");
+  await expect(bar).toBeHidden();
+  // The header selects them all; clicking again lets go.
+  await page.locator(".db-table thead tr").hover();
+  await page.getByRole("checkbox", { name: "Select all rows" }).click();
+  await expect(bar).toContainText(`${total} selected`);
+  await page.getByRole("checkbox", { name: "Deselect all rows" }).click();
+  await expect(bar).toBeHidden();
+  // Delete (the key, or the bar's button) moves them to the Trash, and Undo brings them back.
+  const first = (await rows.nth(0).getByRole("checkbox").getAttribute("aria-label"))!.replace(/^Select /, "");
+  await rows.nth(0).hover();
+  await rows.nth(0).getByRole("checkbox").click();
+  await rows.nth(1).hover();
+  await rows.nth(1).getByRole("checkbox").click();
+  await page.keyboard.press("Delete");
+  await expect(page.getByText("2 rows moved to Trash")).toBeVisible();
+  await expect(rows).toHaveCount(total - 2);
+  await expect(bar).toBeHidden();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(rows).toHaveCount(total);
+  await expect(page.getByRole("checkbox", { name: `Select ${first}`, exact: true })).toHaveCount(1);
+  await rows.nth(0).hover();
+  await rows.nth(0).getByRole("checkbox").click();
+  await bar.getByRole("button", { name: "Delete" }).click();
+  await expect(rows).toHaveCount(total - 1);
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.
