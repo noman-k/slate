@@ -441,115 +441,228 @@
   cursor: col-resize;
 }
 
-/* Code blocks (syntax colors match the Markdown mode) */
+/* Code blocks: a quiet header (language, Copy) over the code, colors as in GitHub's light
+   and dark themes (the Markdown mode uses the same palette). */
 .editor-code-block {
   position: relative;
-  margin: 10px 0;
+  margin: 12px 0;
   background: var(--code-block-bg);
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
 }
 .code-block-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 8px 0 12px;
-  color: var(--text-tertiary);
+  gap: 8px;
+  padding: 6px 8px 0 10px;
   font-size: 12px;
-  opacity: 0.6;
-  transition: opacity 0.12s;
+  color: var(--text-tertiary);
+  user-select: none;
 }
-@media (hover: none) {
-  .code-block-bar {
-    opacity: 1;
-  }
+.code-lang,
+.code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font: 500 12px var(--font);
+  color: var(--text-secondary);
+  transition: background-color var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
 }
-.code-block-bar:focus-within {
+.code-lang svg {
+  color: var(--text-tertiary);
+}
+.code-lang-auto {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--hover-strong);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary);
+}
+.code-lang.is-static {
+  cursor: default;
+}
+/* Copy shows when the block is pointed at or being edited (always on touch screens). */
+.code-copy {
+  opacity: 0;
+}
+.editor-code-block:focus-within .code-copy,
+.code-copy:focus-visible {
   opacity: 1;
 }
 @media (hover: hover) {
-  .editor-code-block:hover .code-block-bar {
+  .editor-code-block:hover .code-copy {
     opacity: 1;
   }
-}
-.code-block-bar select {
-  height: 24px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font: 500 12px var(--font);
-  outline: none;
-  cursor: pointer;
-}
-@media (hover: hover) {
-  .code-block-bar select:hover {
-    background: var(--hover-strong);
-  }
-}
-.code-block-bar select option {
-  background: var(--bg-elevated);
-}
-.code-block-bar button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-@media (hover: hover) {
-  .code-block-bar button:hover {
+  .code-lang:hover,
+  .code-copy:hover {
     background: var(--hover-strong);
     color: var(--text);
   }
 }
+@media (hover: none) {
+  .code-copy {
+    opacity: 1;
+  }
+}
+.code-lang[data-state="open"] {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+/* The language list. */
+.code-lang-menu {
+  width: 240px;
+  padding: 6px;
+}
+.code-lang-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  background: var(--field, var(--hover));
+  color: var(--text-tertiary);
+}
+.code-lang-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+.code-lang-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.code-lang-search:focus-within {
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.code-lang-list {
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.code-lang-list .menu-item {
+  width: 100%;
+  justify-content: flex-start;
+}
+.code-lang-list .menu-item > span {
+  flex: 1;
+  text-align: left;
+}
+.code-lang-list .menu-item small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+@media (hover: hover) {
+  .code-lang-list .menu-item:hover {
+    background: var(--hover);
+  }
+}
 .editor-code-block pre {
   margin: 0;
-  padding: 8px 16px 16px;
+  padding: 6px 18px 16px;
   font-family: var(--mono);
   font-size: 13.5px;
-  line-height: 1.65;
+  line-height: 1.7;
+  tab-size: 2;
   overflow-x: auto;
   color: var(--syntax-text);
   white-space: pre;
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar);
+  scrollbar-color: var(--scrollbar) transparent;
 }
 .editor-code-block .code-content {
   font: inherit;
   white-space: pre;
-  min-height: 22px;
+  min-height: 23px;
 }
+.editor-code-block ::selection {
+  background: var(--syntax-selection);
+}
+/* Tokens (highlight.js class names). */
 .editor-code-block .hljs-keyword,
 .editor-code-block .hljs-selector-tag,
 .editor-code-block .hljs-literal,
-.editor-code-block .hljs-built_in {
+.editor-code-block .hljs-meta .hljs-keyword,
+.editor-code-block .hljs-template-tag,
+.editor-code-block .hljs-doctag {
   color: var(--syntax-keyword);
 }
 .editor-code-block .hljs-string,
 .editor-code-block .hljs-regexp,
-.editor-code-block .hljs-attr {
+.editor-code-block .hljs-meta .hljs-string,
+.editor-code-block .hljs-template-variable {
   color: var(--syntax-string);
 }
 .editor-code-block .hljs-number,
-.editor-code-block .hljs-attribute,
-.editor-code-block .hljs-variable {
+.editor-code-block .hljs-symbol,
+.editor-code-block .hljs-bullet,
+.editor-code-block .hljs-link,
+.editor-code-block .hljs-built_in {
   color: var(--syntax-number);
 }
 .editor-code-block .hljs-title,
-.editor-code-block .hljs-function,
-.editor-code-block .hljs-type {
+.editor-code-block .hljs-title.function_,
+.editor-code-block .hljs-function .hljs-title,
+.editor-code-block .hljs-section {
   color: var(--syntax-function);
+}
+.editor-code-block .hljs-type,
+.editor-code-block .hljs-title.class_,
+.editor-code-block .hljs-class .hljs-title,
+.editor-code-block .hljs-variable.language_,
+.editor-code-block .hljs-params,
+.editor-code-block .hljs-variable {
+  color: var(--syntax-type);
+}
+.editor-code-block .hljs-attr,
+.editor-code-block .hljs-attribute,
+.editor-code-block .hljs-property,
+.editor-code-block .hljs-selector-class,
+.editor-code-block .hljs-selector-id,
+.editor-code-block .hljs-selector-attr,
+.editor-code-block .hljs-selector-pseudo {
+  color: var(--syntax-property);
+}
+.editor-code-block .hljs-tag,
+.editor-code-block .hljs-name,
+.editor-code-block .hljs-quote {
+  color: var(--syntax-tag);
+}
+.editor-code-block .hljs-punctuation,
+.editor-code-block .hljs-operator,
+.editor-code-block .hljs-subst {
+  color: var(--syntax-punctuation);
 }
 .editor-code-block .hljs-comment,
 .editor-code-block .hljs-meta {
   color: var(--syntax-comment);
   font-style: italic;
+}
+.editor-code-block .hljs-addition {
+  color: var(--syntax-added);
+  background: var(--syntax-added-bg);
+}
+.editor-code-block .hljs-deletion {
+  color: var(--syntax-removed);
+  background: var(--syntax-removed-bg);
+}
+.editor-code-block .hljs-emphasis {
+  font-style: italic;
+}
+.editor-code-block .hljs-strong {
+  font-weight: 600;
 }
 
 /* Callouts and toggles */

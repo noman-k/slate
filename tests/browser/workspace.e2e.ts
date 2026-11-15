@@ -1744,3 +1744,29 @@ test("linked records open in the side panel over the table, with back and close 
   await expect(page).toHaveURL(ledger);
   await expect(title).toHaveValue("Rent Ledger");
 });
+test("code blocks: colored syntax, a searchable language picker that detects the language, Tab to indent", async ({ page }) => {
+  await createPage(page, "Snippets");
+  await page.getByLabel("Page title", { exact: true }).press("Enter");
+  await page.keyboard.type("```");
+  await page.keyboard.press("Enter");
+  const block = page.locator(".editor-code-block");
+  await expect(block).toBeVisible();
+  await page.keyboard.type("interface User { id: number }\nconst greet = (user: User): string => `Hi ${user.id}`;");
+  // Colored as it's typed, with the language detected (and said to be a guess).
+  await expect(block.locator(".hljs-keyword").first()).toBeVisible();
+  const picker = block.getByRole("button", { name: /^Code language/ });
+  await expect(picker).toContainText("TypeScript");
+  await expect(picker).toContainText("auto");
+  // Tab indents inside the code.
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("return");
+  await expect(block.locator(".code-content")).toContainText("\n  return");
+  // Choose one by searching; it's saved with the page's Markdown.
+  await picker.click();
+  await page.getByLabel("Search languages").fill("py");
+  await page.getByRole("option", { name: "Python" }).click();
+  await expect(picker).toHaveText("Python");
+  await page.getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".cm-content")).toContainText("```python");
+});

@@ -1,5 +1,6 @@
 "use client";
-import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -34,6 +35,8 @@ import {
   Code2,
   Copy,
   Check,
+  ChevronsUpDown,
+  Search,
 } from "lucide-react";
 import { encodeDirective, fencedCode, splitMarkdown } from "../../lib/markdown";
 import { PageIcon } from "../page-icon";
@@ -348,36 +351,151 @@ const Toggle = Node.create({
     return ReactNodeViewRenderer(ContainerView);
   },
 });
-function CodeView({ node, updateAttributes }: NodeViewProps) {
+/** Syntax highlighting: lowlight's common languages (highlight.js). */
+const lowlight = createLowlight(common);
+/**
+ * Guessing a block's language (when none is chosen) only considers widely used ones:
+ * across every grammar it often lands on a niche one (TypeScript read as Arduino) and
+ * colors little. Applies to the highlighting and to the label alike.
+ */
+const AUTO_LANGUAGES = [
+  "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "xml", "java", "javascript",
+  "json", "kotlin", "markdown", "php", "python", "ruby", "rust", "scss", "sql", "swift",
+  "typescript", "yaml",
+];
+const highlightAll = lowlight.highlightAuto.bind(lowlight);
+lowlight.highlightAuto = (value, options) => highlightAll(value, { subset: AUTO_LANGUAGES, ...options });
+
+/** The languages a code block offers, by name. "" means detect it from the code. */
+const CODE_LANGUAGES: [string, string][] = [
+  ["", "Auto-detect"],
+  ["plaintext", "Plain text"],
+  ["bash", "Shell"],
+  ["c", "C"],
+  ["cpp", "C++"],
+  ["csharp", "C#"],
+  ["css", "CSS"],
+  ["diff", "Diff"],
+  ["go", "Go"],
+  ["graphql", "GraphQL"],
+  ["xml", "HTML / XML"],
+  ["ini", "INI / TOML"],
+  ["java", "Java"],
+  ["javascript", "JavaScript"],
+  ["json", "JSON"],
+  ["kotlin", "Kotlin"],
+  ["less", "Less"],
+  ["lua", "Lua"],
+  ["makefile", "Makefile"],
+  ["markdown", "Markdown"],
+  ["objectivec", "Objective-C"],
+  ["perl", "Perl"],
+  ["php", "PHP"],
+  ["python", "Python"],
+  ["r", "R"],
+  ["ruby", "Ruby"],
+  ["rust", "Rust"],
+  ["scss", "SCSS"],
+  ["sql", "SQL"],
+  ["swift", "Swift"],
+  ["typescript", "TypeScript"],
+  ["vbnet", "VB.NET"],
+  ["yaml", "YAML"],
+];
+/** Other names people write after ``` for the same languages. */
+const CODE_ALIASES: Record<string, string> = {
+  html: "xml", svg: "xml", sh: "bash", shell: "bash", zsh: "bash", console: "bash",
+  ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript",
+  py: "python", yml: "yaml", md: "markdown", rb: "ruby", rs: "rust", "c++": "cpp",
+  "c#": "csharp", cs: "csharp", golang: "go", toml: "ini", text: "plaintext", txt: "plaintext",
+  kt: "kotlin", objc: "objectivec",
+};
+const canonicalLanguage = (language: string) => CODE_ALIASES[language.toLowerCase()] ?? language.toLowerCase();
+const languageLabel = (language: string) =>
+  CODE_LANGUAGES.find(([value]) => value === canonicalLanguage(language))?.[1] ?? language;
+
+/**
+ * A code block: the language (searchable; detected from the code unless chosen) and Copy
+ * above the code. Tab indents inside it.
+ */
+function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
   const [copied, setCopied] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [query, setQuery] = useState("");
+  const language = String(node.attrs.language || "");
+  const text = node.textContent;
+  // What auto-detect found (only shown, not saved: it follows the code as you type).
+  const detected = useMemo(() => {
+    if (language || !text.trim()) return "";
+    const found = lowlight.highlightAuto(text.slice(0, 4000)).data?.language;
+    return typeof found === "string" ? found : "";
+  }, [language, text]);
+  const term = query.trim().toLowerCase();
+  const choices = CODE_LANGUAGES.filter(
+    ([value, label]) =>
+      !term ||
+      label.toLowerCase().includes(term) ||
+      value.includes(term) ||
+      Object.entries(CODE_ALIASES).some(([alias, target]) => target === value && alias.startsWith(term)),
+  );
+  const choose = (value: string) => {
+    updateAttributes({ language: value || null });
+    setPicking(false);
+    setQuery("");
+    editor.commands.focus();
+  };
   return (
-    <NodeViewWrapper className="editor-code-block">
+    <NodeViewWrapper className="editor-code-block" data-language={language || detected || undefined}>
       <div className="code-block-bar" contentEditable={false}>
-        <select
-          aria-label="Code language"
-          value={String(node.attrs.language || "")}
-          onChange={(event) =>
-            updateAttributes({ language: event.target.value || null })
-          }
-        >
-          {[
-            ["", "Plain text"],
-            ["typescript", "TypeScript"],
-            ["javascript", "JavaScript"],
-            ["python", "Python"],
-            ["sql", "SQL"],
-            ["json", "JSON"],
-            ["css", "CSS"],
-            ["html", "HTML"],
-            ["bash", "Shell"],
-            ["markdown", "Markdown"],
-          ].map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        {editor.isEditable ? (
+          <Popover.Root open={picking} onOpenChange={(open) => { setPicking(open); if (!open) setQuery(""); }}>
+            <Popover.Trigger asChild>
+              <button className="code-lang" aria-label={`Code language: ${language ? languageLabel(language) : "auto-detect"}`}>
+                {language ? languageLabel(language) : detected ? languageLabel(detected) : "Auto-detect"}
+                {!language && detected && <span className="code-lang-auto">auto</span>}
+                <ChevronsUpDown size={12} />
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content className="menu-surface code-lang-menu" align="start" sideOffset={6} collisionPadding={12} aria-label="Code language">
+                <label className="code-lang-search">
+                  <Search size={14} />
+                  <input
+                    autoFocus
+                    placeholder="Search languages…"
+                    aria-label="Search languages"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && choices[0]) {
+                        event.preventDefault();
+                        choose(choices[0][0]);
+                      }
+                    }}
+                  />
+                </label>
+                <div className="code-lang-list" role="listbox" aria-label="Languages">
+                  {choices.map(([value, label]) => {
+                    const current = canonicalLanguage(language) === value;
+                    return (
+                      <button key={value || "auto"} role="option" aria-selected={current} className="menu-item" onClick={() => choose(value)}>
+                        <span>{label}</span>
+                        {value === "" && detected && <small>{languageLabel(detected)}</small>}
+                        {current && <Check size={14} />}
+                      </button>
+                    );
+                  })}
+                  {!choices.length && <div className="menu-empty">No matching language</div>}
+                </div>
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        ) : (
+          <span className="code-lang is-static">{language ? languageLabel(language) : detected ? languageLabel(detected) : "Code"}</span>
+        )}
         <button
+          className="code-copy"
+          aria-label={copied ? "Copied" : "Copy code"}
           onClick={async () => {
             await navigator.clipboard.writeText(node.textContent);
             setCopied(true);
@@ -388,7 +506,7 @@ function CodeView({ node, updateAttributes }: NodeViewProps) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre>
+      <pre spellCheck={false}>
         <NodeViewContent as="div" className="code-content" />
       </pre>
     </NodeViewWrapper>
@@ -410,7 +528,7 @@ const HighlightCode = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeView);
   },
-}).configure({ lowlight: createLowlight(common) });
+}).configure({ lowlight, enableTabIndentation: true, tabSize: 2 });
 
 export function createDocumentExtensions(options: EmbedOptions = {}) {
   return [

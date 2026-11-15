@@ -121,6 +121,15 @@
   --syntax-function: #d2a8ff;
   --syntax-comment: #8b949e;
   --syntax-code: #ffa657;
+  /* Code blocks: types and classes, tags, properties, punctuation, and diff lines. */
+  --syntax-type: #ffa657;
+  --syntax-tag: #7ee787;
+  --syntax-property: #79c0ff;
+  --syntax-punctuation: #c9d1d9;
+  --syntax-added: #aff5b4;
+  --syntax-added-bg: rgba(46, 160, 67, 0.15);
+  --syntax-removed: #ffdcd7;
+  --syntax-removed-bg: rgba(248, 81, 73, 0.15);
   --syntax-selection: rgba(56, 139, 253, 0.35);
   --syntax-match: rgba(56, 139, 253, 0.15);
   --syntax-search: rgba(210, 153, 34, 0.35);
@@ -216,6 +225,14 @@
   --syntax-function: #8250df;
   --syntax-comment: #6e7781;
   --syntax-code: #953800;
+  --syntax-type: #953800;
+  --syntax-tag: #116329;
+  --syntax-property: #0550ae;
+  --syntax-punctuation: #57606a;
+  --syntax-added: #116329;
+  --syntax-added-bg: #dafbe1;
+  --syntax-removed: #82071e;
+  --syntax-removed-bg: #ffebe9;
   --syntax-selection: rgba(84, 174, 255, 0.3);
   --syntax-match: rgba(84, 174, 255, 0.15);
   --syntax-search: rgba(212, 167, 44, 0.35);
