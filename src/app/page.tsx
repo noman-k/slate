@@ -333,7 +333,10 @@ export default async function Home() {
               <span className="hero-pill-badge">
                 <Sparkles size={12} /> New
               </span>
-              <span className="hero-pill-text">Playbooks you can run, and AI agents that read your workspace</span>
+              <span className="hero-pill-text">
+                <span className="hero-pill-long">Playbooks you can run, and AI agents that read your workspace</span>
+                <span className="hero-pill-short">Playbooks and AI agents</span>
+              </span>
               <ArrowRight size={13} />
             </Link>
             <h1>

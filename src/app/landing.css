@@ -304,6 +304,18 @@ html:has(.landing) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.hero-pill-short {
+  display: none;
+}
+/* One line on narrow screens: the short wording (the long one would be cut off). */
+@media (max-width: 600px) {
+  .hero-pill-long {
+    display: none;
+  }
+  .hero-pill-short {
+    display: inline;
+  }
+}
 .hero-pill > svg {
   flex-shrink: 0;
   color: var(--ink-3);
@@ -1595,10 +1607,6 @@ html:has(.landing) {
     right: 8px;
     bottom: 0;
     width: auto;
-  }
-  .hero-pill-text {
-    white-space: normal;
-    text-align: left;
   }
   .facts li {
     padding: 20px 14px;
