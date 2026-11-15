@@ -301,3 +301,23 @@
 .db-open-mode button.active { color: var(--text-strong); background: var(--bg-elevated); box-shadow: 0 0 0 1px var(--border), var(--shadow-chip); }
 .db-open-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .db-open-mode + .db-menu-hint { padding-top: 6px; color: var(--text-tertiary); }
+
+/* Relation cells: the cell itself opens the picker; the first linked record sits on top as
+   a link that opens it (with "+N" for the rest, all listed in the tooltip). */
+.db-cell-anchor { position: relative; display: block; width: 100%; min-width: 0; }
+.db-relation-trigger { display: flex; align-items: center; min-width: 0; }
+.db-relation-chips { position: absolute; inset: 0 8px; display: flex; align-items: center; gap: 6px; min-width: 0; pointer-events: none; }
+.db-relation-chips .db-relation-chip { pointer-events: auto; flex: 0 1 auto; min-width: 0; padding: 0; border-top: 0; border-left: 0; border-right: 0; background: none; font: inherit; font-size: 14px; cursor: pointer; }
+.db-relation-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) { .db-relation-chips .db-relation-chip:hover { border-bottom-color: var(--text-secondary); } }
+.db-relation-chips .db-relation-chip:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 2px; border-radius: 2px; }
+.db-relation-more { flex-shrink: 0; padding: 0 6px; border-radius: 9px; background: var(--hover-strong); color: var(--text-secondary); font-size: 12px; line-height: 18px; }
+/* The picker: linked records first (with Unlink), then the ones to link. */
+.db-relation-option.is-linked > .db-relation-pick { cursor: default; opacity: 1; }
+.db-relation-option > .db-relation-pick:disabled { color: var(--text); }
+@media (hover: hover) { .db-relation-option.is-linked > .db-relation-pick:hover { background: none; } }
+.db-relation-option > .db-relation-unlink { color: var(--text-tertiary); padding: 0 6px; }
+@media (hover: hover) { .db-relation-option > .db-relation-unlink:hover { color: var(--danger-text); } }
+.db-relation-create { justify-content: flex-start; text-align: left; color: var(--text-secondary); }
+.db-relation-create svg { color: var(--text-tertiary); flex-shrink: 0; }
+.db-relation-create span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

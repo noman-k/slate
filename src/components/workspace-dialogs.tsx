@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   ArrowUpRight,
   CornerDownLeft,
   Check,
@@ -89,6 +90,10 @@ interface WorkspaceDialogsProps extends PageMutationProps {
   recordPage?: Page;
   recordParent?: Page;
   openRecord: (record: DbRecord) => void;
+  /** Opens a linked record (a relation) in the side panel, over what's open now. */
+  openLinked?: (record: DbRecord) => void;
+  /** Back to the record shown before a linked one, when there is one. */
+  back?: { label: string; onBack: () => void };
   /** Opens a page in the main view (the record's database, from the panel header). */
   openPage: (pageId: string) => void;
   closeRecord: () => void;
@@ -162,6 +167,8 @@ export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
         expand={props.expandRecord}
         open={props.peekOpen}
         openRecord={props.openRecord}
+        openLinked={props.openLinked}
+        back={props.back}
         openPage={props.openPage}
         renderEditor={props.renderEditor}
       />
@@ -786,6 +793,8 @@ interface RecordPageDialogProps extends PageMutationProps {
   expand: () => void;
   open: boolean;
   openRecord: (record: DbRecord) => void;
+  openLinked?: (record: DbRecord) => void;
+  back?: { label: string; onBack: () => void };
   openPage: (pageId: string) => void;
   renderEditor: (page: Page) => ReactNode;
 }
@@ -800,6 +809,8 @@ function RecordPageDialog({
   expand,
   open,
   openRecord,
+  openLinked,
+  back,
   openPage,
   renderEditor,
 }: RecordPageDialogProps) {
@@ -818,6 +829,17 @@ function RecordPageDialog({
       // Where the record lives, with its icon, like a breadcrumb: click to open it.
       heading={
         parent ? (
+          <>
+          {back && (
+            <button
+              className="icon-button peek-back"
+              onClick={back.onBack}
+              title={`Back to ${back.label}`}
+              aria-label={`Back to ${back.label}`}
+            >
+              <ArrowLeft size={16} />
+            </button>
+          )}
           <button
             className="peek-parent"
             onClick={() => openPage(parent.id)}
@@ -827,6 +849,7 @@ function RecordPageDialog({
             <PageIcon page={parent} size={14} />
             <span>{parent.title || "Untitled"}</span>
           </button>
+          </>
         ) : undefined
       }
       actions={
@@ -865,6 +888,7 @@ function RecordPageDialog({
             state={state}
             onChange={change}
             onOpenRecord={openRecord}
+            onOpenLinked={openLinked}
           />
           {renderEditor(page)}
         </>

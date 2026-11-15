@@ -309,3 +309,24 @@ export function csvExport(records: DbRecord[], properties: Property[], state: Wo
   const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
   return [properties.map((p) => escape(p.name)).join(','), ...records.map((r) => properties.map((p) => { const value = cellValue(r, p, state); return escape(p.type === 'relation' && Array.isArray(value) ? value.map((id) => { const linked = state.records.find((item) => item.id === id); return linked ? recordTitle(linked, state) : ''; }).join(', ') : value); }).join(','))].join('\r\n');
 }
+
+/**
+ * A new record (row) in a database, with its page and an empty text: what "Create …" in a
+ * relation picker adds before linking it. The ids are passed in so the caller can link it.
+ */
+export function addRecordTo(state: WorkspaceState, databaseId: string, title: string, ids: { recordId: string; pageId: string }): WorkspaceState {
+  const database = state.databases.find((d) => d.id === databaseId);
+  if (!database) return state;
+  const now = new Date().toISOString();
+  const titleProperty = state.properties.find((p) => p.database_id === databaseId && p.type === 'title');
+  const position = Math.max(0, ...state.records.filter((r) => r.database_id === databaseId).map((r) => r.position)) + 1;
+  return {
+    ...state,
+    records: [...state.records, { id: ids.recordId, database_id: databaseId, page_id: ids.pageId, values: titleProperty ? { [titleProperty.id]: title } : {}, position, created_at: now, updated_at: now }],
+    pages: [...state.pages, { id: ids.pageId, workspace_id: database.workspace_id, parent_id: database.page_id, title: title || 'Untitled', icon: '', kind: 'document', description: '', position, favorite: false, deleted_at: null, created_at: now, updated_at: now }],
+    documents: [...state.documents, { page_id: ids.pageId, markdown: '', updated_at: now }],
+  };
+}
+
+/** Whether a relation property links each record to at most one other (its "Limit"). */
+export const linksOne = (property: Property) => property.type === 'relation' && property.config.limit === 1;

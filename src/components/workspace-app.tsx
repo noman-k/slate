@@ -187,7 +187,14 @@ export function WorkspaceApp() {
    * A record opened from a database embedded in a page: it peeks over that page
    * (like Notion) instead of navigating away to the database's own page.
    */
-  const [peekRecordId, setPeekRecordId] = useState<string | null>(null);
+  /**
+   * Records open in the side panel over the current page, newest last: a row of an
+   * embedded database, then any linked records opened from it (back returns to the one
+   * before). Empty when the panel shows the routed record, or nothing.
+   */
+  const [peekStack, setPeekStack] = useState<string[]>([]);
+  const peekRecordId = peekStack[peekStack.length - 1] ?? null;
+  const setPeekRecordId = (id: string | null) => setPeekStack(id ? [id] : []);
   /** A database just created in a page: its name opens for typing once. */
   const [freshDatabase, setFreshDatabase] = useState<string | null>(null);
   const clearFreshDatabase = useCallback(() => setFreshDatabase(null), []);
@@ -939,9 +946,21 @@ export function WorkspaceApp() {
     options?.fullPage || recordOpenMode(r) === "page"
       ? openRecordAsPage(r)
       : setPeekRecordId(r.id);
+  /**
+   * A linked record (from a relation cell or a record's properties) opens in the side
+   * panel over what's open now, as in Notion; the page behind stays put. Databases set to
+   * open records as full pages still do.
+   */
+  const openLinked = (r: DbRecord) => {
+    if (recordOpenMode(r) === "page") return openRecordAsPage(r);
+    setPeekStack((stack) => (stack[stack.length - 1] === r.id ? stack : [...stack, r.id]));
+  };
   const peeked = peekRecordId
     ? state.records.find((r) => r.id === peekRecordId)
     : undefined;
+  // What "back" returns to: the record under this one in the panel, or the routed record.
+  const previousId = peekStack.length > 1 ? peekStack[peekStack.length - 2] : peekStack.length === 1 && record && !recordAsPage ? record.id : null;
+  const previous = previousId ? state.records.find((r) => r.id === previousId) : undefined;
   const peekedPage = state.pages.find(
     (p) => p.id === peeked?.page_id && !p.deleted_at,
   );
@@ -989,6 +1008,7 @@ export function WorkspaceApp() {
           state={state}
           onChange={change}
           onOpenRecord={peekRecord}
+          onOpenLinked={openLinked}
           onOpenPage={open}
           linkedFrom={linkedFrom(db, p.id)}
           placement={block}
@@ -1345,6 +1365,7 @@ export function WorkspaceApp() {
                     state={state}
                     onChange={change}
                     onOpenRecord={openRecord}
+                    onOpenLinked={openLinked}
                   />
                 ) : (
                   <>
@@ -1354,6 +1375,7 @@ export function WorkspaceApp() {
                         state={state}
                         onChange={change}
                         onOpenRecord={openRecord}
+                        onOpenLinked={openLinked}
                       />
                     )}
                     {isBlankDocument(page) && (
@@ -1828,7 +1850,14 @@ export function WorkspaceApp() {
               record: peeked,
               recordPage: peekedPage,
               recordParent: peekedParent,
-              closeRecord: () => setPeekRecordId(null),
+              // Closing the panel closes it entirely, including a routed record under it.
+              closeRecord: () => {
+                setPeekStack([]);
+                if (record && !recordAsPage && recordParent) open(recordParent.id);
+              },
+              back: previous
+                ? { label: recordTitle(previous, state), onBack: () => setPeekStack((stack) => stack.slice(0, -1)) }
+                : undefined,
               // Full page: navigate to the record and show it as a page.
               expandRecord: () => {
                 open(peeked.page_id);
@@ -1847,6 +1876,7 @@ export function WorkspaceApp() {
               peekOpen: !recordAsPage,
             })}
         openRecord={openRecord}
+        openLinked={openLinked}
         openPage={open}
         renderEditor={editor}
       />

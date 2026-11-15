@@ -1668,3 +1668,79 @@ test("a page added inside another is listed under Pages inside, leaving the pare
   await expect(inside).toHaveCount(0);
   await expect(page.getByLabel("Page content", { exact: true }).locator(".editor-page-reference")).toHaveCount(2);
 });
+test("relation cells: one record replaces, any number adds, linked ones can be unlinked, and new ones created", async ({ page }) => {
+  // The ledger's Tenant column links to the Tenants database (Alex Morgan on every row).
+  // A cell's text is its linked records; the empty part of the cell opens the picker.
+  const cell = (row: number) => page.locator("tbody tr").nth(row).locator(".db-cell-anchor");
+  const trigger = (row: number) => page.locator("tbody tr").nth(row).locator(".db-relation-trigger");
+  const pick = async (row: number) => {
+    const box = (await trigger(row).boundingBox())!;
+    await trigger(row).click({ position: { x: box.width - 8, y: box.height / 2 } });
+  };
+  const picker = page.locator(".db-menu", { has: page.getByLabel("Search related records") });
+  await expect(cell(1)).toContainText("Alex Morgan");
+  // Limit it to one record.
+  await page.locator(".db-column-trigger", { hasText: "Tenant" }).click();
+  await page.locator(".db-menu").getByLabel("Limit").selectOption("1");
+  await page.keyboard.press("Escape");
+  // Picking replaces; a name that isn't there yet can be created and linked in one go.
+  await pick(1);
+  await expect(picker).toContainText("Linked");
+  await picker.getByLabel("Search related records").fill("Bea Brown");
+  await picker.getByRole("button", { name: /Create “Bea Brown” in Tenants/ }).click();
+  await expect(picker).toBeHidden();
+  await expect(cell(1)).toHaveText("Bea Brown");
+  await expect(cell(0)).toHaveText("Alex Morgan");
+  await pick(1);
+  await picker.locator(".db-relation-option", { hasText: "Alex Morgan" }).locator(".db-relation-pick").click();
+  await expect(cell(1)).toHaveText("Alex Morgan");
+  // With no limit, picking adds, the cell says how many more there are, and Unlink removes one.
+  await page.locator(".db-column-trigger", { hasText: "Tenant" }).click();
+  await page.locator(".db-menu").getByLabel("Limit").selectOption("");
+  await page.keyboard.press("Escape");
+  await pick(2);
+  await picker.locator(".db-relation-option", { hasText: "Bea Brown" }).locator(".db-relation-pick").click();
+  await expect(picker).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(cell(2)).toHaveText("Alex Morgan+1");
+  await expect(trigger(2)).toHaveAttribute("title", "Alex Morgan, Bea Brown");
+  await pick(2);
+  await picker.getByRole("button", { name: "Unlink Alex Morgan" }).click();
+  await page.keyboard.press("Escape");
+  await expect(cell(2)).toHaveText("Bea Brown");
+  // It all saves.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(cell(1)).toHaveText("Alex Morgan");
+  await expect(cell(2)).toHaveText("Bea Brown");
+});
+test("linked records open in the side panel over the table, with back and close like Notion", async ({ page }) => {
+  const title = page.getByLabel("Page title", { exact: true });
+  await expect(title).toHaveValue("Rent Ledger");
+  const ledger = page.url();
+  const panel = page.getByRole("dialog");
+  const recordTitle = panel.getByRole("textbox", { name: "Record title" });
+  // A tenant in a row's cell opens in the side panel; the ledger stays behind it.
+  await page.locator("tbody tr").first().getByRole("button", { name: "Alex Morgan" }).click();
+  await expect(recordTitle).toHaveValue("Alex Morgan");
+  await expect(panel.getByRole("button", { name: "Open Tenants" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: /^Back to/ })).toHaveCount(0);
+  expect(page.url()).toBe(ledger);
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(title).toHaveValue("Rent Ledger");
+  // From a row open in the panel, its tenant opens on top, and Back returns to the row.
+  await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).click();
+  await expect(recordTitle).toHaveValue("2026-04 — Basement");
+  await panel.locator(".db-record-properties").getByRole("button", { name: "Alex Morgan" }).click();
+  await expect(recordTitle).toHaveValue("Alex Morgan");
+  await panel.getByRole("button", { name: "Back to 2026-04 — Basement" }).click();
+  await expect(recordTitle).toHaveValue("2026-04 — Basement");
+  // Closing from a linked record closes the panel altogether, back to the ledger.
+  await panel.locator(".db-record-properties").getByRole("button", { name: "Alex Morgan" }).click();
+  await expect(recordTitle).toHaveValue("Alex Morgan");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(page).toHaveURL(ledger);
+  await expect(title).toHaveValue("Rent Ledger");
+});
