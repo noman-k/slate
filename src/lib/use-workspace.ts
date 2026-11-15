@@ -61,6 +61,8 @@ export function useWorkspace() {
   const owner = useRef<string | null>(null);
   const baseRevision = useRef<number | null>(null);
   const hydration = useRef<Promise<boolean> | null>(null);
+  /** The last save failed (what's here isn't on the server yet). */
+  const failed = useRef(false);
   const journal = useCallback(() => {
     if (!loaded.current) return;
     try {
@@ -179,9 +181,11 @@ export function useWorkspace() {
           if (owner.current) localStorage.removeItem(`slate-pending:${owner.current}`);
         } else journal();
       } while (queued.current);
+      failed.current = false;
       setStatus("saved");
       setError((previous) => (previous.startsWith("An unsynced draft") ? previous : ""));
     } catch (e) {
+      failed.current = true;
       journal();
       setStatus("error");
       setError(e instanceof Error ? e.message : "Your changes could not be saved. Retry to keep them safe.");
@@ -275,6 +279,35 @@ export function useWorkspace() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+  /**
+   * Does something on the server that the workspace save can't (moving pages to another
+   * workspace): saves what's waiting first, runs it, then loads the result, keeping any
+   * edits made here meanwhile.
+   */
+  const onServer = useCallback(
+    async (task: () => Promise<unknown>) => {
+      if (!loaded.current) throw new Error("Your workspace is still loading.");
+      if (pending.current) {
+        clearTimeout(pending.current);
+        pending.current = null;
+      }
+      while (saving.current) await new Promise((resolve) => setTimeout(resolve, 50));
+      if (dirty.current) await save();
+      if (failed.current) throw new Error("Your latest changes couldn't be saved, so nothing was moved. Try again.");
+      const base = current.current;
+      await task();
+      const remote = await loadRemoteState();
+      const identity = getRemoteIdentity();
+      if (!remote || identity.userId !== owner.current) return;
+      const shown = withLineIcons(remote);
+      const { state: merged } = mergeStates(base, current.current, shown);
+      baseRevision.current = identity.revision;
+      persisted.current = shown;
+      current.current = merged;
+      setState(merged);
+    },
+    [save],
+  );
   const retry = useCallback(async () => {
     if (loaded.current) await save();
     else if (await hydrate()) await save();
@@ -287,5 +320,6 @@ export function useWorkspace() {
     error,
     recovery,
     retry,
+    onServer,
   };
 }

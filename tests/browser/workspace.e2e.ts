@@ -634,6 +634,72 @@ test("database views can be put in another order, by dragging a tab or from View
   ]);
 });
 
+test("pages and databases move to another workspace, with everything in them", async ({ page }) => {
+  const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
+  // A second workspace, then back to the first.
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: "Create workspace" }).click();
+  await page.getByLabel("Workspace name").fill("Side project");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await expect(sidebar.getByRole("button", { name: "Workspace: Side project" })).toBeVisible();
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: /Home/ }).first().click();
+  await expect(sidebar.getByRole("button", { name: "Workspace: Home" })).toBeVisible();
+
+  // The open database moves; its Tenant relation would cross workspaces, so it asks first.
+  await page.goto(`/p/${account!.ids.ledger}`);
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
+  await page.getByRole("button", { name: "Page options" }).click();
+  await page.getByRole("menuitem", { name: "Move to", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Move “Rent Ledger”" });
+  await dialog.getByRole("radio", { name: /Side project/ }).click();
+  await expect(dialog).toContainText("To Side project, with everything in it (its 9 rows).");
+  await dialog.getByRole("button", { name: /Private pages/ }).click();
+  const confirm = page.getByRole("dialog", { name: "Move “Rent Ledger” to Side project?" });
+  await expect(confirm).toContainText("“Tenant” in Rent Ledger, which links to Tenants");
+  await confirm.getByRole("button", { name: "Move to Side project" }).click();
+  await expect(page.getByText("Moved “Rent Ledger” to Side project")).toBeVisible();
+  // What was open went with it: Slate follows it to its new workspace, rows and all.
+  await expect(sidebar.getByRole("button", { name: "Workspace: Side project" })).toBeVisible();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
+  await expect(page.locator(".db-table tbody tr").filter({ hasText: "2026-04 — Basement" })).toHaveCount(1);
+  await expect(sidebar.getByText("Rent Ledger", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Workspace navigation" })
+      .getByRole("button", { name: "Workspace: Side project" }),
+  ).toBeVisible();
+  await expect(page.locator(".db-table tbody tr").filter({ hasText: "2026-04 — Basement" })).toHaveCount(1);
+
+  // A page with nothing to unlink moves straight away, and Undo brings it back.
+  await page.getByRole("button", { name: /^Workspace: / }).click();
+  await page.getByRole("menuitem", { name: /Home/ }).first().click();
+  await expect(sidebar.getByRole("button", { name: "Workspace: Home" })).toBeVisible();
+  await expect(sidebar.getByText("Rent Ledger", { exact: true })).toHaveCount(0);
+  const guide = sidebar.getByText("Getting started", { exact: true });
+  await guide.click();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
+  await page.getByRole("button", { name: "Page options" }).click();
+  await page.getByRole("menuitem", { name: "Move to", exact: true }).click();
+  await page.getByRole("radio", { name: /Side project/ }).click();
+  await page
+    .getByRole("dialog", { name: "Move “Getting started”" })
+    .getByRole("button", { name: /Private pages/ })
+    .click();
+  await expect(page.getByText("Moved “Getting started” to Side project")).toBeVisible();
+  // It was open, so Slate went with it; Undo takes it (and you) back.
+  await expect(sidebar.getByRole("button", { name: "Workspace: Side project" })).toBeVisible();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Getting started");
+  await page
+    .locator("[data-sonner-toast]", { hasText: "Moved “Getting started” to Side project" })
+    .getByRole("button", { name: "Undo" })
+    .click();
+  await expect(page.getByText("Moved “Getting started” to Home")).toBeVisible();
+  await expect(sidebar.getByRole("button", { name: "Workspace: Home" })).toBeVisible();
+  await expect(sidebar.getByText("Getting started", { exact: true })).toBeVisible();
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.

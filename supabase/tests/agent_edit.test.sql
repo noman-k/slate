@@ -82,8 +82,8 @@ select lives_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object
   'Icons, row opening, column names, relations and views can be changed');
 select is((select icon from public.pages where id = 'd1000000-0000-4000-8000-000000000002'), 'icon:rocket:purple', 'The icon is set');
 select is((select name from public.database_properties where id = 'd1000000-0000-4000-8000-000000000006'), 'Finished', 'The column is renamed');
-select is((select value from public.record_values where record_id = 'd1000000-0000-4000-8000-000000000007' and property_id = 'd1000000-0000-4000-8000-00000000000b'),
-  '["d1000000-0000-4000-8000-00000000000a"]'::jsonb, 'The rows are linked');
+select is((select array_agg(to_record_id::text) from public.record_relations where from_record_id = 'd1000000-0000-4000-8000-000000000007' and property_id = 'd1000000-0000-4000-8000-00000000000b'),
+  array['d1000000-0000-4000-8000-00000000000a'], 'The rows are linked (as links, like the app saves them)');
 select is((select type || ' ' || jsonb_array_length(filters) from public.database_views where id = 'd1000000-0000-4000-8000-00000000000c'), 'board 1', 'The view is added');
 select lives_ok($$select public.agent_update(repeat('b', 64), jsonb_build_object('views', jsonb_build_array(jsonb_build_object(
   'id', 'd1000000-0000-4000-8000-00000000000c', 'filters', '[]'::jsonb, 'type', 'list'))))$$, 'A view can be changed');

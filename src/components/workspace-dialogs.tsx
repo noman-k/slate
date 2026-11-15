@@ -1,9 +1,10 @@
 "use client";
 import { Button } from "./ui/button";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
   CornerDownLeft,
@@ -24,6 +25,7 @@ import { ThemeSwitcher } from "./theme-switcher";
 import { AgentKeysSection } from "./agent-keys-section";
 import { RecordProperties } from "./database/DatabaseView";
 import { breadcrumbs, canMovePage, purgePage, trashPage } from "@/lib/tree";
+import { planWorkspaceMove } from "@/lib/workspace-move";
 import { id, timeAgo } from "@/lib/utils";
 import type { DbRecord, Page, WorkspaceState } from "@/lib/types";
 import { LICENSE_NAME, REPOSITORY_URL } from "@/lib/project";
@@ -92,6 +94,8 @@ interface WorkspaceDialogsProps extends PageMutationProps {
   expandRecord: () => void;
   /** False while the record is shown as a full page instead of a peek. */
   peekOpen: boolean;
+  /** Moves a page, with everything in it, to another workspace. */
+  moveToWorkspace: (page: Page, workspaceId: string, parentId: string | null) => Promise<void>;
   renderEditor: (page: Page) => ReactNode;
 }
 
@@ -102,7 +106,14 @@ export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
     <>
       {active?.type === "rename" && <RenamePageDialog close={close} page={active.page} patchPage={patchPage} />}
       {active?.type === "move" && (
-        <MovePageDialog state={state} close={close} page={active.page} patchPage={patchPage} expandPage={expandPage} />
+        <MovePageDialog
+          state={state}
+          close={close}
+          page={active.page}
+          patchPage={patchPage}
+          expandPage={expandPage}
+          moveToWorkspace={props.moveToWorkspace}
+        />
       )}
       {active?.type === "icon" && <PageIconDialog close={close} page={active.page} patchPage={patchPage} />}
       {active?.type === "trash" && <TrashDialog state={state} close={close} change={change} />}
@@ -173,17 +184,31 @@ function MovePageDialog({
   page,
   patchPage,
   expandPage,
-}: CommonProps & PageMutationProps & { page: Page; expandPage: (pageId: string) => void }) {
+  moveToWorkspace,
+}: CommonProps &
+  PageMutationProps & {
+    page: Page;
+    expandPage: (pageId: string) => void;
+    moveToWorkspace: WorkspaceDialogsProps["moveToWorkspace"];
+  }) {
   const [query, setQuery] = useState("");
+  // Which workspace to move it within (or into): its own to begin with.
+  const [workspaceId, setWorkspaceId] = useState(page.workspace_id);
+  const elsewhere = workspaceId !== page.workspace_id;
+  const workspaceName = state.workspaces.find((w) => w.id === workspaceId)?.name || "Workspace";
+  /** Moving to another workspace would unlink relations: asked first. */
+  const [confirming, setConfirming] = useState<{ parentId: string | null } | null>(null);
+  const [moving, setMoving] = useState(false);
+  const plan = useMemo(() => planWorkspaceMove(state, page.id), [state, page.id]);
   const recordPages = new Set(state.records.map((record) => record.page_id));
   const targets = state.pages
     .filter(
       (target) =>
-        target.workspace_id === state.active_workspace_id &&
+        target.workspace_id === workspaceId &&
         !target.deleted_at &&
         target.kind === "document" &&
         !recordPages.has(target.id) &&
-        canMovePage(state.pages, page.id, target.id),
+        (elsewhere || canMovePage(state.pages, page.id, target.id)),
     )
     .map((target) => ({
       page: target,
@@ -192,7 +217,24 @@ function MovePageDialog({
         .join(" / "),
     }))
     .filter(({ path }) => path.toLowerCase().includes(query.trim().toLowerCase()));
+  const moveAcross = async (parentId: string | null) => {
+    setMoving(true);
+    try {
+      await moveToWorkspace(page, workspaceId, parentId);
+      close();
+    } catch (problem) {
+      setMoving(false);
+      setConfirming(null);
+      toast.error(problem instanceof Error ? problem.message : "Couldn't move it. Try again.");
+    }
+  };
   const moveTo = (parentId: string | null) => {
+    if (moving) return;
+    if (elsewhere) {
+      if (plan.brokenRelations.length) setConfirming({ parentId });
+      else void moveAcross(parentId);
+      return;
+    }
     if (parentId === page.parent_id) return close();
     // Land after the new siblings rather than at an arbitrary position.
     const last = Math.max(
@@ -208,7 +250,7 @@ function MovePageDialog({
     toast(`Moved to ${destination?.title || "Private pages"}`);
   };
   const current = (parentId: string | null) =>
-    parentId === page.parent_id ? (
+    !elsewhere && parentId === page.parent_id ? (
       <span className="move-current">
         <Check size={14} /> Current
       </span>
@@ -225,22 +267,103 @@ function MovePageDialog({
     "data-index": index,
     className: index === activeIndex ? "active" : undefined,
     onMouseMove: () => setActive(index),
+    disabled: moving,
   });
+  const title = page.title || "Untitled";
+  // What goes with it, counted once (rows are pages too): "3 pages, 2 databases with 40 rows",
+  // or for a database itself, "its 9 rows".
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const isDatabase = plan.databases.some((d) => d.page_id === page.id);
+  const subpages = plan.pageIds.length - 1 - plan.rows;
+  const what = [
+    subpages > 0 ? plural(subpages, "page") : "",
+    isDatabase && plan.databases.length === 1
+      ? plan.rows
+        ? `its ${plural(plan.rows, "row")}`
+        : ""
+      : plan.databases.length
+        ? `${plural(plan.databases.length, "database")} with ${plural(plan.rows, "row")}`
+        : "",
+  ].filter(Boolean);
+
+  if (confirming)
+    return (
+      <Modal
+        open
+        onOpenChange={(open) => !open && !moving && close()}
+        title={`Move “${title}” to ${workspaceName}?`}
+        description={`It moves with everything in it${what.length ? ` (${what.join(", ")})` : ""}.`}
+        className="list-dialog move-confirm"
+      >
+        <div className="move-warning" role="note">
+          <AlertTriangle size={16} aria-hidden />
+          <div>
+            <strong>
+              {plan.brokenRelations.length === 1 ? "A relation" : `${plan.brokenRelations.length} relations`} can&apos;t
+              cross workspaces, so {plan.brokenRelations.length === 1 ? "its links" : "their links"} will be removed:
+            </strong>
+            <ul>
+              {plan.brokenRelations.map(({ property, database, linksTo }) => (
+                <li key={property.id}>
+                  “{property.name}” in {database}, which links to {linksTo}
+                </li>
+              ))}
+            </ul>
+            <small>The columns stay, so you can point them at another database. This can&apos;t be undone.</small>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="secondary-button" onClick={() => setConfirming(null)} disabled={moving}>
+            Back
+          </button>
+          <button className="primary-button" onClick={() => void moveAcross(confirming.parentId)} disabled={moving}>
+            {moving ? "Moving…" : `Move to ${workspaceName}`}
+          </button>
+        </div>
+      </Modal>
+    );
+
   return (
     <Modal
       open
-      onOpenChange={(open) => !open && close()}
-      title={`Move “${page.title || "Untitled"}”`}
-      description="Choose a new home for this page and its children."
+      onOpenChange={(open) => !open && !moving && close()}
+      title={`Move “${title}”`}
+      description={
+        elsewhere
+          ? `To ${workspaceName}, with everything in it${what.length ? ` (${what.join(", ")})` : ""}.`
+          : "Choose a new home for this page and its children."
+      }
       className="list-dialog"
     >
+      {state.workspaces.length > 1 && !plan.isRow && (
+        <div className="move-workspaces" role="radiogroup" aria-label="Workspace">
+          {state.workspaces.map((workspace) => (
+            <button
+              key={workspace.id}
+              type="button"
+              role="radio"
+              aria-checked={workspace.id === workspaceId}
+              className={workspace.id === workspaceId ? "is-selected" : undefined}
+              disabled={moving}
+              onClick={() => {
+                setWorkspaceId(workspace.id);
+                setActive(0);
+              }}
+            >
+              <span className="move-workspace-name">{workspace.name || "Untitled workspace"}</span>
+              {workspace.id === page.workspace_id && <small>Current</small>}
+            </button>
+          ))}
+        </div>
+      )}
       <label className="move-search">
         <Search size={16} />
         <input
           autoFocus
           aria-label="Find a destination"
-          placeholder="Find a page…"
+          placeholder={elsewhere ? `Find a page in ${workspaceName}…` : "Find a page…"}
           value={query}
+          disabled={moving}
           onChange={(event) => {
             setQuery(event.target.value);
             setActive(0);
@@ -257,13 +380,13 @@ function MovePageDialog({
           }}
         />
       </label>
-      <div className="move-targets" ref={listRef}>
+      <div className="move-targets" ref={listRef} aria-busy={moving || undefined}>
         {!query.trim() && (
           <button {...option(0)} onClick={() => moveTo(null)}>
             <Folder size={16} />
             <span className="move-title">
               <strong>Private pages</strong>
-              <small>Top level of the sidebar</small>
+              <small>{elsewhere ? `Top level of ${workspaceName}` : "Top level of the sidebar"}</small>
             </span>
             {current(null)}
           </button>
@@ -284,7 +407,15 @@ function MovePageDialog({
         {query.trim() && !targets.length && <div className="empty-state">No pages match “{query.trim()}”.</div>}
       </div>
       <div className="modal-hint list-hint">
-        <kbd>↑</kbd> <kbd>↓</kbd> to choose · <CornerDownLeft size={12} /> to move
+        {moving ? (
+          <span role="status">
+            Moving “{title}” to {workspaceName}…
+          </span>
+        ) : (
+          <>
+            <kbd>↑</kbd> <kbd>↓</kbd> to choose · <CornerDownLeft size={12} /> to move
+          </>
+        )}
       </div>
     </Modal>
   );

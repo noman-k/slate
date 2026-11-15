@@ -52,6 +52,7 @@ import { useWorkspace } from "@/lib/use-workspace";
 import { id } from "@/lib/utils";
 import { duplicatePageSubtree } from "@/lib/pages";
 import { breadcrumbs, movePageTo, placementOf, trashPage } from "@/lib/tree";
+import { moveToWorkspace, planWorkspaceMove } from "@/lib/workspace-move";
 import type { Page, DbRecord, RecordOpenMode, WorkspaceState } from "@/lib/types";
 import { DatabaseView, RecordProperties } from "./database/DatabaseView";
 import { WorkspaceTopbar } from "./workspace-topbar";
@@ -63,7 +64,7 @@ const DocumentEditor = dynamic(() => import("./editor/DocumentEditor").then((m) 
 });
 export function WorkspaceApp() {
   const dialogs = useWorkspaceDialogs();
-  const { state, change, ready, status, error, recovery, retry } = useWorkspace();
+  const { state, change, ready, status, error, recovery, retry, onServer } = useWorkspace();
   const [activeId, setActiveId] = useState("");
   const [search, setSearch] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -889,6 +890,51 @@ export function WorkspaceApp() {
     const target = returnPage(workspaceId);
     if (target) open(target);
   };
+  /**
+   * Moves a page, with everything in it, to another workspace (under `parentId` there, or at
+   * its top level). If what's open moves, Slate follows it there. Undo moves it back.
+   */
+  const moveToOtherWorkspace = async (page: Page, workspaceId: string, parentId: string | null, undo = true) => {
+    const plan = planWorkspaceMove(state, page.id);
+    const from = { workspace: page.workspace_id, parent: page.parent_id };
+    const shown = record && !recordAsPage ? recordParent?.id : activeId;
+    const followIt = !!shown && plan.pageIds.includes(shown);
+    await onServer(() => moveToWorkspace(page.id, plan.pageIds, from.workspace, workspaceId, parentId));
+    // Its block leaves the old parent's page (and joins the new parent's, if it was listed).
+    change((s) => relinkPageBlock(s, page.id, from.parent, parentId));
+    if (parentId) setExpanded((current) => new Set([...current, parentId]));
+    if (followIt) {
+      change((s) => ({ ...s, active_workspace_id: workspaceId }));
+      open(shown!, false);
+    }
+    const name = state.workspaces.find((w) => w.id === workspaceId)?.name || "the workspace";
+    const title = page.title || "Untitled";
+    toast.success(`Moved “${title}” to ${name}`, {
+      action:
+        undo && !plan.brokenRelations.length
+          ? {
+              label: "Undo",
+              onClick: () =>
+                void moveToOtherWorkspace(
+                  { ...page, workspace_id: workspaceId, parent_id: parentId },
+                  from.workspace,
+                  from.parent,
+                  false,
+                ).catch((problem) =>
+                  toast.error(problem instanceof Error ? problem.message : "Couldn't move it back."),
+                ),
+            }
+          : !followIt
+            ? {
+                label: "Go there",
+                onClick: () => {
+                  change((s) => ({ ...s, active_workspace_id: workspaceId }));
+                  open(page.id);
+                },
+              }
+            : undefined,
+    });
+  };
   return (
     <div className={`workspace-app ${settled ? "is-settled" : ""}`}>
       {/* React hoists this into <head>; it follows the open page or record. */}
@@ -1467,6 +1513,7 @@ export function WorkspaceApp() {
         patchPage={patchPage}
         expandPage={(pageId) => setExpanded((current) => new Set([...current, pageId]))}
         onWorkspaceCreated={() => setActiveId("")}
+        moveToWorkspace={moveToOtherWorkspace}
         {...(peeked && peekedPage
           ? {
               record: peeked,
