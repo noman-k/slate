@@ -39,15 +39,9 @@ function validState(value: unknown): value is WorkspaceState {
   return (
     !!value &&
     typeof value === "object" &&
-    [
-      "pages",
-      "documents",
-      "databases",
-      "properties",
-      "records",
-      "views",
-      "workspaces",
-    ].every((key) => Array.isArray((value as Record<string, unknown>)[key]))
+    ["pages", "documents", "databases", "properties", "records", "views", "workspaces"].every((key) =>
+      Array.isArray((value as Record<string, unknown>)[key]),
+    )
   );
 }
 export function useWorkspace() {
@@ -79,9 +73,7 @@ export function useWorkspace() {
           }),
         );
     } catch {
-      setError(
-        "Device storage is full. Keep this tab open until your changes finish syncing.",
-      );
+      setError("Device storage is full. Keep this tab open until your changes finish syncing.");
     }
   }, []);
   const hydrate = useCallback(() => {
@@ -99,9 +91,7 @@ export function useWorkspace() {
         const identity = getRemoteIdentity();
         owner.current = identity.userId;
         baseRevision.current = identity.revision;
-        const raw = identity.userId
-          ? localStorage.getItem(`slate-pending:${identity.userId}`)
-          : null;
+        const raw = identity.userId ? localStorage.getItem(`slate-pending:${identity.userId}`) : null;
         if (raw) {
           const draft = JSON.parse(raw) as {
             base_revision: number;
@@ -114,9 +104,7 @@ export function useWorkspace() {
               dirty.current = true;
             } else {
               setRecovery(draft.state);
-              setError(
-                "An unsynced draft from an earlier version is available. Download it to preserve those edits.",
-              );
+              setError("An unsynced draft from an earlier version is available. Download it to preserve those edits.");
             }
           }
         }
@@ -129,9 +117,7 @@ export function useWorkspace() {
         setStatus(replay ? "saving" : "saved");
         return replay;
       } catch (e) {
-        setError(
-          e instanceof Error ? e.message : "Unable to load your workspace.",
-        );
+        setError(e instanceof Error ? e.message : "Unable to load your workspace.");
         setStatus("error");
         return false;
       } finally {
@@ -178,33 +164,27 @@ export function useWorkspace() {
               .slice(0, 3)
               .map((title) => `“${title}”`)
               .join(", ");
-            toast(`${names} also changed elsewhere (another tab or an AI agent) while you edited. Your version was kept.`);
+            toast(
+              `${names} also changed elsewhere (another tab or an AI agent) while you edited. Your version was kept.`,
+            );
           }
           queued.current = true;
           continue;
         }
         const savedIdentity = getRemoteIdentity();
-        if (savedIdentity.userId === owner.current)
-          baseRevision.current = savedIdentity.revision;
+        if (savedIdentity.userId === owner.current) baseRevision.current = savedIdentity.revision;
         persisted.current = snapshot;
         if (snapshot === current.current) {
           dirty.current = false;
-          if (owner.current)
-            localStorage.removeItem(`slate-pending:${owner.current}`);
+          if (owner.current) localStorage.removeItem(`slate-pending:${owner.current}`);
         } else journal();
       } while (queued.current);
       setStatus("saved");
-      setError((previous) =>
-        previous.startsWith("An unsynced draft") ? previous : "",
-      );
+      setError((previous) => (previous.startsWith("An unsynced draft") ? previous : ""));
     } catch (e) {
       journal();
       setStatus("error");
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Your changes could not be saved. Retry to keep them safe.",
-      );
+      setError(e instanceof Error ? e.message : "Your changes could not be saved. Retry to keep them safe.");
     } finally {
       saving.current = false;
     }

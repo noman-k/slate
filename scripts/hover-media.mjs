@@ -19,7 +19,8 @@ const files = globSync("src/**/*.css");
 
 const insideHoverMedia = (node) => {
   for (let parent = node.parent; parent; parent = parent.parent)
-    if (parent.type === "atrule" && parent.name === "media" && /\(\s*hover\s*:\s*hover\s*\)/.test(parent.params)) return true;
+    if (parent.type === "atrule" && parent.name === "media" && /\(\s*hover\s*:\s*hover\s*\)/.test(parent.params))
+      return true;
   return false;
 };
 const insideKeyframes = (node) => {
@@ -42,7 +43,11 @@ for (const file of files) {
     }
     const hover = rule.selectors.filter((s) => s.includes(":hover"));
     const rest = rule.selectors.filter((s) => !s.includes(":hover"));
-    const media = postcss.atRule({ name: "media", params: "(hover: hover)", raws: { before: rule.raws.before, afterName: " " } });
+    const media = postcss.atRule({
+      name: "media",
+      params: "(hover: hover)",
+      raws: { before: rule.raws.before, afterName: " " },
+    });
     const hoverRule = rule.clone({ selectors: hover });
     const multiline = (rule.raws.after || "").includes("\n");
     hoverRule.raws.before = multiline ? "\n  " : " ";

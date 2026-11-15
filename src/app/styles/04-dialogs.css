@@ -1,0 +1,174 @@
+/* Dialogs, the side panel, and keyboard hints. (Part of globals.css; the parts load in order.) */
+/* Dialogs hang from a fixed point near the top (like Notion), so they don't
+   jump around when their content grows or shrinks while you type. */
+.modal-surface {
+  position: fixed;
+  left: 50%;
+  top: clamp(24px, 13vh, 120px);
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  width: 440px;
+  max-width: calc(100vw - 30px);
+  max-height: calc(100dvh - 2 * clamp(24px, 13vh, 120px));
+  overflow: auto;
+  padding: 20px 22px 20px;
+  z-index: 80;
+  animation: modal-in 0.18s var(--ease);
+}
+.modal-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -6px;
+}
+.modal-heading .icon-button,
+.peek-heading .icon-button {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  color: var(--icon);
+}
+@media (hover: hover) {
+  .modal-heading .icon-button:hover,
+  .peek-heading .icon-button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+/* Side peek: a record slides in from the right, the database stays visible. */
+.peek-backdrop {
+  background: var(--peek-backdrop);
+}
+/* A panel focused on open (so nothing in it is) shows no ring: it isn't a control. */
+.peek-surface:focus,
+.modal-surface:focus {
+  outline: none;
+}
+.peek-surface {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  width: min(880px, calc(100vw - 120px));
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg);
+  box-shadow: var(--shadow-modal);
+  animation: peek-in 0.22s var(--ease);
+}
+.peek-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 46px;
+  padding: 0 12px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.peek-heading h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0 8px 0 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.peek-surface > .modal-description {
+  margin: 0;
+}
+.modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -4px 0 10px;
+}
+.modal-heading h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--text-strong);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-description {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: -6px 0 18px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+/* Keyboard hints: quiet, and only where a keyboard is likely. */
+.modal-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.modal-hint kbd {
+  font-family: inherit;
+  font-size: 11px;
+  min-width: 18px;
+  padding: 1px 5px;
+  text-align: center;
+  border-radius: 4px;
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+@media (hover: none) {
+  .modal-hint {
+    visibility: hidden;
+  }
+}
+.compact-dialog {
+  width: 420px;
+}
+/* Rename: the page icon sits inside the field, as it does in the sidebar. */
+.rename-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.rename-field:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--accent-border),
+    0 0 0 2px var(--accent-soft);
+}
+.rename-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-strong);
+  box-shadow: none !important;
+}

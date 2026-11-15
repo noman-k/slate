@@ -5,8 +5,20 @@ import { tags as t } from "@lezer/highlight";
 
 /** Formatting actions offered by the Markdown toolbar and shortcuts. */
 export type MarkdownAction =
-  | "h1" | "h2" | "h3" | "bold" | "italic" | "strike" | "code" | "link"
-  | "quote" | "bullet" | "numbered" | "task" | "codeblock" | "divider";
+  | "h1"
+  | "h2"
+  | "h3"
+  | "bold"
+  | "italic"
+  | "strike"
+  | "code"
+  | "link"
+  | "quote"
+  | "bullet"
+  | "numbered"
+  | "task"
+  | "codeblock"
+  | "divider";
 
 /** Wraps the selection (or a placeholder) in markers, or unwraps if already wrapped. */
 function wrap(view: EditorView, before: string, after: string, placeholder: string) {
@@ -23,7 +35,12 @@ function wrap(view: EditorView, before: string, after: string, placeholder: stri
           ],
           range: EditorSelection.range(range.from - before.length, range.to - before.length),
         };
-      if (!range.empty && text.startsWith(before) && text.endsWith(after) && text.length >= before.length + after.length)
+      if (
+        !range.empty &&
+        text.startsWith(before) &&
+        text.endsWith(after) &&
+        text.length >= before.length + after.length
+      )
         return {
           changes: { from: range.from, to: range.to, insert: text.slice(before.length, text.length - after.length) },
           range: EditorSelection.range(range.from, range.to - before.length - after.length),
@@ -42,7 +59,7 @@ function prefixLines(view: EditorView, prefix: string | "numbered") {
   const { state } = view;
   const lines = new Map<number, ReturnType<typeof state.doc.lineAt>>();
   for (const range of state.selection.ranges)
-    for (let pos = range.from; pos <= range.to; ) {
+    for (let pos = range.from; pos <= range.to;) {
       const line = state.doc.lineAt(pos);
       lines.set(line.number, line);
       pos = line.to + 1;
@@ -65,23 +82,47 @@ function prefixLines(view: EditorView, prefix: string | "numbered") {
 
 export function applyMarkdown(view: EditorView, action: MarkdownAction) {
   switch (action) {
-    case "h1": prefixLines(view, "# "); break;
-    case "h2": prefixLines(view, "## "); break;
-    case "h3": prefixLines(view, "### "); break;
-    case "quote": prefixLines(view, "> "); break;
-    case "bullet": prefixLines(view, "- "); break;
-    case "numbered": prefixLines(view, "numbered"); break;
-    case "task": prefixLines(view, "- [ ] "); break;
-    case "bold": wrap(view, "**", "**", "bold text"); break;
-    case "italic": wrap(view, "_", "_", "italic text"); break;
-    case "strike": wrap(view, "~~", "~~", "struck text"); break;
+    case "h1":
+      prefixLines(view, "# ");
+      break;
+    case "h2":
+      prefixLines(view, "## ");
+      break;
+    case "h3":
+      prefixLines(view, "### ");
+      break;
+    case "quote":
+      prefixLines(view, "> ");
+      break;
+    case "bullet":
+      prefixLines(view, "- ");
+      break;
+    case "numbered":
+      prefixLines(view, "numbered");
+      break;
+    case "task":
+      prefixLines(view, "- [ ] ");
+      break;
+    case "bold":
+      wrap(view, "**", "**", "bold text");
+      break;
+    case "italic":
+      wrap(view, "_", "_", "italic text");
+      break;
+    case "strike":
+      wrap(view, "~~", "~~", "struck text");
+      break;
     case "code": {
-      const multiline = view.state.selection.ranges.some((range) => view.state.sliceDoc(range.from, range.to).includes("\n"));
+      const multiline = view.state.selection.ranges.some((range) =>
+        view.state.sliceDoc(range.from, range.to).includes("\n"),
+      );
       if (multiline) wrap(view, "```\n", "\n```", "code");
       else wrap(view, "`", "`", "code");
       break;
     }
-    case "codeblock": wrap(view, "```\n", "\n```", "code"); break;
+    case "codeblock":
+      wrap(view, "```\n", "\n```", "code");
+      break;
     case "link": {
       const range = view.state.selection.main;
       const text = view.state.sliceDoc(range.from, range.to) || "link text";
@@ -105,11 +146,18 @@ export function applyMarkdown(view: EditorView, action: MarkdownAction) {
 /** GitHub-style shortcuts; highest precedence so they beat CodeMirror defaults (Mod-i). */
 export const markdownKeymap = Prec.highest(
   keymap.of(
-    ([
-      ["Mod-b", "bold"], ["Mod-i", "italic"], ["Mod-k", "link"], ["Mod-e", "code"],
-      ["Mod-Shift-x", "strike"], ["Mod-Shift-7", "numbered"], ["Mod-Shift-8", "bullet"],
-      ["Mod-Shift-.", "quote"],
-    ] as [string, MarkdownAction][]).map(([key, action]) => ({
+    (
+      [
+        ["Mod-b", "bold"],
+        ["Mod-i", "italic"],
+        ["Mod-k", "link"],
+        ["Mod-e", "code"],
+        ["Mod-Shift-x", "strike"],
+        ["Mod-Shift-7", "numbered"],
+        ["Mod-Shift-8", "bullet"],
+        ["Mod-Shift-.", "quote"],
+      ] as [string, MarkdownAction][]
+    ).map(([key, action]) => ({
       key,
       run: (view: EditorView) => {
         applyMarkdown(view, action);
@@ -121,7 +169,11 @@ export const markdownKeymap = Prec.highest(
 
 /** Syntax colors modeled on GitHub's dark theme. */
 const githubHighlight = HighlightStyle.define([
-  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6, t.heading], color: "var(--syntax-heading)", fontWeight: "600" },
+  {
+    tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6, t.heading],
+    color: "var(--syntax-heading)",
+    fontWeight: "600",
+  },
   { tag: t.strong, color: "var(--syntax-text)", fontWeight: "700" },
   { tag: t.emphasis, color: "var(--syntax-text)", fontStyle: "italic" },
   { tag: t.strikethrough, color: "var(--syntax-comment)", textDecoration: "line-through" },
@@ -140,27 +192,32 @@ const githubHighlight = HighlightStyle.define([
 ]);
 
 /** Editor chrome in the app's palette; the surrounding box supplies border and header. */
-const githubTheme = EditorView.theme(
-  {
-    "&": { backgroundColor: "transparent", color: "var(--text)", fontSize: "13.5px" },
-    ".cm-scroller": { fontFamily: "var(--mono)", lineHeight: "1.75" },
-    ".cm-content": { padding: "16px 0 28px", minHeight: "220px", caretColor: "var(--text-strong)" },
-    ".cm-line": { padding: "0 24px 0 10px" },
-    // No divider: the gutter is only as tall as the text, so a border would stop short.
-    ".cm-gutters": { backgroundColor: "transparent", color: "var(--text-tertiary)", border: "none" },
-    ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 16px", minWidth: "40px", fontSize: "12px" },
-    ".cm-activeLine": { backgroundColor: "var(--active-line)" },
-    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text-secondary)" },
-    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--text-strong)", borderLeftWidth: "1.5px" },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "var(--syntax-selection) !important" },
-    ".cm-selectionMatch": { backgroundColor: "var(--syntax-match)" },
-    ".cm-foldGutter .cm-gutterElement": { color: "var(--text-tertiary)", padding: "0 4px" },
-    ".cm-foldPlaceholder": { backgroundColor: "var(--bg-raised)", border: "none", color: "var(--text-secondary)" },
-    ".cm-tooltip": { backgroundColor: "var(--bg-elevated)", border: "none", boxShadow: "var(--shadow-popover)", borderRadius: "8px" },
-    ".cm-panels": { backgroundColor: "var(--bg-sidebar)", color: "var(--text)" },
-    ".cm-searchMatch": { backgroundColor: "var(--syntax-search)" },
-    "&.cm-focused": { outline: "none" },
+const githubTheme = EditorView.theme({
+  "&": { backgroundColor: "transparent", color: "var(--text)", fontSize: "13.5px" },
+  ".cm-scroller": { fontFamily: "var(--mono)", lineHeight: "1.75" },
+  ".cm-content": { padding: "16px 0 28px", minHeight: "220px", caretColor: "var(--text-strong)" },
+  ".cm-line": { padding: "0 24px 0 10px" },
+  // No divider: the gutter is only as tall as the text, so a border would stop short.
+  ".cm-gutters": { backgroundColor: "transparent", color: "var(--text-tertiary)", border: "none" },
+  ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 16px", minWidth: "40px", fontSize: "12px" },
+  ".cm-activeLine": { backgroundColor: "var(--active-line)" },
+  ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text-secondary)" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--text-strong)", borderLeftWidth: "1.5px" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
+    backgroundColor: "var(--syntax-selection) !important",
   },
-);
+  ".cm-selectionMatch": { backgroundColor: "var(--syntax-match)" },
+  ".cm-foldGutter .cm-gutterElement": { color: "var(--text-tertiary)", padding: "0 4px" },
+  ".cm-foldPlaceholder": { backgroundColor: "var(--bg-raised)", border: "none", color: "var(--text-secondary)" },
+  ".cm-tooltip": {
+    backgroundColor: "var(--bg-elevated)",
+    border: "none",
+    boxShadow: "var(--shadow-popover)",
+    borderRadius: "8px",
+  },
+  ".cm-panels": { backgroundColor: "var(--bg-sidebar)", color: "var(--text)" },
+  ".cm-searchMatch": { backgroundColor: "var(--syntax-search)" },
+  "&.cm-focused": { outline: "none" },
+});
 
 export const githubMarkdownLook: Extension = [githubTheme, syntaxHighlighting(githubHighlight)];

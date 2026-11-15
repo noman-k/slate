@@ -62,7 +62,9 @@ describe("OAuth for connecting apps", () => {
 
   it("describes itself from the address it's reached on", () => {
     const origin = requestOrigin(
-      new Request("http://0.0.0.0:3000/api/mcp", { headers: { "x-forwarded-host": "slate.noman.io", "x-forwarded-proto": "https" } }),
+      new Request("http://0.0.0.0:3000/api/mcp", {
+        headers: { "x-forwarded-host": "slate.noman.io", "x-forwarded-proto": "https" },
+      }),
     );
     expect(origin).toBe("https://slate.noman.io");
     expect(protectedResourceMetadata(origin)).toMatchObject({

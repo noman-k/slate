@@ -41,11 +41,7 @@ export function recordLookup(state: WorkspaceState): Lookup {
     const record = state.records.find((r) => r.id === value);
     if (!record) return value;
     if (!property) return recordTitle(record, state);
-    const prop = propertyOf(
-      state,
-      record.database_id,
-      (p) => p.name.toLowerCase() === property.toLowerCase(),
-    );
+    const prop = propertyOf(state, record.database_id, (p) => p.name.toLowerCase() === property.toLowerCase());
     const cell = prop ? cellValue(record, prop, state) : null;
     return Array.isArray(cell) ? cell.join(", ") : cell === null || cell === undefined ? "" : String(cell);
   };
@@ -63,7 +59,13 @@ export function ensureRunsDatabase(
   if (!database) {
     const databaseId = id(),
       pageId = id();
-    const prop = (name: string, type: Property["type"], position: number, width: number, config: Property["config"] = {}): Property => ({
+    const prop = (
+      name: string,
+      type: Property["type"],
+      position: number,
+      width: number,
+      config: Property["config"] = {},
+    ): Property => ({
       id: id(),
       database_id: databaseId,
       name,
@@ -136,7 +138,10 @@ export function ensureRunsDatabase(
     (param) => !propertyOf(next, databaseId, (p) => p.config.param === param.name),
   );
   if (missing.length) {
-    const top = Math.max(0, ...next.properties.filter((p) => p.database_id === databaseId && !p.config.system).map((p) => p.position));
+    const top = Math.max(
+      0,
+      ...next.properties.filter((p) => p.database_id === databaseId && !p.config.system).map((p) => p.position),
+    );
     next = {
       ...next,
       properties: [
@@ -178,12 +183,7 @@ export function runResult(procedure: Procedure, run: RunState, lookup?: Lookup) 
 }
 
 /** Writes a run's progress, status and log to its record. */
-export function saveRun(
-  state: WorkspaceState,
-  recordId: string,
-  procedure: Procedure,
-  run: RunState,
-): WorkspaceState {
+export function saveRun(state: WorkspaceState, recordId: string, procedure: Procedure, run: RunState): WorkspaceState {
   const record = state.records.find((r) => r.id === recordId);
   if (!record) return state;
   const lookup = recordLookup(state);
@@ -238,7 +238,10 @@ export function createRun(
   const position = Math.max(0, ...next.records.filter((r) => r.database_id === db).map((r) => r.position)) + 1;
   next = {
     ...next,
-    records: [...next.records, { id: recordId, database_id: db, page_id: pageId, values, position, created_at: now, updated_at: now }],
+    records: [
+      ...next.records,
+      { id: recordId, database_id: db, page_id: pageId, values, position, created_at: now, updated_at: now },
+    ],
     pages: [
       ...next.pages,
       {

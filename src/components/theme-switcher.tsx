@@ -13,11 +13,7 @@ const OPTIONS: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { preference, choose } = useTheme();
   return (
-    <div
-      className={`theme-switcher ${compact ? "compact" : ""}`}
-      role="radiogroup"
-      aria-label="Theme"
-    >
+    <div className={`theme-switcher ${compact ? "compact" : ""}`} role="radiogroup" aria-label="Theme">
       {OPTIONS.map(({ value, label, Icon }) => (
         <button
           key={value}
@@ -41,12 +37,5 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
 export function ThemedToaster() {
   useReapplyTheme();
   const { theme } = useTheme();
-  return (
-    <Toaster
-      theme={theme}
-      position="bottom-right"
-      closeButton
-      toastOptions={{ className: "slate-toast" }}
-    />
-  );
+  return <Toaster theme={theme} position="bottom-right" closeButton toastOptions={{ className: "slate-toast" }} />;
 }

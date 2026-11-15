@@ -25,17 +25,12 @@ export function hasPageBlock(markdown: string, pageId: string): boolean {
  * Whether a child page already appears in its parent's text: as a page link, or
  * (for a database page) as an inline database embed.
  */
-export function isShownInPage(
-  markdown: string,
-  child: { id: string; database_id?: string },
-): boolean {
+export function isShownInPage(markdown: string, child: { id: string; database_id?: string }): boolean {
   return splitMarkdown(markdown).some(
     (part) =>
       part.kind === "embed" &&
       ((part.directive.kind === "page" && part.directive.id === child.id) ||
-        (part.directive.kind === "database" &&
-          !!child.database_id &&
-          part.directive.id === child.database_id)),
+        (part.directive.kind === "database" && !!child.database_id && part.directive.id === child.database_id)),
   );
 }
 
@@ -57,11 +52,7 @@ export function removePageBlocks(markdown: string, pageId: string): string {
     .replace(/\n{2,}$/, "\n");
 }
 
-function editDocument(
-  state: WorkspaceState,
-  pageId: string,
-  edit: (markdown: string) => string,
-): WorkspaceState {
+function editDocument(state: WorkspaceState, pageId: string, edit: (markdown: string) => string): WorkspaceState {
   const page = state.pages.find((p) => p.id === pageId);
   // Only documents hold page blocks; a database's children are its records.
   if (!page || page.kind !== "document") return state;
@@ -73,9 +64,7 @@ function editDocument(
   return {
     ...state,
     documents: existing
-      ? state.documents.map((d) =>
-          d.page_id === pageId ? { ...d, markdown: after, updated_at: now } : d,
-        )
+      ? state.documents.map((d) => (d.page_id === pageId ? { ...d, markdown: after, updated_at: now } : d))
       : [...state.documents, { page_id: pageId, markdown: after, updated_at: now }],
   };
 }
@@ -84,15 +73,21 @@ function editDocument(
  * Copies of a database's own views for a linked block, so filters, sorts and layout
  * there don't change the original or other pages. Rows and properties stay shared.
  */
-export function placementViews(
-  state: WorkspaceState,
-  databaseId: string,
-  block: string,
-): DatabaseView[] {
+export function placementViews(state: WorkspaceState, databaseId: string, block: string): DatabaseView[] {
   const own = state.views.filter((v) => v.database_id === databaseId && !v.placement);
   const base: DatabaseView[] = own.length
     ? own
-    : [{ id: "", database_id: databaseId, name: "Table", type: "table", filters: [], sorts: [], hidden_properties: [] }];
+    : [
+        {
+          id: "",
+          database_id: databaseId,
+          name: "Table",
+          type: "table",
+          filters: [],
+          sorts: [],
+          hidden_properties: [],
+        },
+      ];
   return base.map((v) => ({ ...structuredClone(v), id: id(), placement: block }));
 }
 
@@ -107,11 +102,7 @@ const isOwnedEmbed = (databaseId: string) => (part: ReturnType<typeof splitMarkd
  * page's text becomes a linked view: it gets a block id and its own views, so changing
  * its layout there no longer changes the database's own page (and vice versa).
  */
-export function linkLeftBehind(
-  state: WorkspaceState,
-  pageId: string,
-  databaseId: string,
-): WorkspaceState {
+export function linkLeftBehind(state: WorkspaceState, pageId: string, databaseId: string): WorkspaceState {
   const parts = splitMarkdown(state.documents.find((d) => d.page_id === pageId)?.markdown ?? "");
   if (!parts.some(isOwnedEmbed(databaseId))) return state;
   const views: DatabaseView[] = [];

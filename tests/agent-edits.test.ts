@@ -36,33 +36,80 @@ describe("update_page", () => {
 
   it("asks for a passage that appears exactly once", () => {
     const state = createSeedState();
-    fails(() => edit(state, "update_page", { page_id: SEED_IDS.guide, replace: [{ find: "not in the page", replace_with: "x" }] }), /isn't in the page's text/);
-    fails(() => edit(state, "update_page", { page_id: SEED_IDS.guide, replace: [{ find: "page", replace_with: "x" }] }), /appears \d+ times/);
+    fails(
+      () =>
+        edit(state, "update_page", {
+          page_id: SEED_IDS.guide,
+          replace: [{ find: "not in the page", replace_with: "x" }],
+        }),
+      /isn't in the page's text/,
+    );
+    fails(
+      () => edit(state, "update_page", { page_id: SEED_IDS.guide, replace: [{ find: "page", replace_with: "x" }] }),
+      /appears \d+ times/,
+    );
   });
 
   it("never adds or removes embedded blocks, and won't rewrite a page that has them", () => {
     const state = createSeedState();
     const embed = ':::slate {"kind":"page","id":"' + SEED_IDS.log + '"}';
     doc(state, SEED_IDS.hub).markdown += `\n${embed}\n\nAfter the embed.\n`;
-    fails(() => edit(state, "update_page", { page_id: SEED_IDS.hub, content: "All new" }), /embedded subpages or databases/);
-    fails(() => edit(state, "update_page", { page_id: SEED_IDS.hub, replace: [{ find: embed, replace_with: "" }] }), /embedded block/);
+    fails(
+      () => edit(state, "update_page", { page_id: SEED_IDS.hub, content: "All new" }),
+      /embedded subpages or databases/,
+    );
+    fails(
+      () => edit(state, "update_page", { page_id: SEED_IDS.hub, replace: [{ find: embed, replace_with: "" }] }),
+      /embedded block/,
+    );
     // Text around it can change, and agent text can't smuggle one in.
-    const ok = edit(state, "update_page", { page_id: SEED_IDS.hub, replace: [{ find: "After the embed.", replace_with: "Still here." }] });
+    const ok = edit(state, "update_page", {
+      page_id: SEED_IDS.hub,
+      replace: [{ find: "After the embed.", replace_with: "Still here." }],
+    });
     expect(ok.edit.documents[0].markdown).toContain(embed);
-    const smuggled = edit(state, "update_page", { page_id: SEED_IDS.guide, append: ':::slate {"kind":"database","id":"x"}\nHello' });
+    const smuggled = edit(state, "update_page", {
+      page_id: SEED_IDS.guide,
+      append: ':::slate {"kind":"database","id":"x"}\nHello',
+    });
     expect(smuggled.edit.documents[0].markdown).not.toContain(":::slate");
   });
 
   it("sends databases and playbooks to their own tools, and renames a row's title column too", () => {
     const state = createSeedState();
     fails(() => edit(state, "update_page", { page_id: SEED_IDS.ledger, append: "x" }), /update_database/);
-    const playbook = planCreation(state, "create_playbook", { title: "Check", sections: [{ title: "Do", steps: [{ type: "check", text: "It" }, { type: "finish", text: "Done" }] }] }, ids);
-    const withPlaybook = { ...state, pages: [...state.pages, { ...playbook.creation.pages[0], favorite: false, deleted_at: null, created_at: "", updated_at: "" }], documents: [...state.documents, { ...playbook.creation.documents[0], updated_at: "" }] } as WorkspaceState;
+    const playbook = planCreation(
+      state,
+      "create_playbook",
+      {
+        title: "Check",
+        sections: [
+          {
+            title: "Do",
+            steps: [
+              { type: "check", text: "It" },
+              { type: "finish", text: "Done" },
+            ],
+          },
+        ],
+      },
+      ids,
+    );
+    const withPlaybook = {
+      ...state,
+      pages: [
+        ...state.pages,
+        { ...playbook.creation.pages[0], favorite: false, deleted_at: null, created_at: "", updated_at: "" },
+      ],
+      documents: [...state.documents, { ...playbook.creation.documents[0], updated_at: "" }],
+    } as WorkspaceState;
     fails(() => edit(withPlaybook, "update_page", { page_id: playbook.pageId, append: "x" }), /update_playbook/);
     const row = state.records.find((r) => r.database_id === SEED_IDS.database)!;
     const renamed = edit(state, "update_page", { page_id: row.page_id, title: "2026-04 — Renamed" });
     const titleProperty = state.properties.find((p) => p.database_id === SEED_IDS.database && p.type === "title")!;
-    expect(renamed.edit.values).toEqual([{ record_id: row.id, property_id: titleProperty.id, value: "2026-04 — Renamed" }]);
+    expect(renamed.edit.values).toEqual([
+      { record_id: row.id, property_id: titleProperty.id, value: "2026-04 — Renamed" },
+    ]);
   });
 });
 
@@ -89,9 +136,18 @@ describe("update_database", () => {
 
   it("explains what can't be set", () => {
     const state = createSeedState();
-    fails(() => edit(state, "update_database", { database: "Rent Ledger", add_rows: [{ Colour: "red" }] }), /isn't a property/);
-    fails(() => edit(state, "update_database", { database: "Rent Ledger", add_rows: [{ Tenant: "x" }] }), /relation property/);
-    fails(() => edit(state, "update_database", { database: "Rent Ledger", update_rows: [{ row_id: "nope", values: {} }] }), /no row/);
+    fails(
+      () => edit(state, "update_database", { database: "Rent Ledger", add_rows: [{ Colour: "red" }] }),
+      /isn't a property/,
+    );
+    fails(
+      () => edit(state, "update_database", { database: "Rent Ledger", add_rows: [{ Tenant: "x" }] }),
+      /relation property/,
+    );
+    fails(
+      () => edit(state, "update_database", { database: "Rent Ledger", update_rows: [{ row_id: "nope", values: {} }] }),
+      /no row/,
+    );
     fails(() => edit(state, "update_database", { database: "Nope" }), /no database/);
     fails(() => edit(state, "update_database", { database: "Rent Ledger" }), /Nothing to change/);
   });
@@ -100,17 +156,56 @@ describe("update_database", () => {
 describe("update_playbook and trash_page", () => {
   it("rewrites a playbook's steps, checked like a new one", () => {
     const state = createSeedState();
-    const made = planCreation(state, "create_playbook", { title: "Check", sections: [{ title: "Do", steps: [{ type: "check", text: "It" }, { type: "finish", text: "Done" }] }] }, ids);
-    const withPlaybook = { ...state, pages: [...state.pages, { ...made.creation.pages[0], favorite: false, deleted_at: null, created_at: "", updated_at: "" }], documents: [...state.documents, { ...made.creation.documents[0], updated_at: "t1" }] } as WorkspaceState;
+    const made = planCreation(
+      state,
+      "create_playbook",
+      {
+        title: "Check",
+        sections: [
+          {
+            title: "Do",
+            steps: [
+              { type: "check", text: "It" },
+              { type: "finish", text: "Done" },
+            ],
+          },
+        ],
+      },
+      ids,
+    );
+    const withPlaybook = {
+      ...state,
+      pages: [
+        ...state.pages,
+        { ...made.creation.pages[0], favorite: false, deleted_at: null, created_at: "", updated_at: "" },
+      ],
+      documents: [...state.documents, { ...made.creation.documents[0], updated_at: "t1" }],
+    } as WorkspaceState;
     const planned = edit(withPlaybook, "update_playbook", {
       page_id: made.pageId,
       when_to_use: "Every Monday",
-      sections: [{ title: "Do", steps: [{ type: "check", text: "Lock up" }, { type: "check", text: "Lights off" }, { type: "finish", text: "Done" }] }],
+      sections: [
+        {
+          title: "Do",
+          steps: [
+            { type: "check", text: "Lock up" },
+            { type: "check", text: "Lights off" },
+            { type: "finish", text: "Done" },
+          ],
+        },
+      ],
     });
     expect(planned.edit.documents[0]).toMatchObject({ page_id: made.pageId, expected_updated_at: "t1" });
     expect(planned.edit.documents[0].markdown).toContain("Lights off");
     expect(planned.edit.pages[0]).toMatchObject({ description: "When to use: Every Monday" });
-    fails(() => edit(withPlaybook, "update_playbook", { page_id: made.pageId, sections: [{ title: "Do", steps: [{ type: "decide", value: "nothing", then_go_to: "Nowhere" }] }] }), /sections are/);
+    fails(
+      () =>
+        edit(withPlaybook, "update_playbook", {
+          page_id: made.pageId,
+          sections: [{ title: "Do", steps: [{ type: "decide", value: "nothing", then_go_to: "Nowhere" }] }],
+        }),
+      /sections are/,
+    );
     fails(() => edit(state, "update_playbook", { page_id: SEED_IDS.guide, sections: [] }), /isn't a playbook/);
   });
 
@@ -132,15 +227,22 @@ describe("tools offered by permission", () => {
       { jsonrpc: "2.0", id: 1, method: "tools/list" },
       { load: async () => createSeedState(), scope, create: async () => "u", edit: async () => "u" },
     );
-    return ((reply.body!.result as { tools: { name: string }[] }).tools).map((t) => t.name);
+    return (reply.body!.result as { tools: { name: string }[] }).tools.map((t) => t.name);
   };
   it("only edit gets the edit tools; write can't call them", async () => {
     expect(await list("read")).not.toContain("create_page");
     expect(await list("write")).toContain("create_page");
     expect(await list("write")).not.toContain("update_page");
-    expect(await list("edit")).toEqual(expect.arrayContaining(["create_page", "update_page", "update_database", "update_playbook", "trash_page"]));
+    expect(await list("edit")).toEqual(
+      expect.arrayContaining(["create_page", "update_page", "update_database", "update_playbook", "trash_page"]),
+    );
     const refused = await handleMcpMessage(
-      { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "update_page", arguments: { page_id: SEED_IDS.guide, title: "x" } } },
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "update_page", arguments: { page_id: SEED_IDS.guide, title: "x" } },
+      },
       { load: async () => createSeedState(), scope: "write", create: async () => "u" },
     );
     expect(JSON.stringify(refused.body)).toContain("can't change existing pages");

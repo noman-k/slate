@@ -7,9 +7,28 @@ const step = (attrs: object, text = "") =>
   node({ type: "procedureStep", attrs, ...(text ? { content: [{ type: "text", text }] } : {}) });
 const procedure = parseProcedure(
   [
-    node({ type: "procedureParams", attrs: { params: [{ name: "order_number", type: "text", required: true }, { name: "note", type: "text", required: false }] } }),
+    node({
+      type: "procedureParams",
+      attrs: {
+        params: [
+          { name: "order_number", type: "text", required: true },
+          { name: "note", type: "text", required: false },
+        ],
+      },
+    }),
     "## Look up",
-    step({ step: "api", method: "POST", url: "https://api.example.com/orders/{{order_number}}/notes", headers: "Authorization: Bearer sk_live_1234567890\nX-Trace: {{order_number}}", body: '{ "note": "{{note}}" }', variable: "order", else: "Failed" }, "Look up the order"),
+    step(
+      {
+        step: "api",
+        method: "POST",
+        url: "https://api.example.com/orders/{{order_number}}/notes",
+        headers: "Authorization: Bearer sk_live_1234567890\nX-Trace: {{order_number}}",
+        body: '{ "note": "{{note}}" }',
+        variable: "order",
+        else: "Failed",
+      },
+      "Look up the order",
+    ),
     step({ step: "if", variable: "order.status", op: "is", value: "shipped", then: "Shipped", else: "@end" }),
     "## Shipped",
     step({ step: "send" }, "Order {{order.id}} shipped by {{order.carrier.name}} ({{order_status}})"),
@@ -64,7 +83,11 @@ describe("API steps", () => {
     let run = startRun(procedure, { order_number: "A-1" });
     run = advance(procedure, run, {
       kind: "response",
-      response: { status: 200, ok: true, body: JSON.stringify({ id: "A-1", status: "shipped", carrier: { name: "UPS" } }) },
+      response: {
+        status: 200,
+        ok: true,
+        body: JSON.stringify({ id: "A-1", status: "shipped", carrier: { name: "UPS" } }),
+      },
     });
     expect(run.vars.order_status).toBe("200");
     expect(run.log[0].result).toBe("200 OK");

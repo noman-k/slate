@@ -1,0 +1,17 @@
+# Generated, vendored or not ours to format.
+.next
+.next-*
+.open-next
+.wrangler
+node_modules
+playwright-report
+test-results
+public
+docs/screenshots
+supabase/.temp
+package-lock.json
+next-env.d.ts
+cloudflare-env.d.ts
+# Prose is written by hand (Prettier would re-wrap tables and lists).
+*.md
+tsconfig.json

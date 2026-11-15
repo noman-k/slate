@@ -1,10 +1,5 @@
 import type { CellValue, Document, Property, WorkspaceState } from "./types";
-import {
-  decodeDirective,
-  encodeDirective,
-  joinMarkdown,
-  splitMarkdown,
-} from "./markdown";
+import { decodeDirective, encodeDirective, joinMarkdown, splitMarkdown } from "./markdown";
 
 export interface DuplicatePageOptions {
   /** Allocate this before calling a React state updater so navigation can use it. */
@@ -24,23 +19,15 @@ export function duplicatePageSubtree(
   rootPageId: string,
   options: DuplicatePageOptions = {},
 ): WorkspaceState {
-  const root = state.pages.find(
-    (page) => page.id === rootPageId && !page.deleted_at,
-  );
+  const root = state.pages.find((page) => page.id === rootPageId && !page.deleted_at);
   if (!root) return state;
-  const workspacePages = state.pages.filter(
-    (page) => page.workspace_id === root.workspace_id && !page.deleted_at,
-  );
+  const workspacePages = state.pages.filter((page) => page.workspace_id === root.workspace_id && !page.deleted_at);
   const pageIds = new Set([rootPageId]);
   const databaseIds = new Set<string>();
   const pageById = new Map(workspacePages.map((page) => [page.id, page]));
   const children = new Map<string, string[]>();
   for (const page of workspacePages)
-    if (page.parent_id)
-      children.set(page.parent_id, [
-        ...(children.get(page.parent_id) ?? []),
-        page.id,
-      ]);
+    if (page.parent_id) children.set(page.parent_id, [...(children.get(page.parent_id) ?? []), page.id]);
   const databaseByPage = new Map(
     state.databases
       .filter((database) => database.workspace_id === root.workspace_id)
@@ -70,12 +57,8 @@ export function duplicatePageSubtree(
       }
   }
   const pages = workspacePages.filter((page) => pageIds.has(page.id));
-  const databases = state.databases.filter((database) =>
-    databaseIds.has(database.id),
-  );
-  const properties = state.properties.filter((property) =>
-    databaseIds.has(property.database_id),
-  );
+  const databases = state.databases.filter((database) => databaseIds.has(database.id));
+  const properties = state.properties.filter((property) => databaseIds.has(property.database_id));
   const records = state.records.filter((record) => pageIds.has(record.page_id));
   // Linked database blocks inside the copied pages get new ids, and their own views
   // are copied with them, so the copy's views don't change the original's.
@@ -101,32 +84,18 @@ export function duplicatePageSubtree(
   const generate = options.generateId ?? (() => crypto.randomUUID());
   const fresh = (provided?: string) => {
     const next = provided ?? generate();
-    if (!next || usedIds.has(next))
-      throw new Error("A duplicate page must have a new unique ID.");
+    if (!next || usedIds.has(next)) throw new Error("A duplicate page must have a new unique ID.");
     usedIds.add(next);
     return next;
   };
-  const pageMap = new Map<string, string>([
-    [rootPageId, fresh(options.rootId)],
-  ]);
-  for (const page of pages)
-    if (page.id !== rootPageId) pageMap.set(page.id, fresh());
-  const databaseMap = new Map(
-    databases.map((database) => [database.id, fresh()]),
-  );
-  const propertyMap = new Map(
-    properties.map((property) => [property.id, fresh()]),
-  );
+  const pageMap = new Map<string, string>([[rootPageId, fresh(options.rootId)]]);
+  for (const page of pages) if (page.id !== rootPageId) pageMap.set(page.id, fresh());
+  const databaseMap = new Map(databases.map((database) => [database.id, fresh()]));
+  const propertyMap = new Map(properties.map((property) => [property.id, fresh()]));
   const recordMap = new Map(records.map((record) => [record.id, fresh()]));
   const viewMap = new Map(views.map((view) => [view.id, fresh()]));
   const placementMap = new Map([...blocks].map((block) => [block, generate()]));
-  const allMaps = new Map([
-    ...pageMap,
-    ...databaseMap,
-    ...propertyMap,
-    ...recordMap,
-    ...viewMap,
-  ]);
+  const allMaps = new Map([...pageMap, ...databaseMap, ...propertyMap, ...recordMap, ...viewMap]);
   const now = options.now ?? new Date().toISOString();
   const copiedRootTitle = `${root.title}${options.suffix ?? " (copy)"}`;
 
@@ -137,8 +106,7 @@ export function duplicatePageSubtree(
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        typeof item === "string" &&
-        (key === "id" || key === "viewId" || key.endsWith("_id"))
+        typeof item === "string" && (key === "id" || key === "viewId" || key.endsWith("_id"))
           ? (allMaps.get(item) ?? item)
           : remapStructured(item),
       ]),
@@ -157,12 +125,8 @@ export function duplicatePageSubtree(
               directive.kind === "database"
                 ? (databaseMap.get(directive.id) ?? directive.id)
                 : (pageMap.get(directive.id) ?? directive.id),
-            ...(directive.viewId
-              ? { viewId: viewMap.get(directive.viewId) ?? directive.viewId }
-              : {}),
-            ...(directive.block
-              ? { block: placementMap.get(directive.block) ?? directive.block }
-              : {}),
+            ...(directive.viewId ? { viewId: viewMap.get(directive.viewId) ?? directive.viewId } : {}),
+            ...(directive.block ? { block: placementMap.get(directive.block) ?? directive.block } : {}),
           };
           return {
             ...part,
@@ -182,20 +146,12 @@ export function duplicatePageSubtree(
         return part;
       }),
     ),
-    ...(document.content !== undefined
-      ? { content: remapStructured(document.content) }
-      : {}),
+    ...(document.content !== undefined ? { content: remapStructured(document.content) } : {}),
     updated_at: now,
   });
-  const propertyById = new Map(
-    state.properties.map((property) => [property.id, property]),
-  );
-  const recordById = new Map(
-    state.records.map((record) => [record.id, record]),
-  );
-  const remapValues = (
-    record: WorkspaceState["records"][number],
-  ): Record<string, CellValue> =>
+  const propertyById = new Map(state.properties.map((property) => [property.id, property]));
+  const recordById = new Map(state.records.map((record) => [record.id, record]));
+  const remapValues = (record: WorkspaceState["records"][number]): Record<string, CellValue> =>
     Object.fromEntries(
       Object.entries(record.values).map(([propertyId, value]) => {
         const property = propertyById.get(propertyId);
@@ -212,28 +168,20 @@ export function duplicatePageSubtree(
               )
                 return false;
               // A copied target database can only contain its copied, visible records.
-              return (
-                !clonedProperty ||
-                !databaseMap.has(target.database_id) ||
-                recordMap.has(id)
-              );
+              return !clonedProperty || !databaseMap.has(target.database_id) || recordMap.has(id);
             })
             .map((id) => (clonedProperty ? (recordMap.get(id) ?? id) : id));
         }
-        if (property?.type === "title" && record.page_id === rootPageId)
-          next = copiedRootTitle;
+        if (property?.type === "title" && record.page_id === rootPageId) next = copiedRootTitle;
         return [propertyMap.get(propertyId) ?? propertyId, next];
       }),
     );
   const copiedProperties = properties.map((property) => {
-    const config = remapStructured(
-      structuredClone(property.config),
-    ) as Property["config"];
+    const config = remapStructured(structuredClone(property.config)) as Property["config"];
     // An external reciprocal property still targets the original database. Keep the
     // copied relation one-way rather than write invalid copied IDs into that property.
     const reciprocal = property.config.reciprocal_property_id;
-    if (typeof reciprocal === "string" && !propertyMap.has(reciprocal))
-      delete config.reciprocal_property_id;
+    if (typeof reciprocal === "string" && !propertyMap.has(reciprocal)) delete config.reciprocal_property_id;
     return {
       ...property,
       id: propertyMap.get(property.id)!,
@@ -259,15 +207,9 @@ export function duplicatePageSubtree(
     for (const [propertyId, value] of Object.entries(copy.values)) {
       const property = propertyById.get(propertyId);
       const reciprocal = property?.config.reciprocal_property_id;
-      if (
-        property?.type !== "relation" ||
-        typeof reciprocal !== "string" ||
-        !Array.isArray(value)
-      )
-        continue;
+      if (property?.type !== "relation" || typeof reciprocal !== "string" || !Array.isArray(value)) continue;
       for (const targetId of value) {
-        const additions =
-          reciprocalAdditions.get(targetId) ?? new Map<string, Set<string>>();
+        const additions = reciprocalAdditions.get(targetId) ?? new Map<string, Set<string>>();
         const inverseIds = additions.get(reciprocal) ?? new Set<string>();
         inverseIds.add(copy.id);
         additions.set(reciprocal, inverseIds);
@@ -281,25 +223,18 @@ export function duplicatePageSubtree(
     const values = { ...record.values };
     for (const [propertyId, addedIds] of additions) {
       const current = values[propertyId];
-      values[propertyId] = [
-        ...new Set([...(Array.isArray(current) ? current : []), ...addedIds]),
-      ];
+      values[propertyId] = [...new Set([...(Array.isArray(current) ? current : []), ...addedIds])];
     }
     return { ...record, values, updated_at: now };
   });
-  const recordByPage = new Map(
-    state.records.map((record) => [record.page_id, record]),
-  );
-  const databaseById = new Map(
-    state.databases.map((database) => [database.id, database]),
-  );
+  const recordByPage = new Map(state.records.map((record) => [record.page_id, record]));
+  const databaseById = new Map(state.databases.map((database) => [database.id, database]));
   const copiedParent = (pageId: string, parentId: string | null) => {
     if (pageId === rootPageId) return root.parent_id;
     if (parentId && pageMap.has(parentId)) return pageMap.get(parentId)!;
     const record = recordByPage.get(pageId);
     const database = record ? databaseById.get(record.database_id) : undefined;
-    if (database && databaseMap.has(database.id))
-      return pageMap.get(database.page_id)!;
+    if (database && databaseMap.has(database.id)) return pageMap.get(database.page_id)!;
     return parentId;
   };
   return {
@@ -313,8 +248,7 @@ export function duplicatePageSubtree(
         title: page.id === rootPageId ? copiedRootTitle : page.title,
         ...(page.database_id
           ? {
-              database_id:
-                databaseMap.get(page.database_id) ?? page.database_id,
+              database_id: databaseMap.get(page.database_id) ?? page.database_id,
             }
           : {}),
         position:
@@ -323,9 +257,7 @@ export function duplicatePageSubtree(
                 -1,
                 ...state.pages
                   .filter(
-                    (sibling) =>
-                      sibling.workspace_id === root.workspace_id &&
-                      sibling.parent_id === root.parent_id,
+                    (sibling) => sibling.workspace_id === root.workspace_id && sibling.parent_id === root.parent_id,
                   )
                   .map((sibling) => sibling.position),
               ) + 1
@@ -338,9 +270,7 @@ export function duplicatePageSubtree(
     ],
     documents: [
       ...state.documents,
-      ...state.documents
-        .filter((document) => pageIds.has(document.page_id))
-        .map(remapDocument),
+      ...state.documents.filter((document) => pageIds.has(document.page_id)).map(remapDocument),
     ],
     databases: [
       ...state.databases,
@@ -359,13 +289,10 @@ export function duplicatePageSubtree(
         ...structuredClone(view),
         id: viewMap.get(view.id)!,
         database_id: databaseMap.get(view.database_id) ?? view.database_id,
-        ...(view.placement
-          ? { placement: placementMap.get(view.placement) ?? view.placement }
-          : {}),
+        ...(view.placement ? { placement: placementMap.get(view.placement) ?? view.placement } : {}),
         filters: view.filters.map((filter) => ({
           ...filter,
-          property_id:
-            propertyMap.get(filter.property_id) ?? filter.property_id,
+          property_id: propertyMap.get(filter.property_id) ?? filter.property_id,
           value:
             propertyById.get(filter.property_id)?.type === "relation"
               ? (recordMap.get(filter.value) ?? filter.value)
@@ -375,20 +302,15 @@ export function duplicatePageSubtree(
           ...sort,
           property_id: propertyMap.get(sort.property_id) ?? sort.property_id,
         })),
-        hidden_properties: view.hidden_properties.map(
-          (id) => propertyMap.get(id) ?? id,
-        ),
+        hidden_properties: view.hidden_properties.map((id) => propertyMap.get(id) ?? id),
         ...("property_order" in view && Array.isArray(view.property_order)
           ? {
               property_order: view.property_order.map(
-                (propertyId: string) =>
-                  propertyMap.get(propertyId) ?? propertyId,
+                (propertyId: string) => propertyMap.get(propertyId) ?? propertyId,
               ),
             }
           : {}),
-        ...(view.group_by
-          ? { group_by: propertyMap.get(view.group_by) ?? view.group_by }
-          : {}),
+        ...(view.group_by ? { group_by: propertyMap.get(view.group_by) ?? view.group_by } : {}),
       })),
     ],
   };

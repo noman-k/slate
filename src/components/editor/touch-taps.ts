@@ -37,7 +37,9 @@ export function touchTaps() {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return false;
 
-      const box = target.closest('ul[data-type="taskList"] > li > label')?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+      const box = target
+        .closest('ul[data-type="taskList"] > li > label')
+        ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
       if (box) {
         // No synthetic click (which could focus the page); toggle it directly instead.
         event.preventDefault();

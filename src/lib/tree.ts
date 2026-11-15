@@ -12,15 +12,8 @@ export function descendants(pages: Page[], pageId: string): string[] {
   visit(pageId);
   return [...seen];
 }
-export function canMovePage(
-  pages: Page[],
-  pageId: string,
-  parentId: string | null,
-) {
-  return (
-    parentId !== pageId &&
-    (!parentId || !descendants(pages, pageId).includes(parentId))
-  );
+export function canMovePage(pages: Page[], pageId: string, parentId: string | null) {
+  return parentId !== pageId && (!parentId || !descendants(pages, pageId).includes(parentId));
 }
 export function breadcrumbs(pages: Page[], pageId: string): Page[] {
   const result: Page[] = [];
@@ -41,29 +34,20 @@ export function breadcrumbs(pages: Page[], pageId: string): Page[] {
 export function purgePage(state: WorkspaceState, pageId: string): WorkspaceState {
   const pageIds = new Set([pageId, ...descendants(state.pages, pageId)]);
   // A record's page is owned by its database even if its tree parent points elsewhere.
-  for (let grew = true; grew; ) {
+  for (let grew = true; grew;) {
     grew = false;
-    const owned = new Set(
-      state.databases.filter((d) => pageIds.has(d.page_id)).map((d) => d.id),
-    );
+    const owned = new Set(state.databases.filter((d) => pageIds.has(d.page_id)).map((d) => d.id));
     for (const record of state.records)
       if (owned.has(record.database_id) && !pageIds.has(record.page_id)) {
-        for (const id of [record.page_id, ...descendants(state.pages, record.page_id)])
-          pageIds.add(id);
+        for (const id of [record.page_id, ...descendants(state.pages, record.page_id)]) pageIds.add(id);
         grew = true;
       }
   }
-  const databaseIds = new Set(
-    state.databases.filter((d) => pageIds.has(d.page_id)).map((d) => d.id),
-  );
+  const databaseIds = new Set(state.databases.filter((d) => pageIds.has(d.page_id)).map((d) => d.id));
   const recordIds = new Set(
-    state.records
-      .filter((r) => databaseIds.has(r.database_id) || pageIds.has(r.page_id))
-      .map((r) => r.id),
+    state.records.filter((r) => databaseIds.has(r.database_id) || pageIds.has(r.page_id)).map((r) => r.id),
   );
-  const removedProperties = new Set(
-    state.properties.filter((p) => databaseIds.has(p.database_id)).map((p) => p.id),
-  );
+  const removedProperties = new Set(state.properties.filter((p) => databaseIds.has(p.database_id)).map((p) => p.id));
   return {
     ...state,
     pages: state.pages.filter((p) => !pageIds.has(p.id)),
@@ -97,18 +81,12 @@ export function purgePage(state: WorkspaceState, pageId: string): WorkspaceState
       }),
   };
 }
-export function trashPage(
-  state: WorkspaceState,
-  pageId: string,
-  restore = false,
-): WorkspaceState {
+export function trashPage(state: WorkspaceState, pageId: string, restore = false): WorkspaceState {
   const ids = new Set([pageId, ...descendants(state.pages, pageId)]);
   return {
     ...state,
     pages: state.pages.map((p) =>
-      ids.has(p.id)
-        ? { ...p, deleted_at: restore ? null : new Date().toISOString() }
-        : p,
+      ids.has(p.id) ? { ...p, deleted_at: restore ? null : new Date().toISOString() } : p,
     ),
   };
 }
@@ -143,8 +121,7 @@ export function dropPlacement(
   const canHold = (parentId: string | null) =>
     canMovePage(pages, pageId, parentId) &&
     (parentId === null || pages.find((p) => p.id === parentId)?.kind === "document");
-  const into = (parentId: string, index: number) =>
-    canHold(parentId) ? { parentId, index } : null;
+  const into = (parentId: string, index: number) => (canHold(parentId) ? { parentId, index } : null);
   if (zone === "inside") return into(targetId, childrenOf(pages, targetId, pageId).length);
   if (zone === "after" && expanded.has(targetId) && childrenOf(pages, targetId, pageId).length)
     return into(targetId, 0);
@@ -163,9 +140,7 @@ export function movePageTo(
 ): WorkspaceState {
   const page = state.pages.find((p) => p.id === pageId);
   if (!page || !canMovePage(state.pages, pageId, parentId)) return state;
-  const level = childrenOf(state.pages, parentId, pageId).filter(
-    (p) => p.workspace_id === page.workspace_id,
-  );
+  const level = childrenOf(state.pages, parentId, pageId).filter((p) => p.workspace_id === page.workspace_id);
   level.splice(Math.max(0, Math.min(index, level.length)), 0, page);
   const positions = new Map(level.map((p, i) => [p.id, i]));
   const now = new Date().toISOString();

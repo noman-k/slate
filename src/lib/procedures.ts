@@ -33,8 +33,7 @@ export type ProcedureTemplate = {
 };
 
 /** What a playbook is, in one line (the gallery's description). */
-export const PLAYBOOK_BLURB =
-  "A checklist you can run: go through it step by step, and every run is remembered.";
+export const PLAYBOOK_BLURB = "A checklist you can run: go through it step by step, and every run is remembered.";
 /** Shown first in the gallery; the rest are behind "More templates". */
 export const FEATURED_CATEGORIES: TemplateCategory[] = ["start", "property"];
 
@@ -133,7 +132,10 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       check("Collect the deposit and first month's rent.", "Both have arrived in your account"),
       ask("How much was the deposit?", "deposit", "number"),
       "## Move-in day",
-      check("Walk through {{unit}} with {{tenant_name}} and take photos of every room.", "Photos are saved with the date"),
+      check(
+        "Walk through {{unit}} with {{tenant_name}} and take photos of every room.",
+        "Photos are saved with the date",
+      ),
       check("Write down the meter readings.", "Gas, electricity and water are noted"),
       check("Hand over the keys.", "{{tenant_name}} has every key and fob"),
       "## Afterwards",
@@ -184,11 +186,15 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       "## Decide how to follow up",
       when("days_late", "gt", "14", "Formal notice", NEXT, "Two weeks late or more needs a formal notice."),
       "## Friendly reminder",
-      send("Hi {{tenant_name}}, just a reminder that {{amount}} in rent is now {{days_late}} days overdue. Could you let me know when to expect it?"),
+      send(
+        "Hi {{tenant_name}}, just a reminder that {{amount}} in rent is now {{days_late}} days overdue. Could you let me know when to expect it?",
+      ),
       check("Note the reminder in the Rent Ledger.", "The entry has today's date"),
       end("Reminder sent"),
       "## Formal notice",
-      send("Send {{tenant_name}} a written notice: {{amount}} is {{days_late}} days overdue, with the date it must be paid by."),
+      send(
+        "Send {{tenant_name}} a written notice: {{amount}} is {{days_late}} days overdue, with the date it must be paid by.",
+      ),
       check("Keep a copy of the notice.", "It's saved with the tenant's records"),
       check("Note the notice in the Rent Ledger."),
       end("Formal notice sent"),
@@ -225,18 +231,36 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
         { name: "order_number", type: "text", required: true },
         { name: "order_total", type: "text", required: true },
         { name: "days_since_delivery", type: "number", required: true },
-        { name: "reason", type: "choice", required: false, options: ["Damaged", "Wrong item", "Changed mind", "Other"] },
+        {
+          name: "reason",
+          type: "choice",
+          required: false,
+          options: ["Damaged", "Wrong item", "Changed mind", "Other"],
+        },
       ]),
       "## Guidelines",
       "- Apologize once, then focus on solving it.\n- Refunds go back to the original payment method only.\n- Never ask for full card numbers.",
       "## Check eligibility",
-      when("days_since_delivery", "lt", "31", NEXT, "Offer store credit", "Refunds are allowed within 30 days of delivery."),
+      when(
+        "days_since_delivery",
+        "lt",
+        "31",
+        NEXT,
+        "Offer store credit",
+        "Refunds are allowed within 30 days of delivery.",
+      ),
       "## Refund",
-      check("Refund {{order_total}} for order {{order_number}} in the payments dashboard.", "The refund shows as pending on {{order_number}}", "Escalate"),
+      check(
+        "Refund {{order_total}} for order {{order_number}} in the payments dashboard.",
+        "The refund shows as pending on {{order_number}}",
+        "Escalate",
+      ),
       send("Your refund of {{order_total}} is on its way — it can take 5–10 business days to appear."),
       end("Refunded"),
       "## Offer store credit",
-      send("Order {{order_number}} is outside our 30-day refund window, but I can offer {{order_total}} in store credit instead."),
+      send(
+        "Order {{order_number}} is outside our 30-day refund window, but I can offer {{order_total}} in store credit instead.",
+      ),
       ask("Does the customer accept store credit?", "accepts_credit", "yesno"),
       when("accepts_credit", "is", "Yes", NEXT, "Escalate"),
       send("Done — {{order_total}} in store credit is ready to use right away."),
@@ -261,13 +285,20 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
         { name: "incident_channel", type: "text", required: false, default: "#incidents" },
       ]),
       "## Triage",
-      check("Confirm the impact on {{service}}: who is affected, since when, how badly.", "A one-line impact summary posted in {{incident_channel}}"),
+      check(
+        "Confirm the impact on {{service}}: who is affected, since when, how badly.",
+        "A one-line impact summary posted in {{incident_channel}}",
+      ),
       send("Post a status page update: we're investigating problems with {{service}}."),
       when("severity", "is", "SEV1", NEXT, "Mitigate", "SEV1 means customers are blocked."),
       "## Escalate",
       send("Page the engineering manager: {{severity}} on {{service}} — join {{incident_channel}}."),
       "## Mitigate",
-      check("Roll back the latest change to {{service}}, fail over or scale up.", "Errors and latency return to normal", "Escalate"),
+      check(
+        "Roll back the latest change to {{service}}, fail over or scale up.",
+        "Errors and latency return to normal",
+        "Escalate",
+      ),
       send("Update the status page every 30 minutes until it's resolved."),
       "## Verify",
       check("Watch the dashboards for 15 minutes.", "Everything stays in its normal range"),
@@ -286,7 +317,13 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       reviewTable("Release manager", "30 min"),
       params([
         { name: "version", type: "text", required: true },
-        { name: "environment", type: "choice", required: true, default: "Production", options: ["Staging", "Production"] },
+        {
+          name: "environment",
+          type: "choice",
+          required: true,
+          default: "Production",
+          options: ["Staging", "Production"],
+        },
       ]),
       "## Before you start",
       check("Check that every test passes on the {{version}} release branch.", "All checks are green"),
@@ -319,7 +356,10 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       "## Before you start",
       check("Pause anything that writes to {{database}}.", "No new writes in the last minute"),
       "## Restore",
-      check("Find the newest backup of {{database}} from before {{restore_point}}.", "A backup timestamped before the incident"),
+      check(
+        "Find the newest backup of {{database}} from before {{restore_point}}.",
+        "A backup timestamped before the incident",
+      ),
       check("Restore it to a separate copy.", "The copy starts and accepts connections", "Roll back"),
       check("Spot-check the copy against known records.", "The records look right and nothing is missing", "Roll back"),
       check("Switch the app to the restored copy.", "The app reads from the restored data", "Roll back"),
@@ -337,7 +377,8 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
     category: "automation",
     name: "Daily standup note",
     summary: "Three questions; saved as a note, shared if you like",
-    whenToUse: "When to use: every morning. Your answers are saved as today's note in Runs, and can be posted to your team's chat.",
+    whenToUse:
+      "When to use: every morning. Your answers are saved as today's note in Runs, and can be posted to your team's chat.",
     icon: "icon:notebook:blue",
     markdown: lines(
       params([
@@ -364,7 +405,8 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
     category: "automation",
     name: "Meeting notes to tasks",
     summary: "Capture decisions and send follow-ups to your task app",
-    whenToUse: "When to use: right after a meeting. The notes are saved in Runs, and the action items go to your task tool's API.",
+    whenToUse:
+      "When to use: right after a meeting. The notes are saved in Runs, and the action items go to your task tool's API.",
     icon: "icon:presentation:purple",
     markdown: lines(
       params([
@@ -407,9 +449,16 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
         { name: "issue_number", label: "Issue number", type: "number", required: true },
       ]),
       "## Look it up",
-      call("Look up the issue on GitHub", "GET", "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{issue_number}}", "issue", "Not found", {
-        headers: "Accept: application/vnd.github+json",
-      }),
+      call(
+        "Look up the issue on GitHub",
+        "GET",
+        "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{issue_number}}",
+        "issue",
+        "Not found",
+        {
+          headers: "Accept: application/vnd.github+json",
+        },
+      ),
       when("issue.state", "is", "open", NEXT, "Closed"),
       "## Open",
       send("“{{issue.title}}” is still open. {{issue.user.login}} opened it, and it has {{issue.comments}} comments."),
@@ -441,10 +490,7 @@ export const PROCEDURE_TEMPLATES: ProcedureTemplate[] = [
       "## Up",
       end("Site is up"),
       "## Down",
-      check(
-        "Open {{site_url}} in a browser to confirm it's down.",
-        "The page doesn't load, or shows an error",
-      ),
+      check("Open {{site_url}} in a browser to confirm it's down.", "The page doesn't load, or shows an error"),
       when("alert_webhook", "set", "", NEXT, END),
       call("Alert the team", "POST", "{{alert_webhook}}", "alert", "", {
         body: '{ "text": "{{site_url}} looks down (status {{site_status}})." }',
@@ -482,5 +528,4 @@ export function templateOutline(template: ProcedureTemplate) {
 }
 
 /** The inputs a template asks for when it runs. */
-export const templateInputs = (template: ProcedureTemplate) =>
-  parseProcedure(template.markdown).params;
+export const templateInputs = (template: ProcedureTemplate) => parseProcedure(template.markdown).params;

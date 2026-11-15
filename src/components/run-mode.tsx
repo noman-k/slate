@@ -42,14 +42,7 @@ import {
   type StepType,
   type ApiResponse,
 } from "@/lib/runner";
-import {
-  buildRequest,
-  isSecretHeader,
-  maskSecret,
-  prettyBody,
-  urlProblem,
-  type ApiRequest,
-} from "@/lib/api-request";
+import { buildRequest, isSecretHeader, maskSecret, prettyBody, urlProblem, type ApiRequest } from "@/lib/api-request";
 import type { Page } from "@/lib/types";
 import { useKeys, useTouchOnly } from "./keys";
 
@@ -160,7 +153,11 @@ function ApiCall({
             <button className="secondary-button" onClick={fire}>
               <RotateCcw size={14} /> Retry
             </button>
-            <button ref={actionRef} className="primary-button" onClick={() => onAdvance({ kind: "response", response })}>
+            <button
+              ref={actionRef}
+              className="primary-button"
+              onClick={() => onAdvance({ kind: "response", response })}
+            >
               Continue to {targetLabel(step.else)}
             </button>
           </>
@@ -349,9 +346,7 @@ function Outline({ procedure, run, lookup }: { procedure: Procedure; run: RunSta
                   <span className="run-dot" aria-hidden>
                     {done.has(step.index) && !current ? <Check size={11} /> : null}
                   </span>
-                  <span className="run-outline-text">
-                    {outlineText(step, procedure, run, lookup)}
-                  </span>
+                  <span className="run-outline-text">{outlineText(step, procedure, run, lookup)}</span>
                 </li>
               );
             })}
@@ -377,7 +372,7 @@ function StepCard({
 }) {
   const step = procedure.steps[run.step];
   const fill = (text: string) => interpolate(text, procedure, run.vars, lookup);
-  const [answer, setAnswer] = useState(step?.variable ? run.vars[step.variable] ?? "" : "");
+  const [answer, setAnswer] = useState(step?.variable ? (run.vars[step.variable] ?? "") : "");
   const [copied, setCopied] = useState(false);
   if (!step) return null;
   const Icon = STEP_ICONS[step.step];
@@ -408,7 +403,10 @@ function StepCard({
       step.answer === "yesno"
         ? ["Yes", "No"]
         : step.answer === "choice"
-          ? (step.options || "").split(",").map((o) => o.trim()).filter(Boolean)
+          ? (step.options || "")
+              .split(",")
+              .map((o) => o.trim())
+              .filter(Boolean)
           : null;
     if (options) {
       body = (

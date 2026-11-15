@@ -1,82 +1,365 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isPhoneWidth, isTouchOnly, usePhoneWidth } from '../keys';
-import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import * as Popover from '@radix-ui/react-popover';
-import { AlignLeft, ArrowDown, ArrowUpRight, Maximize2, PanelRightOpen, ArrowDownUp, ArrowLeft, ArrowRight, ArrowUp, Calendar, Check, CheckSquare, ChevronDown, ChevronRight, Clock3, Copy, Download, Filter, GripVertical, Hash, KanbanSquare, Link2, List, ListFilter, Mail, MoreHorizontal, Plus, Search, Sigma, SlidersHorizontal, Table2, Trash2, X, Zap } from 'lucide-react';
-import type { CellValue, DatabaseView as View, DbRecord, Property, PropertyType, RecordOpenMode, WorkspaceState } from '@/lib/types';
-import { toast } from 'sonner';
-import { addRecordTo, cellValue, csvExport, linksOne, duplicateProperty, orderProperties, recordTitle, renameProperty, removeProperty, removeRecord, restoreRemovedRecord, updateCell, visibleRecords } from '@/lib/database';
-import { PageIcon } from '../page-icon';
-import './database.css';
-import { useKeys, useTouchOnly } from '../keys';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isPhoneWidth, isTouchOnly, usePhoneWidth } from "../keys";
+import { createColumnHelper, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import * as Popover from "@radix-ui/react-popover";
+import {
+  AlignLeft,
+  ArrowDown,
+  ArrowUpRight,
+  Maximize2,
+  PanelRightOpen,
+  ArrowDownUp,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Calendar,
+  Check,
+  CheckSquare,
+  ChevronDown,
+  ChevronRight,
+  Clock3,
+  Copy,
+  Download,
+  Filter,
+  GripVertical,
+  Hash,
+  KanbanSquare,
+  Link2,
+  List,
+  ListFilter,
+  Mail,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Sigma,
+  SlidersHorizontal,
+  Table2,
+  Trash2,
+  X,
+  Zap,
+} from "lucide-react";
+import type {
+  CellValue,
+  DatabaseView as View,
+  DbRecord,
+  Property,
+  PropertyType,
+  RecordOpenMode,
+  WorkspaceState,
+} from "@/lib/types";
+import { toast } from "sonner";
+import {
+  addRecordTo,
+  cellValue,
+  csvExport,
+  linksOne,
+  duplicateProperty,
+  orderProperties,
+  recordTitle,
+  renameProperty,
+  removeProperty,
+  removeRecord,
+  restoreRemovedRecord,
+  updateCell,
+  visibleRecords,
+} from "@/lib/database";
+import { PageIcon } from "../page-icon";
+import "./database.css";
+import { useKeys, useTouchOnly } from "../keys";
 
-interface Props { databaseId: string; state: WorkspaceState; onChange: (updater: (state: WorkspaceState) => WorkspaceState) => void; /** Opens a record the database's way; `fullPage` (⌘-click) forces a full page. */ onOpenRecord: (record: DbRecord, options?: { fullPage?: boolean }) => void; /** Opens a linked record (a relation) in the side panel, over what's open now (defaults to onOpenRecord). */ onOpenLinked?: (record: DbRecord) => void; compact?: boolean; /** Opens the database's own page (from an embedded database's title). */ onOpenPage?: (pageId: string) => void; /** Set when this is a linked view: the page the database lives in. */ linkedFrom?: string; /** A database just created here: its name opens for typing. */ autoFocusTitle?: boolean; onTitleFocused?: () => void; /** A linked block's id: it shows (and edits) its own views, not the database's. */ placement?: string; }
+interface Props {
+  databaseId: string;
+  state: WorkspaceState;
+  onChange: (updater: (state: WorkspaceState) => WorkspaceState) => void;
+  /** Opens a record the database's way; `fullPage` (⌘-click) forces a full page. */ onOpenRecord: (
+    record: DbRecord,
+    options?: { fullPage?: boolean },
+  ) => void;
+  /** Opens a linked record (a relation) in the side panel, over what's open now (defaults to onOpenRecord). */ onOpenLinked?: (
+    record: DbRecord,
+  ) => void;
+  compact?: boolean;
+  /** Opens the database's own page (from an embedded database's title). */ onOpenPage?: (pageId: string) => void;
+  /** Set when this is a linked view: the page the database lives in. */ linkedFrom?: string;
+  /** A database just created here: its name opens for typing. */ autoFocusTitle?: boolean;
+  onTitleFocused?: () => void;
+  /** A linked block's id: it shows (and edits) its own views, not the database's. */ placement?: string;
+}
 const TYPES: { value: PropertyType; label: string }[] = [
-  { value: 'text', label: 'Text' }, { value: 'number', label: 'Number' }, { value: 'currency', label: 'Currency' }, { value: 'select', label: 'Select' }, { value: 'multi_select', label: 'Multi-select' }, { value: 'status', label: 'Status' }, { value: 'checkbox', label: 'Checkbox' }, { value: 'date', label: 'Date' }, { value: 'datetime', label: 'Date & time' }, { value: 'url', label: 'URL' }, { value: 'email', label: 'Email' }, { value: 'phone', label: 'Phone' }, { value: 'relation', label: 'Relation' }, { value: 'rollup', label: 'Rollup' }, { value: 'formula', label: 'Formula' }, { value: 'created_time', label: 'Created time' }, { value: 'updated_time', label: 'Last edited time' },
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "currency", label: "Currency" },
+  { value: "select", label: "Select" },
+  { value: "multi_select", label: "Multi-select" },
+  { value: "status", label: "Status" },
+  { value: "checkbox", label: "Checkbox" },
+  { value: "date", label: "Date" },
+  { value: "datetime", label: "Date & time" },
+  { value: "url", label: "URL" },
+  { value: "email", label: "Email" },
+  { value: "phone", label: "Phone" },
+  { value: "relation", label: "Relation" },
+  { value: "rollup", label: "Rollup" },
+  { value: "formula", label: "Formula" },
+  { value: "created_time", label: "Created time" },
+  { value: "updated_time", label: "Last edited time" },
 ];
 const token = () => crypto.randomUUID();
 export function PropertyIcon({ type }: { type: PropertyType }) {
-  if (type === 'title') return <span className="db-title-icon">Aa</span>;
-  const Icon = type === 'number' || type === 'currency' ? Hash : type === 'date' || type === 'datetime' ? Calendar : type === 'created_time' || type === 'updated_time' ? Clock3 : type === 'formula' || type === 'rollup' ? Sigma : type === 'checkbox' ? CheckSquare : type === 'relation' || type === 'url' ? Link2 : type === 'status' || type === 'select' || type === 'multi_select' ? ListFilter : type === 'email' ? Mail : AlignLeft;
+  if (type === "title") return <span className="db-title-icon">Aa</span>;
+  const Icon =
+    type === "number" || type === "currency"
+      ? Hash
+      : type === "date" || type === "datetime"
+        ? Calendar
+        : type === "created_time" || type === "updated_time"
+          ? Clock3
+          : type === "formula" || type === "rollup"
+            ? Sigma
+            : type === "checkbox"
+              ? CheckSquare
+              : type === "relation" || type === "url"
+                ? Link2
+                : type === "status" || type === "select" || type === "multi_select"
+                  ? ListFilter
+                  : type === "email"
+                    ? Mail
+                    : AlignLeft;
   return <Icon size={16} />;
 }
-function ViewIcon({ type }: { type: View['type'] }) { const Icon = type === 'board' ? KanbanSquare : type === 'list' ? List : Table2; return <Icon size={16} />; }
-function Menu({ trigger, children, label, className = '', align = 'start', open, onOpenChange, overlay }: { trigger: React.ReactNode; children: React.ReactNode; label?: string; className?: string; align?: 'start' | 'end'; open?: boolean; onOpenChange?: (open: boolean) => void; /** Shown over the trigger (and anchoring the menu with it): relation chips. */ overlay?: React.ReactNode }) {
-  return <Popover.Root open={open} onOpenChange={onOpenChange}>{overlay ? <Popover.Anchor asChild><span className="db-cell-anchor"><Popover.Trigger asChild>{trigger}</Popover.Trigger>{overlay}</span></Popover.Anchor> : <Popover.Trigger asChild>{trigger}</Popover.Trigger>}<Popover.Portal><Popover.Content className={`db-menu ${className}`} align={align} sideOffset={6} collisionPadding={12} aria-label={label} onOpenAutoFocus={(event) => { event.preventDefault(); /* On a phone, focusing a field would raise the keyboard over the menu: tap it when needed. */ if (isTouchOnly()) return; (event.currentTarget as HTMLElement)?.querySelector<HTMLElement>('input:not([type=checkbox]), textarea')?.focus(); }}>{children}</Popover.Content></Popover.Portal></Popover.Root>;
+function ViewIcon({ type }: { type: View["type"] }) {
+  const Icon = type === "board" ? KanbanSquare : type === "list" ? List : Table2;
+  return <Icon size={16} />;
 }
-function MenuAction({ children, icon, onClick, danger, disabled }: { children: React.ReactNode; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }) {
-  return <button type="button" className={`db-menu-action ${danger ? 'danger' : ''}`} onClick={onClick} disabled={disabled}>{icon}<span>{children}</span></button>;
+function Menu({
+  trigger,
+  children,
+  label,
+  className = "",
+  align = "start",
+  open,
+  onOpenChange,
+  overlay,
+}: {
+  trigger: React.ReactNode;
+  children: React.ReactNode;
+  label?: string;
+  className?: string;
+  align?: "start" | "end";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Shown over the trigger (and anchoring the menu with it): relation chips. */ overlay?: React.ReactNode;
+}) {
+  return (
+    <Popover.Root open={open} onOpenChange={onOpenChange}>
+      {overlay ? (
+        <Popover.Anchor asChild>
+          <span className="db-cell-anchor">
+            <Popover.Trigger asChild>{trigger}</Popover.Trigger>
+            {overlay}
+          </span>
+        </Popover.Anchor>
+      ) : (
+        <Popover.Trigger asChild>{trigger}</Popover.Trigger>
+      )}
+      <Popover.Portal>
+        <Popover.Content
+          className={`db-menu ${className}`}
+          align={align}
+          sideOffset={6}
+          collisionPadding={12}
+          aria-label={label}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            /* On a phone, focusing a field would raise the keyboard over the menu: tap it when needed. */ if (
+              isTouchOnly()
+            )
+              return;
+            (event.currentTarget as HTMLElement)
+              ?.querySelector<HTMLElement>("input:not([type=checkbox]), textarea")
+              ?.focus();
+          }}
+        >
+          {children}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
 }
-const TAG_COLORS = ['brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'] as const;
+function MenuAction({
+  children,
+  icon,
+  onClick,
+  danger,
+  disabled,
+}: {
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button type="button" className={`db-menu-action ${danger ? "danger" : ""}`} onClick={onClick} disabled={disabled}>
+      {icon}
+      <span>{children}</span>
+    </button>
+  );
+}
+const TAG_COLORS = ["brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"] as const;
 /** Stable option color: meaningful words get a fitting color, everything else hashes to one. */
 export function tagColor(value: string) {
-  if (/^(paid|done|complete(d)?|active|yes|approved)$/i.test(value)) return 'green';
-  if (/overdue|late|urgent|blocked|failed|rejected/i.test(value)) return 'red';
-  if (/pending|progress|planning|review|waiting|draft/i.test(value)) return 'yellow';
-  if (/^(not started|to ?do|backlog|no status|none)$/i.test(value)) return 'default';
+  if (/^(paid|done|complete(d)?|active|yes|approved)$/i.test(value)) return "green";
+  if (/overdue|late|urgent|blocked|failed|rejected/i.test(value)) return "red";
+  if (/pending|progress|planning|review|waiting|draft/i.test(value)) return "yellow";
+  if (/^(not started|to ?do|backlog|no status|none)$/i.test(value)) return "default";
   let hash = 0;
   for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) | 0;
   return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
 }
 function Badge({ value, onRemove }: { value: string; onRemove?: () => void }) {
-  return <span className={`db-badge tag-${tagColor(value)}`}>{value}{onRemove && <button type="button" className="db-badge-remove" aria-label={`Remove ${value}`} onClick={(e) => { e.stopPropagation(); onRemove(); }}><X size={12} /></button>}</span>;
+  return (
+    <span className={`db-badge tag-${tagColor(value)}`}>
+      {value}
+      {onRemove && (
+        <button
+          type="button"
+          className="db-badge-remove"
+          aria-label={`Remove ${value}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
+          <X size={12} />
+        </button>
+      )}
+    </span>
+  );
 }
 function OptionsEditor({ options, onChange }: { options: string[]; onChange: (options: string[]) => void }) {
-  const [draft, setDraft] = useState('');
-  const add = () => { const option = draft.trim(); if (option && !options.includes(option)) onChange([...options, option]); setDraft(''); };
-  return <div className="db-options-editor"><div className="db-menu-heading">Options</div>{options.filter(Boolean).map((option) => <div key={option} className="db-option-row db-option-static"><Badge value={option} /><button type="button" className="db-icon-button" aria-label={`Delete option ${option}`} title="Delete option" onClick={() => onChange(options.filter((item) => item !== option))}><X size={14} /></button></div>)}<input className="db-menu-input" placeholder="Add an option…" aria-label="Add an option" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} onBlur={add} /></div>;
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const option = draft.trim();
+    if (option && !options.includes(option)) onChange([...options, option]);
+    setDraft("");
+  };
+  return (
+    <div className="db-options-editor">
+      <div className="db-menu-heading">Options</div>
+      {options.filter(Boolean).map((option) => (
+        <div key={option} className="db-option-row db-option-static">
+          <Badge value={option} />
+          <button
+            type="button"
+            className="db-icon-button"
+            aria-label={`Delete option ${option}`}
+            title="Delete option"
+            onClick={() => onChange(options.filter((item) => item !== option))}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+      <input
+        className="db-menu-input"
+        placeholder="Add an option…"
+        aria-label="Add an option"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            add();
+          }
+        }}
+        onBlur={add}
+      />
+    </div>
+  );
 }
 function TypeList({ current, onPick }: { current?: PropertyType; onPick: (type: PropertyType) => void }) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const list = TYPES.filter((type) => type.label.toLowerCase().includes(query.trim().toLowerCase()));
-  return <><input className="db-menu-input" placeholder="Search for a type…" aria-label="Search property types" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && list[0]) onPick(list[0].value); }} /><div className="db-menu-heading">Type</div><div className="db-options-scroll">{list.map((type) => <MenuAction key={type.value} icon={<PropertyIcon type={type.value} />} onClick={() => onPick(type.value)}>{type.label}{current === type.value && <Check size={14} />}</MenuAction>)}{!list.length && <div className="db-menu-hint">No matching types</div>}</div></>;
+  return (
+    <>
+      <input
+        className="db-menu-input"
+        placeholder="Search for a type…"
+        aria-label="Search property types"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && list[0]) onPick(list[0].value);
+        }}
+      />
+      <div className="db-menu-heading">Type</div>
+      <div className="db-options-scroll">
+        {list.map((type) => (
+          <MenuAction key={type.value} icon={<PropertyIcon type={type.value} />} onClick={() => onPick(type.value)}>
+            {type.label}
+            {current === type.value && <Check size={14} />}
+          </MenuAction>
+        ))}
+        {!list.length && <div className="db-menu-hint">No matching types</div>}
+      </div>
+    </>
+  );
 }
 /** A record's own page icon, or the plain record glyph. */
 function RecordIcon({ record, state, size }: { record: DbRecord; state: WorkspaceState; size: number }) {
-  return <PageIcon page={state.pages.find((page) => page.id === record.page_id) ?? { icon: '', kind: 'document' }} fallback="record" size={size} />;
+  return (
+    <PageIcon
+      page={state.pages.find((page) => page.id === record.page_id) ?? { icon: "", kind: "document" }}
+      fallback="record"
+      size={size}
+    />
+  );
 }
 function formatValue(value: CellValue, property: Property) {
-  if (value === null || value === '') return '';
-  if (property.type === 'currency' && Number.isFinite(Number(value))) return new Intl.NumberFormat('en-CA', { style: 'currency', currency: String(property.config.currency || 'CAD'), minimumFractionDigits: 2 }).format(Number(value));
-  if (['created_time', 'updated_time', 'datetime'].includes(property.type)) { const date = new Date(String(value)); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
-  if (property.type === 'date') { const date = new Date(`${String(value).slice(0, 10)}T12:00:00`); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
-  return Array.isArray(value) ? value.join(', ') : String(value);
+  if (value === null || value === "") return "";
+  if (property.type === "currency" && Number.isFinite(Number(value)))
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: String(property.config.currency || "CAD"),
+      minimumFractionDigits: 2,
+    }).format(Number(value));
+  if (["created_time", "updated_time", "datetime"].includes(property.type)) {
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime())
+      ? String(value)
+      : date.toLocaleString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+  }
+  if (property.type === "date") {
+    const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+    return Number.isNaN(date.getTime())
+      ? String(value)
+      : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  return Array.isArray(value) ? value.join(", ") : String(value);
 }
 
 /** How a database opens its records, and the icon and words that say so. */
 function openModeOf(state: WorkspaceState, databaseId: string): RecordOpenMode {
   // On a phone records always open as a full page (see isPhoneWidth).
-  if (isPhoneWidth()) return 'page';
-  return state.databases.find((d) => d.id === databaseId)?.open_mode ?? 'peek';
+  if (isPhoneWidth()) return "page";
+  return state.databases.find((d) => d.id === databaseId)?.open_mode ?? "peek";
 }
-const OPEN_LABEL: Record<RecordOpenMode, string> = { peek: 'Open in side panel', page: 'Open as full page' };
+const OPEN_LABEL: Record<RecordOpenMode, string> = { peek: "Open in side panel", page: "Open as full page" };
 /** The choice saved for the database (what the setting shows), whatever the screen. */
-const savedOpenModeOf = (state: WorkspaceState, databaseId: string): RecordOpenMode => state.databases.find((d) => d.id === databaseId)?.open_mode ?? 'peek';
+const savedOpenModeOf = (state: WorkspaceState, databaseId: string): RecordOpenMode =>
+  state.databases.find((d) => d.id === databaseId)?.open_mode ?? "peek";
 function OpenModeIcon({ mode, size = 16 }: { mode: RecordOpenMode; size?: number }) {
-  const Icon = mode === 'page' ? Maximize2 : PanelRightOpen;
+  const Icon = mode === "page" ? Maximize2 : PanelRightOpen;
   return <Icon size={size} />;
 }
 /**
@@ -85,13 +368,29 @@ function OpenModeIcon({ mode, size = 16 }: { mode: RecordOpenMode; size?: number
  * a record replaces the current one and closes the picker. A search with no match offers to
  * create that record in the related database and link it.
  */
-function RelationCell({ record, property, state, value, onChange, onOpenLinked }: { record: DbRecord; property: Property; state: WorkspaceState; value: CellValue; onChange: Props['onChange']; onOpenLinked: (record: DbRecord) => void }) {
+function RelationCell({
+  record,
+  property,
+  state,
+  value,
+  onChange,
+  onOpenLinked,
+}: {
+  record: DbRecord;
+  property: Property;
+  state: WorkspaceState;
+  value: CellValue;
+  onChange: Props["onChange"];
+  onOpenLinked: (record: DbRecord) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const relatedDatabase = state.databases.find((db) => db.id === property.config.related_database_id);
   const one = linksOne(property);
   const selected = Array.isArray(value) ? value : [];
-  const live = state.records.filter((r) => r.database_id === relatedDatabase?.id && !state.pages.find((p) => p.id === r.page_id)?.deleted_at);
+  const live = state.records.filter(
+    (r) => r.database_id === relatedDatabase?.id && !state.pages.find((p) => p.id === r.page_id)?.deleted_at,
+  );
   const term = query.trim().toLowerCase();
   const matches = (r: DbRecord) => !term || recordTitle(r, state).toLowerCase().includes(term);
   const linked = selected.map((id) => live.find((r) => r.id === id)).filter((r): r is DbRecord => !!r);
@@ -103,29 +402,48 @@ function RelationCell({ record, property, state, value, onChange, onOpenLinked }
       save([id]);
       setOpen(false);
     } else save([...selected, id]);
-    setQuery('');
+    setQuery("");
   };
   const create = () => {
     if (!relatedDatabase || !query.trim()) return;
     const ids = { recordId: token(), pageId: token() };
     const title = query.trim();
-    onChange((current) => updateCell(addRecordTo(current, relatedDatabase.id, title, ids), record.id, property, one ? [ids.recordId] : [...selected, ids.recordId]));
-    setQuery('');
+    onChange((current) =>
+      updateCell(
+        addRecordTo(current, relatedDatabase.id, title, ids),
+        record.id,
+        property,
+        one ? [ids.recordId] : [...selected, ids.recordId],
+      ),
+    );
+    setQuery("");
     if (one) setOpen(false);
   };
-  const openLabel = OPEN_LABEL[openModeOf(state, relatedDatabase?.id || '')];
+  const openLabel = OPEN_LABEL[openModeOf(state, relatedDatabase?.id || "")];
   const row = (r: DbRecord, isLinked: boolean) => (
-    <div className={`db-relation-option ${isLinked ? 'is-linked' : ''}`} key={r.id}>
+    <div className={`db-relation-option ${isLinked ? "is-linked" : ""}`} key={r.id}>
       <button onClick={() => choose(r.id)} disabled={isLinked} className="db-relation-pick">
         <RecordIcon record={r} state={state} size={16} />
         <span>{recordTitle(r, state)}</span>
       </button>
       {isLinked && (
-        <button className="db-relation-unlink" aria-label={`Unlink ${recordTitle(r, state)}`} title="Unlink" onClick={() => save(selected.filter((id) => id !== r.id))}>
+        <button
+          className="db-relation-unlink"
+          aria-label={`Unlink ${recordTitle(r, state)}`}
+          title="Unlink"
+          onClick={() => save(selected.filter((id) => id !== r.id))}
+        >
           <X size={14} />
         </button>
       )}
-      <button title={openLabel} aria-label={`${openLabel}: ${recordTitle(r, state)}`} onClick={() => { setOpen(false); onOpenLinked(r); }}>
+      <button
+        title={openLabel}
+        aria-label={`${openLabel}: ${recordTitle(r, state)}`}
+        onClick={() => {
+          setOpen(false);
+          onOpenLinked(r);
+        }}
+      >
         <OpenModeIcon mode={openModeOf(state, r.database_id)} size={14} />
       </button>
     </div>
@@ -136,23 +454,36 @@ function RelationCell({ record, property, state, value, onChange, onOpenLinked }
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setQuery('');
+        if (!next) setQuery("");
       }}
       trigger={
         // The empty part of the cell (and "+N") opens the picker; the chips on top open
         // the linked records, as in Notion.
-        <button className="db-cell-button db-relation-trigger" aria-label={`Edit ${property.name}`} title={linked.map((r) => recordTitle(r, state)).join(', ') || undefined}>
-          {!linked.length && <span className="db-empty-value">{one ? 'Choose a record' : 'Link records'}</span>}
+        <button
+          className="db-cell-button db-relation-trigger"
+          aria-label={`Edit ${property.name}`}
+          title={linked.map((r) => recordTitle(r, state)).join(", ") || undefined}
+        >
+          {!linked.length && <span className="db-empty-value">{one ? "Choose a record" : "Link records"}</span>}
         </button>
       }
       overlay={
         linked.length > 0 && (
           <span className="db-relation-chips">
-            <button type="button" className="db-relation-chip" title={`Open ${recordTitle(linked[0], state)}`} onClick={() => onOpenLinked(linked[0])}>
+            <button
+              type="button"
+              className="db-relation-chip"
+              title={`Open ${recordTitle(linked[0], state)}`}
+              onClick={() => onOpenLinked(linked[0])}
+            >
               <RecordIcon record={linked[0]} state={state} size={14} />
               <span>{recordTitle(linked[0], state)}</span>
             </button>
-            {linked.length > 1 && <span className="db-relation-more" aria-hidden>+{linked.length - 1}</span>}
+            {linked.length > 1 && (
+              <span className="db-relation-more" aria-hidden>
+                +{linked.length - 1}
+              </span>
+            )}
           </span>
         )
       }
@@ -162,17 +493,17 @@ function RelationCell({ record, property, state, value, onChange, onOpenLinked }
       ) : (
         <>
           <div className="db-menu-heading">
-            {relatedDatabase.name || 'Untitled'}
-            <span>{one ? 'One record' : 'Any number of records'}</span>
+            {relatedDatabase.name || "Untitled"}
+            <span>{one ? "One record" : "Any number of records"}</span>
           </div>
           <input
             className="db-menu-input"
             aria-label="Search related records"
-            placeholder={one ? 'Find or create a record…' : 'Find or create records…'}
+            placeholder={one ? "Find or create a record…" : "Find or create records…"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
               e.preventDefault();
               if (others[0]) choose(others[0].id);
               else if (query.trim() && !exact) create();
@@ -185,17 +516,25 @@ function RelationCell({ record, property, state, value, onChange, onOpenLinked }
                 {linked.filter(matches).map((r) => row(r, true))}
               </>
             )}
-            {(others.length > 0 || !linked.length) && <div className="db-menu-heading">{linked.length ? (one ? 'Change to' : 'Link another') : one ? 'Choose one' : 'Link records'}</div>}
+            {(others.length > 0 || !linked.length) && (
+              <div className="db-menu-heading">
+                {linked.length ? (one ? "Change to" : "Link another") : one ? "Choose one" : "Link records"}
+              </div>
+            )}
             {others.map((r) => row(r, false))}
             {query.trim() && !exact && (
               <button className="db-option-row db-relation-create" onClick={create}>
                 <Plus size={14} />
                 <span>
-                  Create “{query.trim()}” in {relatedDatabase.name || 'Untitled'}
+                  Create “{query.trim()}” in {relatedDatabase.name || "Untitled"}
                 </span>
               </button>
             )}
-            {!query.trim() && !live.length && <div className="db-menu-hint">{relatedDatabase.name || 'That database'} has no records yet. Type a name to create one.</div>}
+            {!query.trim() && !live.length && (
+              <div className="db-menu-hint">
+                {relatedDatabase.name || "That database"} has no records yet. Type a name to create one.
+              </div>
+            )}
           </div>
         </>
       )}
@@ -203,78 +542,592 @@ function RelationCell({ record, property, state, value, onChange, onOpenLinked }
   );
 }
 
-function Cell({ record, property, state, onChange, onOpenRecord, onOpenLinked, autoEdit, onAutoEdited }: { record: DbRecord; property: Property; state: WorkspaceState; onChange: Props['onChange']; onOpenRecord: Props['onOpenRecord']; onOpenLinked?: (record: DbRecord) => void; /** Start in edit mode (a row you just added). */ autoEdit?: boolean; onAutoEdited?: () => void }) {
+function Cell({
+  record,
+  property,
+  state,
+  onChange,
+  onOpenRecord,
+  onOpenLinked,
+  autoEdit,
+  onAutoEdited,
+}: {
+  record: DbRecord;
+  property: Property;
+  state: WorkspaceState;
+  onChange: Props["onChange"];
+  onOpenRecord: Props["onOpenRecord"];
+  onOpenLinked?: (record: DbRecord) => void;
+  /** Start in edit mode (a row you just added). */ autoEdit?: boolean;
+  onAutoEdited?: () => void;
+}) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [query, setQuery] = useState('');
+  const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
   const value = cellValue(record, property, state);
-  const computed = ['rollup', 'formula', 'created_time', 'updated_time'].includes(property.type);
-  const save = (next: CellValue) => { onChange((current) => updateCell(current, record.id, property, next)); };
-  const startEdit = () => { if (computed) return; setDraft(property.type === 'date' ? String(value ?? '').slice(0, 10) : property.type === 'datetime' ? String(value ?? '').slice(0, 16) : Array.isArray(value) ? value.join(', ') : String(value ?? '')); setEditing(true); };
+  const computed = ["rollup", "formula", "created_time", "updated_time"].includes(property.type);
+  const save = (next: CellValue) => {
+    onChange((current) => updateCell(current, record.id, property, next));
+  };
+  const startEdit = () => {
+    if (computed) return;
+    setDraft(
+      property.type === "date"
+        ? String(value ?? "").slice(0, 10)
+        : property.type === "datetime"
+          ? String(value ?? "").slice(0, 16)
+          : Array.isArray(value)
+            ? value.join(", ")
+            : String(value ?? ""),
+    );
+    setEditing(true);
+  };
   // A row you just added opens with its title ready for typing.
   useEffect(() => {
     if (!autoEdit) return;
-    queueMicrotask(() => { setDraft(''); setEditing(true); onAutoEdited?.(); });
+    queueMicrotask(() => {
+      setDraft("");
+      setEditing(true);
+      onAutoEdited?.();
+    });
   }, [autoEdit, onAutoEdited]);
-  const commit = () => { save(property.type === 'number' || property.type === 'currency' ? draft === '' ? null : Number(draft) : draft); setEditing(false); };
-  if (property.type === 'checkbox') return <button className="db-checkbox-cell" aria-label={`${property.name}: ${value ? 'checked' : 'unchecked'}`} onClick={() => save(!value)}><span className={`db-checkbox ${value ? 'checked' : ''}`}>{value ? <Check size={12} /> : null}</span></button>;
-  if (property.type === 'relation') return <RelationCell record={record} property={property} state={state} value={value} onChange={onChange} onOpenLinked={onOpenLinked ?? ((r) => onOpenRecord(r))} />;
-  if (['select', 'multi_select', 'status'].includes(property.type)) {
+  const commit = () => {
+    save(property.type === "number" || property.type === "currency" ? (draft === "" ? null : Number(draft)) : draft);
+    setEditing(false);
+  };
+  if (property.type === "checkbox")
+    return (
+      <button
+        className="db-checkbox-cell"
+        aria-label={`${property.name}: ${value ? "checked" : "unchecked"}`}
+        onClick={() => save(!value)}
+      >
+        <span className={`db-checkbox ${value ? "checked" : ""}`}>{value ? <Check size={12} /> : null}</span>
+      </button>
+    );
+  if (property.type === "relation")
+    return (
+      <RelationCell
+        record={record}
+        property={property}
+        state={state}
+        value={value}
+        onChange={onChange}
+        onOpenLinked={onOpenLinked ?? ((r) => onOpenRecord(r))}
+      />
+    );
+  if (["select", "multi_select", "status"].includes(property.type)) {
     const selected = Array.isArray(value) ? value : value ? [String(value)] : [];
-    const options = property.config.options || (property.type === 'status' ? ['Not started', 'In progress', 'Done'] : []);
-    const multi = property.type === 'multi_select';
+    const options =
+      property.config.options || (property.type === "status" ? ["Not started", "In progress", "Done"] : []);
+    const multi = property.type === "multi_select";
     const term = query.trim();
     const matches = options.filter((option) => option.toLowerCase().includes(term.toLowerCase()));
-    const choose = (option: string) => save(multi ? selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option] : selected.includes(option) ? null : option);
-    const create = () => { if (!term || options.includes(term)) return; onChange((current) => updateCell({ ...current, properties: current.properties.map((p) => p.id === property.id ? { ...p, config: { ...p.config, options: [...options, term] } } : p) }, record.id, property, multi ? [...selected, term] : term)); setQuery(''); };
-    return <Menu label={`Select ${property.name}`} className="db-select-menu" onOpenChange={(open) => { if (!open) setQuery(''); }} trigger={<button className="db-cell-button db-select-trigger">{selected.map((item) => <Badge key={item} value={item} />)}{!selected.length && <span className="db-empty-value">Empty</span>}</button>}>
-      <div className="db-select-field">{selected.map((item) => <Badge key={item} value={item} onRemove={() => save(multi ? selected.filter((other) => other !== item) : null)} />)}<input aria-label="Select option" placeholder={selected.length ? '' : 'Search for an option…'} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key !== 'Enter') return; e.preventDefault(); const exact = options.find((option) => option.toLowerCase() === term.toLowerCase()); if (exact) choose(exact); else create(); }} /></div>
-      <div className="db-menu-heading">{options.length ? 'Select an option or create one' : 'Type to create an option'}</div>
-      <div className="db-options-scroll">{matches.map((option) => <button type="button" key={option} className="db-option-row" onClick={() => choose(option)}><Badge value={option} />{selected.includes(option) && <Check size={14} />}</button>)}{term && !options.some((option) => option.toLowerCase() === term.toLowerCase()) && <button type="button" className="db-option-row" onClick={create}><span className="db-create-label">Create</span><Badge value={term} /></button>}</div>
-    </Menu>;
+    const choose = (option: string) =>
+      save(
+        multi
+          ? selected.includes(option)
+            ? selected.filter((item) => item !== option)
+            : [...selected, option]
+          : selected.includes(option)
+            ? null
+            : option,
+      );
+    const create = () => {
+      if (!term || options.includes(term)) return;
+      onChange((current) =>
+        updateCell(
+          {
+            ...current,
+            properties: current.properties.map((p) =>
+              p.id === property.id ? { ...p, config: { ...p.config, options: [...options, term] } } : p,
+            ),
+          },
+          record.id,
+          property,
+          multi ? [...selected, term] : term,
+        ),
+      );
+      setQuery("");
+    };
+    return (
+      <Menu
+        label={`Select ${property.name}`}
+        className="db-select-menu"
+        onOpenChange={(open) => {
+          if (!open) setQuery("");
+        }}
+        trigger={
+          <button className="db-cell-button db-select-trigger">
+            {selected.map((item) => (
+              <Badge key={item} value={item} />
+            ))}
+            {!selected.length && <span className="db-empty-value">Empty</span>}
+          </button>
+        }
+      >
+        <div className="db-select-field">
+          {selected.map((item) => (
+            <Badge
+              key={item}
+              value={item}
+              onRemove={() => save(multi ? selected.filter((other) => other !== item) : null)}
+            />
+          ))}
+          <input
+            aria-label="Select option"
+            placeholder={selected.length ? "" : "Search for an option…"}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              const exact = options.find((option) => option.toLowerCase() === term.toLowerCase());
+              if (exact) choose(exact);
+              else create();
+            }}
+          />
+        </div>
+        <div className="db-menu-heading">
+          {options.length ? "Select an option or create one" : "Type to create an option"}
+        </div>
+        <div className="db-options-scroll">
+          {matches.map((option) => (
+            <button type="button" key={option} className="db-option-row" onClick={() => choose(option)}>
+              <Badge value={option} />
+              {selected.includes(option) && <Check size={14} />}
+            </button>
+          ))}
+          {term && !options.some((option) => option.toLowerCase() === term.toLowerCase()) && (
+            <button type="button" className="db-option-row" onClick={create}>
+              <span className="db-create-label">Create</span>
+              <Badge value={term} />
+            </button>
+          )}
+        </div>
+      </Menu>
+    );
   }
-  if (editing) return <input autoFocus className="db-inline-input" aria-label={`Edit ${property.name}`} placeholder={property.type === 'title' ? 'Untitled' : undefined} type={property.type === 'date' ? 'date' : property.type === 'datetime' ? 'datetime-local' : property.type === 'number' || property.type === 'currency' ? 'number' : property.type === 'email' ? 'email' : 'text'} step="any" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { e.preventDefault(); setEditing(false); } }} />;
-  if (property.type === 'title') {
+  if (editing)
+    return (
+      <input
+        autoFocus
+        className="db-inline-input"
+        aria-label={`Edit ${property.name}`}
+        placeholder={property.type === "title" ? "Untitled" : undefined}
+        type={
+          property.type === "date"
+            ? "date"
+            : property.type === "datetime"
+              ? "datetime-local"
+              : property.type === "number" || property.type === "currency"
+                ? "number"
+                : property.type === "email"
+                  ? "email"
+                  : "text"
+        }
+        step="any"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  if (property.type === "title") {
     // Like Notion: click the name to rename it; "Open" (on hover) opens the record in
     // the side panel.
-    const name = String(value || 'Untitled');
-    return <div className="db-title-cell">
-      <button className="db-title-text" onClick={startEdit} title="Click to rename"><RecordIcon record={record} state={state} size={16} /><span className={value ? '' : 'is-untitled'}>{name}</span></button>
-      <button className="db-open-peek" onClick={(e) => onOpenRecord(record, { fullPage: e.metaKey || e.ctrlKey })} aria-label={`Open ${name}`}><OpenModeIcon mode={openModeOf(state, record.database_id)} size={14} /><span>Open</span></button>
-    </div>;
+    const name = String(value || "Untitled");
+    return (
+      <div className="db-title-cell">
+        <button className="db-title-text" onClick={startEdit} title="Click to rename">
+          <RecordIcon record={record} state={state} size={16} />
+          <span className={value ? "" : "is-untitled"}>{name}</span>
+        </button>
+        <button
+          className="db-open-peek"
+          onClick={(e) => onOpenRecord(record, { fullPage: e.metaKey || e.ctrlKey })}
+          aria-label={`Open ${name}`}
+        >
+          <OpenModeIcon mode={openModeOf(state, record.database_id)} size={14} />
+          <span>Open</span>
+        </button>
+      </div>
+    );
   }
-  return <button className={`db-cell-button ${['number', 'currency', 'formula', 'rollup'].includes(property.type) ? 'db-numeric' : ''} ${typeof value === 'string' && value.startsWith('#') ? 'db-error-value' : ''}`} onClick={startEdit} disabled={computed} title={computed ? formatValue(value, property) : `Edit ${property.name}`}>{['url', 'email', 'phone'].includes(property.type) && value ? <span className="db-link-value">{formatValue(value, property)}</span> : formatValue(value, property)}</button>;
+  return (
+    <button
+      className={`db-cell-button ${["number", "currency", "formula", "rollup"].includes(property.type) ? "db-numeric" : ""} ${typeof value === "string" && value.startsWith("#") ? "db-error-value" : ""}`}
+      onClick={startEdit}
+      disabled={computed}
+      title={computed ? formatValue(value, property) : `Edit ${property.name}`}
+    >
+      {["url", "email", "phone"].includes(property.type) && value ? (
+        <span className="db-link-value">{formatValue(value, property)}</span>
+      ) : (
+        formatValue(value, property)
+      )}
+    </button>
+  );
 }
 
-function PropertyMenu({ property, properties, state, onChange, view, updateView }: { property: Property; properties: Property[]; state: WorkspaceState; onChange: Props['onChange']; view: View; updateView: (patch: Partial<View>) => void }) {
+function PropertyMenu({
+  property,
+  properties,
+  state,
+  onChange,
+  view,
+  updateView,
+}: {
+  property: Property;
+  properties: Property[];
+  state: WorkspaceState;
+  onChange: Props["onChange"];
+  view: View;
+  updateView: (patch: Partial<View>) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pickingType, setPickingType] = useState(false);
-  const toggle = (value: boolean) => { setOpen(value); if (!value) { setConfirmDelete(false); setPickingType(false); } };
-  const change = (patch: Partial<Property>) => onChange((current) => {
-    const targetChanged = patch.config && patch.config.related_database_id !== property.config.related_database_id;
-    const reciprocalChanged = patch.config && patch.config.reciprocal_property_id !== property.config.reciprocal_property_id;
-    const typeChanged = patch.type !== undefined && patch.type !== property.type;
-    const oldSelections = current.records.filter((record) => record.database_id === property.database_id).map((record) => ({ id: record.id, value: record.values[property.id] }));
-    let next = current;
-    if (property.type === 'relation' && (targetChanged || reciprocalChanged || typeChanged)) for (const record of oldSelections) next = updateCell(next, record.id, property, []);
-    if (patch.name !== undefined) next = renameProperty(next, property.id, patch.name);
-    const updatedProperty = { ...next.properties.find((item) => item.id === property.id)!, ...patch };
-    next = { ...next, properties: next.properties.map((item) => item.id === property.id ? updatedProperty : item) };
-    if (typeChanged && property.type === 'relation') next = { ...next, properties: next.properties.map((item) => { if (item.config.reciprocal_property_id !== property.id) return item; const config = { ...item.config }; delete config.reciprocal_property_id; return { ...item, config }; }) };
-    if (updatedProperty.type === 'relation' && (typeChanged || targetChanged)) next = { ...next, records: next.records.map((record) => record.database_id === property.database_id ? { ...record, values: { ...record.values, [property.id]: [] } } : record) };
-    if (property.type === 'relation' && reciprocalChanged && !targetChanged && !typeChanged) for (const record of oldSelections) next = updateCell(next, record.id, updatedProperty, Array.isArray(record.value) ? record.value : []);
-    return next;
-  });
-  const move = (direction: -1 | 1) => { const index = properties.findIndex((p) => p.id === property.id), other = properties[index + direction]; if (!other || property.type === 'title' || other.type === 'title') return; const order = properties.map((p) => p.id); [order[index], order[index + direction]] = [order[index + direction], order[index]]; updateView({ property_order: order }); };
-  return <Menu open={open} onOpenChange={toggle} label={`${property.name} settings`} trigger={<button className="db-column-trigger"><PropertyIcon type={property.type} /><span>{property.name}</span>{['formula', 'rollup'].includes(property.type) && <span className="db-property-info">ⓘ</span>}</button>}>{pickingType ? <><div className="db-menu-back"><button type="button" className="db-icon-button" aria-label="Back to property settings" onClick={() => setPickingType(false)}><ArrowLeft size={16} /></button><span>Change type</span></div><TypeList current={property.type} onPick={(type) => { change({ type }); setPickingType(false); }} /></> : <><div className="db-name-field"><PropertyIcon type={property.type} /><input aria-label="Property name" value={property.name} onChange={(e) => change({ name: e.target.value })} /></div>{property.type !== 'title' && <MenuAction icon={<SlidersHorizontal size={16} />} onClick={() => setPickingType(true)}>Type<span className="db-menu-value">{TYPES.find((type) => type.value === property.type)?.label}<ChevronRight size={14} /></span></MenuAction>}
-    {property.type === 'relation' && <><label className="db-menu-label">Related database<select className="db-menu-select" value={String(property.config.related_database_id || '')} onChange={(e) => change({ config: { ...property.config, related_database_id: e.target.value } })}><option value="">Choose a database…</option>{state.databases.filter((db) => db.workspace_id === state.databases.find((d) => d.id === property.database_id)?.workspace_id && !state.pages.find((page) => page.id === db.page_id)?.deleted_at).map((db) => <option key={db.id} value={db.id}>{db.name}</option>)}</select></label><label className="db-menu-label">Limit<select className="db-menu-select" value={linksOne(property) ? '1' : ''} onChange={(e) => change({ config: { ...property.config, limit: e.target.value === '1' ? 1 : undefined } })}><option value="">No limit</option><option value="1">One record</option></select></label><label className="db-menu-label">Reciprocal relation<select className="db-menu-select" value={String(property.config.reciprocal_property_id || '')} onChange={(e) => change({ config: { ...property.config, reciprocal_property_id: e.target.value } })}><option value="">One-way relation</option>{state.properties.filter((p) => p.database_id === property.config.related_database_id && p.type === 'relation' && p.config.related_database_id === property.database_id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label></>}
-    {property.type === 'formula' && <label className="db-menu-label">Expression<textarea className="db-formula-input" aria-label="Formula expression" value={property.config.expression || ''} placeholder={'prop("Amount due") - prop("Amount received")'} onChange={(e) => change({ config: { ...property.config, expression: e.target.value } })} /><span className="db-menu-hint">Use prop(&quot;Name&quot;), if(), round(), concat(), dateBetween(), + − × / and comparisons.</span></label>}
-    {property.type === 'rollup' && <><label className="db-menu-label">Relation<select className="db-menu-select" value={property.config.relation_property_id || ''} onChange={(e) => change({ config: { ...property.config, relation_property_id: e.target.value } })}><option value="">Select relation…</option>{properties.filter((p) => p.type === 'relation').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="db-menu-label">Related property<select className="db-menu-select" value={property.config.rollup_property_id || ''} onChange={(e) => change({ config: { ...property.config, rollup_property_id: e.target.value } })}><option value="">Choose property…</option>{state.properties.filter((p) => p.database_id === properties.find((p) => p.id === property.config.relation_property_id)?.config.related_database_id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="db-menu-label">Calculate<select className="db-menu-select" value={property.config.aggregation || 'count'} onChange={(e) => change({ config: { ...property.config, aggregation: e.target.value as Property['config']['aggregation'] } })}>{['count', 'sum', 'average', 'min', 'max', 'values'].map((aggregation) => <option key={aggregation} value={aggregation}>{aggregation}</option>)}</select></label></>}
-    {['select', 'multi_select', 'status'].includes(property.type) && <OptionsEditor options={property.config.options || (property.type === 'status' ? ['Not started', 'In progress', 'Done'] : [])} onChange={(options) => change({ config: { ...property.config, options } })} />}
-    <div className="db-menu-divider" /><MenuAction icon={<ArrowUp size={16} />} onClick={() => { updateView({ sorts: [{ property_id: property.id, direction: 'asc' }] }); setOpen(false); }}>Sort ascending</MenuAction><MenuAction icon={<ArrowDown size={16} />} onClick={() => { updateView({ sorts: [{ property_id: property.id, direction: 'desc' }] }); setOpen(false); }}>Sort descending</MenuAction><MenuAction icon={<Filter size={16} />} onClick={() => { updateView({ filters: [...view.filters, { property_id: property.id, operator: 'contains', value: '' }] }); setOpen(false); }}>Filter this property</MenuAction>
-    {property.type !== 'title' && <><MenuAction icon={<ArrowLeft size={16} />} onClick={() => move(-1)}>Move left</MenuAction><MenuAction icon={<ArrowRight size={16} />} onClick={() => move(1)}>Move right</MenuAction><MenuAction icon={<SlidersHorizontal size={16} />} onClick={() => { updateView({ hidden_properties: [...view.hidden_properties, property.id] }); setOpen(false); }}>Hide in view</MenuAction><MenuAction icon={<Copy size={16} />} onClick={() => { onChange((current) => duplicateProperty(current, property.id)); setOpen(false); }}>Duplicate property</MenuAction><div className="db-menu-divider" />{confirmDelete ? <><div className="db-menu-hint">Delete “{property.name}” and its values from every record? This can’t be undone.</div><MenuAction danger icon={<Trash2 size={16} />} onClick={() => { onChange((current) => removeProperty(current, property.id)); toggle(false); }}>Yes, delete property</MenuAction><MenuAction onClick={() => setConfirmDelete(false)}>Cancel</MenuAction></> : <MenuAction danger icon={<Trash2 size={16} />} onClick={() => setConfirmDelete(true)}>Delete property</MenuAction>}</>}</>}
-  </Menu>;
+  const toggle = (value: boolean) => {
+    setOpen(value);
+    if (!value) {
+      setConfirmDelete(false);
+      setPickingType(false);
+    }
+  };
+  const change = (patch: Partial<Property>) =>
+    onChange((current) => {
+      const targetChanged = patch.config && patch.config.related_database_id !== property.config.related_database_id;
+      const reciprocalChanged =
+        patch.config && patch.config.reciprocal_property_id !== property.config.reciprocal_property_id;
+      const typeChanged = patch.type !== undefined && patch.type !== property.type;
+      const oldSelections = current.records
+        .filter((record) => record.database_id === property.database_id)
+        .map((record) => ({ id: record.id, value: record.values[property.id] }));
+      let next = current;
+      if (property.type === "relation" && (targetChanged || reciprocalChanged || typeChanged))
+        for (const record of oldSelections) next = updateCell(next, record.id, property, []);
+      if (patch.name !== undefined) next = renameProperty(next, property.id, patch.name);
+      const updatedProperty = { ...next.properties.find((item) => item.id === property.id)!, ...patch };
+      next = { ...next, properties: next.properties.map((item) => (item.id === property.id ? updatedProperty : item)) };
+      if (typeChanged && property.type === "relation")
+        next = {
+          ...next,
+          properties: next.properties.map((item) => {
+            if (item.config.reciprocal_property_id !== property.id) return item;
+            const config = { ...item.config };
+            delete config.reciprocal_property_id;
+            return { ...item, config };
+          }),
+        };
+      if (updatedProperty.type === "relation" && (typeChanged || targetChanged))
+        next = {
+          ...next,
+          records: next.records.map((record) =>
+            record.database_id === property.database_id
+              ? { ...record, values: { ...record.values, [property.id]: [] } }
+              : record,
+          ),
+        };
+      if (property.type === "relation" && reciprocalChanged && !targetChanged && !typeChanged)
+        for (const record of oldSelections)
+          next = updateCell(next, record.id, updatedProperty, Array.isArray(record.value) ? record.value : []);
+      return next;
+    });
+  const move = (direction: -1 | 1) => {
+    const index = properties.findIndex((p) => p.id === property.id),
+      other = properties[index + direction];
+    if (!other || property.type === "title" || other.type === "title") return;
+    const order = properties.map((p) => p.id);
+    [order[index], order[index + direction]] = [order[index + direction], order[index]];
+    updateView({ property_order: order });
+  };
+  return (
+    <Menu
+      open={open}
+      onOpenChange={toggle}
+      label={`${property.name} settings`}
+      trigger={
+        <button className="db-column-trigger">
+          <PropertyIcon type={property.type} />
+          <span>{property.name}</span>
+          {["formula", "rollup"].includes(property.type) && <span className="db-property-info">ⓘ</span>}
+        </button>
+      }
+    >
+      {pickingType ? (
+        <>
+          <div className="db-menu-back">
+            <button
+              type="button"
+              className="db-icon-button"
+              aria-label="Back to property settings"
+              onClick={() => setPickingType(false)}
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <span>Change type</span>
+          </div>
+          <TypeList
+            current={property.type}
+            onPick={(type) => {
+              change({ type });
+              setPickingType(false);
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <div className="db-name-field">
+            <PropertyIcon type={property.type} />
+            <input
+              aria-label="Property name"
+              value={property.name}
+              onChange={(e) => change({ name: e.target.value })}
+            />
+          </div>
+          {property.type !== "title" && (
+            <MenuAction icon={<SlidersHorizontal size={16} />} onClick={() => setPickingType(true)}>
+              Type
+              <span className="db-menu-value">
+                {TYPES.find((type) => type.value === property.type)?.label}
+                <ChevronRight size={14} />
+              </span>
+            </MenuAction>
+          )}
+          {property.type === "relation" && (
+            <>
+              <label className="db-menu-label">
+                Related database
+                <select
+                  className="db-menu-select"
+                  value={String(property.config.related_database_id || "")}
+                  onChange={(e) => change({ config: { ...property.config, related_database_id: e.target.value } })}
+                >
+                  <option value="">Choose a database…</option>
+                  {state.databases
+                    .filter(
+                      (db) =>
+                        db.workspace_id === state.databases.find((d) => d.id === property.database_id)?.workspace_id &&
+                        !state.pages.find((page) => page.id === db.page_id)?.deleted_at,
+                    )
+                    .map((db) => (
+                      <option key={db.id} value={db.id}>
+                        {db.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="db-menu-label">
+                Limit
+                <select
+                  className="db-menu-select"
+                  value={linksOne(property) ? "1" : ""}
+                  onChange={(e) =>
+                    change({ config: { ...property.config, limit: e.target.value === "1" ? 1 : undefined } })
+                  }
+                >
+                  <option value="">No limit</option>
+                  <option value="1">One record</option>
+                </select>
+              </label>
+              <label className="db-menu-label">
+                Reciprocal relation
+                <select
+                  className="db-menu-select"
+                  value={String(property.config.reciprocal_property_id || "")}
+                  onChange={(e) => change({ config: { ...property.config, reciprocal_property_id: e.target.value } })}
+                >
+                  <option value="">One-way relation</option>
+                  {state.properties
+                    .filter(
+                      (p) =>
+                        p.database_id === property.config.related_database_id &&
+                        p.type === "relation" &&
+                        p.config.related_database_id === property.database_id,
+                    )
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </>
+          )}
+          {property.type === "formula" && (
+            <label className="db-menu-label">
+              Expression
+              <textarea
+                className="db-formula-input"
+                aria-label="Formula expression"
+                value={property.config.expression || ""}
+                placeholder={'prop("Amount due") - prop("Amount received")'}
+                onChange={(e) => change({ config: { ...property.config, expression: e.target.value } })}
+              />
+              <span className="db-menu-hint">
+                Use prop(&quot;Name&quot;), if(), round(), concat(), dateBetween(), + − × / and comparisons.
+              </span>
+            </label>
+          )}
+          {property.type === "rollup" && (
+            <>
+              <label className="db-menu-label">
+                Relation
+                <select
+                  className="db-menu-select"
+                  value={property.config.relation_property_id || ""}
+                  onChange={(e) => change({ config: { ...property.config, relation_property_id: e.target.value } })}
+                >
+                  <option value="">Select relation…</option>
+                  {properties
+                    .filter((p) => p.type === "relation")
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="db-menu-label">
+                Related property
+                <select
+                  className="db-menu-select"
+                  value={property.config.rollup_property_id || ""}
+                  onChange={(e) => change({ config: { ...property.config, rollup_property_id: e.target.value } })}
+                >
+                  <option value="">Choose property…</option>
+                  {state.properties
+                    .filter(
+                      (p) =>
+                        p.database_id ===
+                        properties.find((p) => p.id === property.config.relation_property_id)?.config
+                          .related_database_id,
+                    )
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="db-menu-label">
+                Calculate
+                <select
+                  className="db-menu-select"
+                  value={property.config.aggregation || "count"}
+                  onChange={(e) =>
+                    change({
+                      config: { ...property.config, aggregation: e.target.value as Property["config"]["aggregation"] },
+                    })
+                  }
+                >
+                  {["count", "sum", "average", "min", "max", "values"].map((aggregation) => (
+                    <option key={aggregation} value={aggregation}>
+                      {aggregation}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          {["select", "multi_select", "status"].includes(property.type) && (
+            <OptionsEditor
+              options={
+                property.config.options || (property.type === "status" ? ["Not started", "In progress", "Done"] : [])
+              }
+              onChange={(options) => change({ config: { ...property.config, options } })}
+            />
+          )}
+          <div className="db-menu-divider" />
+          <MenuAction
+            icon={<ArrowUp size={16} />}
+            onClick={() => {
+              updateView({ sorts: [{ property_id: property.id, direction: "asc" }] });
+              setOpen(false);
+            }}
+          >
+            Sort ascending
+          </MenuAction>
+          <MenuAction
+            icon={<ArrowDown size={16} />}
+            onClick={() => {
+              updateView({ sorts: [{ property_id: property.id, direction: "desc" }] });
+              setOpen(false);
+            }}
+          >
+            Sort descending
+          </MenuAction>
+          <MenuAction
+            icon={<Filter size={16} />}
+            onClick={() => {
+              updateView({ filters: [...view.filters, { property_id: property.id, operator: "contains", value: "" }] });
+              setOpen(false);
+            }}
+          >
+            Filter this property
+          </MenuAction>
+          {property.type !== "title" && (
+            <>
+              <MenuAction icon={<ArrowLeft size={16} />} onClick={() => move(-1)}>
+                Move left
+              </MenuAction>
+              <MenuAction icon={<ArrowRight size={16} />} onClick={() => move(1)}>
+                Move right
+              </MenuAction>
+              <MenuAction
+                icon={<SlidersHorizontal size={16} />}
+                onClick={() => {
+                  updateView({ hidden_properties: [...view.hidden_properties, property.id] });
+                  setOpen(false);
+                }}
+              >
+                Hide in view
+              </MenuAction>
+              <MenuAction
+                icon={<Copy size={16} />}
+                onClick={() => {
+                  onChange((current) => duplicateProperty(current, property.id));
+                  setOpen(false);
+                }}
+              >
+                Duplicate property
+              </MenuAction>
+              <div className="db-menu-divider" />
+              {confirmDelete ? (
+                <>
+                  <div className="db-menu-hint">
+                    Delete “{property.name}” and its values from every record? This can’t be undone.
+                  </div>
+                  <MenuAction
+                    danger
+                    icon={<Trash2 size={16} />}
+                    onClick={() => {
+                      onChange((current) => removeProperty(current, property.id));
+                      toggle(false);
+                    }}
+                  >
+                    Yes, delete property
+                  </MenuAction>
+                  <MenuAction onClick={() => setConfirmDelete(false)}>Cancel</MenuAction>
+                </>
+              ) : (
+                <MenuAction danger icon={<Trash2 size={16} />} onClick={() => setConfirmDelete(true)}>
+                  Delete property
+                </MenuAction>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </Menu>
+  );
 }
 
 /**
@@ -282,48 +1135,139 @@ function PropertyMenu({ property, properties, state, onChange, view, updateView 
  * in place (like Notion), plus a ↗ button to open the database as a full page. A new
  * database opens with its name ready for typing.
  */
-function InlineTitle({ database, state, onChange, onOpenPage, linkedFrom, ownViews, autoFocus, onAutoFocused }: { database: { id: string; name: string; page_id: string }; state: WorkspaceState; onChange: Props['onChange']; onOpenPage?: (pageId: string) => void; linkedFrom?: string; ownViews?: boolean; autoFocus?: boolean; onAutoFocused?: () => void }) {
+function InlineTitle({
+  database,
+  state,
+  onChange,
+  onOpenPage,
+  linkedFrom,
+  ownViews,
+  autoFocus,
+  onAutoFocused,
+}: {
+  database: { id: string; name: string; page_id: string };
+  state: WorkspaceState;
+  onChange: Props["onChange"];
+  onOpenPage?: (pageId: string) => void;
+  linkedFrom?: string;
+  ownViews?: boolean;
+  autoFocus?: boolean;
+  onAutoFocused?: () => void;
+}) {
   const page = state.pages.find((p) => p.id === database.page_id && !p.deleted_at);
   const title = page?.title ?? database.name;
-  const name = title || 'Untitled';
+  const name = title || "Untitled";
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   useEffect(() => {
     if (!autoFocus) return;
-    queueMicrotask(() => { setDraft(''); setEditing(true); onAutoFocused?.(); });
+    queueMicrotask(() => {
+      setDraft("");
+      setEditing(true);
+      onAutoFocused?.();
+    });
   }, [autoFocus, onAutoFocused]);
-  const rename = (next: string) => onChange((current) => ({
-    ...current,
-    pages: current.pages.map((p) => p.id === database.page_id ? { ...p, title: next, updated_at: new Date().toISOString() } : p),
-    databases: current.databases.map((db) => db.id === database.id ? { ...db, name: next } : db),
-  }));
-  const commit = () => { if (draft.trim() !== title) rename(draft.trim()); setEditing(false); };
-  const icon = <PageIcon page={page ?? { icon: '', kind: 'database' }} size={20} />;
+  const rename = (next: string) =>
+    onChange((current) => ({
+      ...current,
+      pages: current.pages.map((p) =>
+        p.id === database.page_id ? { ...p, title: next, updated_at: new Date().toISOString() } : p,
+      ),
+      databases: current.databases.map((db) => (db.id === database.id ? { ...db, name: next } : db)),
+    }));
+  const commit = () => {
+    if (draft.trim() !== title) rename(draft.trim());
+    setEditing(false);
+  };
+  const icon = <PageIcon page={page ?? { icon: "", kind: "database" }} size={20} />;
   // A linked view says so: edits here change the original database.
-  const linked = linkedFrom !== undefined && <span className="db-linked-badge" title={ownViews ? `Linked from ${linkedFrom} · views here are only for this page; rows and columns are shared` : `Linked from ${linkedFrom} · changes here update the original`}><Link2 size={13} aria-hidden />Linked</span>;
+  const linked = linkedFrom !== undefined && (
+    <span
+      className="db-linked-badge"
+      title={
+        ownViews
+          ? `Linked from ${linkedFrom} · views here are only for this page; rows and columns are shared`
+          : `Linked from ${linkedFrom} · changes here update the original`
+      }
+    >
+      <Link2 size={13} aria-hidden />
+      Linked
+    </span>
+  );
   return (
     <div className="db-inline-title">
       {icon}
       {editing ? (
-        <input autoFocus className="db-inline-title-input" aria-label="Database name" placeholder="Untitled" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { e.preventDefault(); setEditing(false); } }} />
+        <input
+          autoFocus
+          className="db-inline-title-input"
+          aria-label="Database name"
+          placeholder="Untitled"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return;
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+        />
       ) : (
-        <button type="button" className={`db-inline-title-name ${title ? '' : 'is-untitled'}`} title="Click to rename" onClick={() => { setDraft(title); setEditing(true); }}>{name}</button>
+        <button
+          type="button"
+          className={`db-inline-title-name ${title ? "" : "is-untitled"}`}
+          title="Click to rename"
+          onClick={() => {
+            setDraft(title);
+            setEditing(true);
+          }}
+        >
+          {name}
+        </button>
       )}
       {onOpenPage && page && !editing && (
-        <button type="button" className="db-inline-open" onClick={() => onOpenPage(page.id)} title="Open as full page" aria-label={`Open ${name} as a full page`}><ArrowUpRight size={16} /></button>
+        <button
+          type="button"
+          className="db-inline-open"
+          onClick={() => onOpenPage(page.id)}
+          title="Open as full page"
+          aria-label={`Open ${name} as a full page`}
+        >
+          <ArrowUpRight size={16} />
+        </button>
       )}
       {linked}
     </div>
   );
 }
-export function DatabaseView({ databaseId, state, onChange, onOpenRecord, onOpenLinked, compact = false, onOpenPage, linkedFrom, autoFocusTitle, onTitleFocused, placement }: Props) { const shortcut = useKeys(); const touchOnly = useTouchOnly();
-  const [activeId, setActiveId] = useState('');
-  const [search, setSearch] = useState('');
+export function DatabaseView({
+  databaseId,
+  state,
+  onChange,
+  onOpenRecord,
+  onOpenLinked,
+  compact = false,
+  onOpenPage,
+  linkedFrom,
+  autoFocusTitle,
+  onTitleFocused,
+  placement,
+}: Props) {
+  const shortcut = useKeys();
+  const touchOnly = useTouchOnly();
+  const [activeId, setActiveId] = useState("");
+  const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [propertyName, setPropertyName] = useState('');
+  const [propertyName, setPropertyName] = useState("");
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
-  const [viewName, setViewName] = useState('');
-  const [newViewType, setNewViewType] = useState<View['type']>('table');
+  const [viewName, setViewName] = useState("");
+  const [newViewType, setNewViewType] = useState<View["type"]>("table");
   const [newViewOpen, setNewViewOpen] = useState(false);
   const [moreViewsOpen, setMoreViewsOpen] = useState(false);
   const [recordMenuId, setRecordMenuId] = useState<string | null>(null);
@@ -335,55 +1279,328 @@ export function DatabaseView({ databaseId, state, onChange, onOpenRecord, onOpen
   const doneTyping = useCallback(() => setTypingRecordId(null), []);
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const database = state.databases.find((db) => db.id === databaseId && !state.pages.find((page) => page.id === db.page_id)?.deleted_at);
+  const database = state.databases.find(
+    (db) => db.id === databaseId && !state.pages.find((page) => page.id === db.page_id)?.deleted_at,
+  );
   // Views are the database's own, or (for a linked block) that block's own copies.
-  const views = state.views.filter((view) => view.database_id === databaseId && (view.placement ?? null) === (placement ?? null));
+  const views = state.views.filter(
+    (view) => view.database_id === databaseId && (view.placement ?? null) === (placement ?? null),
+  );
   const openMode = openModeOf(state, databaseId);
   const savedOpenMode = savedOpenModeOf(state, databaseId);
   const phone = usePhoneWidth();
-  const setOpenMode = (mode: RecordOpenMode) => onChange((current) => ({ ...current, databases: current.databases.map((db) => db.id === databaseId ? { ...db, open_mode: mode } : db) }));
-  const fallback: View = { id: placement ?? databaseId, database_id: databaseId, placement: placement ?? null, name: 'Default view', type: 'table', filters: [], sorts: [], hidden_properties: [] };
+  const setOpenMode = (mode: RecordOpenMode) =>
+    onChange((current) => ({
+      ...current,
+      databases: current.databases.map((db) => (db.id === databaseId ? { ...db, open_mode: mode } : db)),
+    }));
+  const fallback: View = {
+    id: placement ?? databaseId,
+    database_id: databaseId,
+    placement: placement ?? null,
+    name: "Default view",
+    type: "table",
+    filters: [],
+    sorts: [],
+    hidden_properties: [],
+  };
   const view = views.find((v) => v.id === activeId) || views[0] || fallback;
   // System properties (e.g. a run's saved progress) are kept with the record but never shown.
-  const baseProperties = useMemo(() => state.properties.filter((property) => property.database_id === databaseId && !property.config.system), [state.properties, databaseId]);
-  const properties = useMemo(() => orderProperties(baseProperties, view.property_order), [baseProperties, view.property_order]);
+  const baseProperties = useMemo(
+    () => state.properties.filter((property) => property.database_id === databaseId && !property.config.system),
+    [state.properties, databaseId],
+  );
+  const properties = useMemo(
+    () => orderProperties(baseProperties, view.property_order),
+    [baseProperties, view.property_order],
+  );
   const visible = properties.filter((property) => !view.hidden_properties.includes(property.id));
   const records = useMemo(() => visibleRecords(databaseId, view, state, search), [databaseId, view, state, search]);
-  const updateView = (patch: Partial<View>) => onChange((current) => ({ ...current, views: current.views.some((v) => v.id === view.id) ? current.views.map((v) => v.id === view.id ? { ...v, ...patch } : v) : [...current.views, { ...view, ...patch }] }));
+  const updateView = (patch: Partial<View>) =>
+    onChange((current) => ({
+      ...current,
+      views: current.views.some((v) => v.id === view.id)
+        ? current.views.map((v) => (v.id === view.id ? { ...v, ...patch } : v))
+        : [...current.views, { ...view, ...patch }],
+    }));
   const addRecord = (initial: Record<string, CellValue> = {}) => {
     if (!database) return;
-    const now = new Date().toISOString(), pageId = token(), recordId = token();
-    const titleProperty = properties.find((p) => p.type === 'title');
-    const values = { ...(titleProperty ? { [titleProperty.id]: '' } : {}), ...initial };
-    const record: DbRecord = { id: recordId, database_id: databaseId, page_id: pageId, values, position: Math.max(...state.records.filter((r) => r.database_id === databaseId).map((r) => r.position), 0) + 1, created_at: now, updated_at: now };
-    onChange((current) => { let next: WorkspaceState = { ...current, records: [...current.records, record], pages: [...current.pages, { id: pageId, workspace_id: database.workspace_id, parent_id: database.page_id, title: String(titleProperty ? values[titleProperty.id] ?? '' : ''), icon: '', kind: 'document', description: '', position: record.position, favorite: false, deleted_at: null, created_at: now, updated_at: now }], documents: [...current.documents, { page_id: pageId, markdown: '', updated_at: now }] }; for (const property of properties.filter((p) => p.type === 'relation')) { const links = values[property.id]; if (Array.isArray(links) && links.length) next = updateCell(next, recordId, property, links); } return next; });
+    const now = new Date().toISOString(),
+      pageId = token(),
+      recordId = token();
+    const titleProperty = properties.find((p) => p.type === "title");
+    const values = { ...(titleProperty ? { [titleProperty.id]: "" } : {}), ...initial };
+    const record: DbRecord = {
+      id: recordId,
+      database_id: databaseId,
+      page_id: pageId,
+      values,
+      position: Math.max(...state.records.filter((r) => r.database_id === databaseId).map((r) => r.position), 0) + 1,
+      created_at: now,
+      updated_at: now,
+    };
+    onChange((current) => {
+      let next: WorkspaceState = {
+        ...current,
+        records: [...current.records, record],
+        pages: [
+          ...current.pages,
+          {
+            id: pageId,
+            workspace_id: database.workspace_id,
+            parent_id: database.page_id,
+            title: String(titleProperty ? (values[titleProperty.id] ?? "") : ""),
+            icon: "",
+            kind: "document",
+            description: "",
+            position: record.position,
+            favorite: false,
+            deleted_at: null,
+            created_at: now,
+            updated_at: now,
+          },
+        ],
+        documents: [...current.documents, { page_id: pageId, markdown: "", updated_at: now }],
+      };
+      for (const property of properties.filter((p) => p.type === "relation")) {
+        const links = values[property.id];
+        if (Array.isArray(links) && links.length) next = updateCell(next, recordId, property, links);
+      }
+      return next;
+    });
     return record;
   };
-  const duplicateRecord = (record: DbRecord) => { const title = properties.find((p) => p.type === 'title'); const normalizedValues = Object.fromEntries(properties.map((property) => [property.id, property.type === 'relation' ? cellValue(record, property, state) : record.values[property.id] ?? null])); const copy = addRecord({ ...normalizedValues, ...(title ? { [title.id]: `${recordTitle(record, state)} (copy)` } : {}) }); if (copy) onChange((current) => ({ ...current, documents: current.documents.map((d) => d.page_id === copy.page_id ? { ...d, markdown: current.documents.find((doc) => doc.page_id === record.page_id)?.markdown || '' } : d) })); };
-  const addProperty = (propertyType: PropertyType) => { const label = TYPES.find((type) => type.value === propertyType)?.label || 'Property'; const property: Property = { id: token(), database_id: databaseId, name: propertyName.trim() || label, type: propertyType, position: Math.max(...properties.map((p) => p.position), 0) + 1, width: propertyType === 'relation' ? 250 : 190, config: propertyType === 'status' ? { options: ['Not started', 'In progress', 'Done'] } : propertyType === 'formula' ? { expression: '0' } : {} }; onChange((current) => ({ ...current, properties: [...current.properties, property] })); setPropertyName(''); setAddPropertyOpen(false); };
-  const addView = () => { if (!viewName.trim()) return; const next: View = { ...fallback, id: token(), name: viewName.trim(), type: newViewType, group_by: properties.find((p) => p.type === 'status' || p.type === 'select')?.id }; onChange((current) => ({ ...current, views: [...current.views, next] })); setActiveId(next.id); setNewViewOpen(false); setViewName(''); };
+  const duplicateRecord = (record: DbRecord) => {
+    const title = properties.find((p) => p.type === "title");
+    const normalizedValues = Object.fromEntries(
+      properties.map((property) => [
+        property.id,
+        property.type === "relation" ? cellValue(record, property, state) : (record.values[property.id] ?? null),
+      ]),
+    );
+    const copy = addRecord({
+      ...normalizedValues,
+      ...(title ? { [title.id]: `${recordTitle(record, state)} (copy)` } : {}),
+    });
+    if (copy)
+      onChange((current) => ({
+        ...current,
+        documents: current.documents.map((d) =>
+          d.page_id === copy.page_id
+            ? { ...d, markdown: current.documents.find((doc) => doc.page_id === record.page_id)?.markdown || "" }
+            : d,
+        ),
+      }));
+  };
+  const addProperty = (propertyType: PropertyType) => {
+    const label = TYPES.find((type) => type.value === propertyType)?.label || "Property";
+    const property: Property = {
+      id: token(),
+      database_id: databaseId,
+      name: propertyName.trim() || label,
+      type: propertyType,
+      position: Math.max(...properties.map((p) => p.position), 0) + 1,
+      width: propertyType === "relation" ? 250 : 190,
+      config:
+        propertyType === "status"
+          ? { options: ["Not started", "In progress", "Done"] }
+          : propertyType === "formula"
+            ? { expression: "0" }
+            : {},
+    };
+    onChange((current) => ({ ...current, properties: [...current.properties, property] }));
+    setPropertyName("");
+    setAddPropertyOpen(false);
+  };
+  const addView = () => {
+    if (!viewName.trim()) return;
+    const next: View = {
+      ...fallback,
+      id: token(),
+      name: viewName.trim(),
+      type: newViewType,
+      group_by: properties.find((p) => p.type === "status" || p.type === "select")?.id,
+    };
+    onChange((current) => ({ ...current, views: [...current.views, next] }));
+    setActiveId(next.id);
+    setNewViewOpen(false);
+    setViewName("");
+  };
   const trashRecord = (record: DbRecord) => {
     const before = state;
     onChange((current) => removeRecord(current, record.id));
-    toast(`“${recordTitle(record, state)}” moved to Trash`, { action: { label: 'Undo', onClick: () => onChange((current) => restoreRemovedRecord(current, before, record.id)) } });
+    toast(`“${recordTitle(record, state)}” moved to Trash`, {
+      action: { label: "Undo", onClick: () => onChange((current) => restoreRemovedRecord(current, before, record.id)) },
+    });
   };
-  const download = () => { const blob = new Blob([csvExport(records, visible, state)], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${database?.name || 'database'}.csv`; anchor.click(); URL.revokeObjectURL(url); };
-  const dropRecord = (target: DbRecord, after = false) => { if (!draggedRecord || draggedRecord === target.id) return; const ordered = state.records.filter((item) => item.database_id === databaseId && !state.pages.find((page) => page.id === item.page_id)?.deleted_at).sort((a, b) => a.position - b.position); const source = ordered.findIndex((r) => r.id === draggedRecord); if (source < 0) return; const [removed] = ordered.splice(source, 1); const targetIndex = ordered.findIndex((r) => r.id === target.id); if (targetIndex < 0) return; ordered.splice(targetIndex + (after ? 1 : 0), 0, removed); onChange((current) => ({ ...current, records: current.records.map((r) => r.database_id === databaseId ? { ...r, position: ordered.findIndex((item) => item.id === r.id) } : r) })); };
-  const dropColumn = (target: Property) => { const source = properties.find((p) => p.id === draggedColumn); if (!source || source.type === 'title' || target.type === 'title' || source.id === target.id) return; const next = properties.filter((p) => p.id !== source.id); next.splice(next.findIndex((p) => p.id === target.id), 0, source); updateView({ property_order: next.map((property) => property.id) }); setDraggedColumn(null); };
-  const startResize = (event: React.PointerEvent, property: Property) => { event.preventDefault(); event.stopPropagation(); const start = event.clientX, initial = property.width; const target = event.currentTarget as HTMLElement; target.setPointerCapture(event.pointerId); const move = (e: PointerEvent) => { const width = Math.max(100, Math.min(700, initial + e.clientX - start)); target.parentElement?.style.setProperty('width', `${width}px`); }; const up = (e: PointerEvent) => { const width = Math.max(100, Math.min(700, initial + e.clientX - start)); onChange((current) => ({ ...current, properties: current.properties.map((p) => p.id === property.id ? { ...p, width } : p) })); target.removeEventListener('pointermove', move); target.removeEventListener('pointerup', up); }; target.addEventListener('pointermove', move); target.addEventListener('pointerup', up); };
+  const download = () => {
+    const blob = new Blob([csvExport(records, visible, state)], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${database?.name || "database"}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+  const dropRecord = (target: DbRecord, after = false) => {
+    if (!draggedRecord || draggedRecord === target.id) return;
+    const ordered = state.records
+      .filter(
+        (item) => item.database_id === databaseId && !state.pages.find((page) => page.id === item.page_id)?.deleted_at,
+      )
+      .sort((a, b) => a.position - b.position);
+    const source = ordered.findIndex((r) => r.id === draggedRecord);
+    if (source < 0) return;
+    const [removed] = ordered.splice(source, 1);
+    const targetIndex = ordered.findIndex((r) => r.id === target.id);
+    if (targetIndex < 0) return;
+    ordered.splice(targetIndex + (after ? 1 : 0), 0, removed);
+    onChange((current) => ({
+      ...current,
+      records: current.records.map((r) =>
+        r.database_id === databaseId ? { ...r, position: ordered.findIndex((item) => item.id === r.id) } : r,
+      ),
+    }));
+  };
+  const dropColumn = (target: Property) => {
+    const source = properties.find((p) => p.id === draggedColumn);
+    if (!source || source.type === "title" || target.type === "title" || source.id === target.id) return;
+    const next = properties.filter((p) => p.id !== source.id);
+    next.splice(
+      next.findIndex((p) => p.id === target.id),
+      0,
+      source,
+    );
+    updateView({ property_order: next.map((property) => property.id) });
+    setDraggedColumn(null);
+  };
+  const startResize = (event: React.PointerEvent, property: Property) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const start = event.clientX,
+      initial = property.width;
+    const target = event.currentTarget as HTMLElement;
+    target.setPointerCapture(event.pointerId);
+    const move = (e: PointerEvent) => {
+      const width = Math.max(100, Math.min(700, initial + e.clientX - start));
+      target.parentElement?.style.setProperty("width", `${width}px`);
+    };
+    const up = (e: PointerEvent) => {
+      const width = Math.max(100, Math.min(700, initial + e.clientX - start));
+      onChange((current) => ({
+        ...current,
+        properties: current.properties.map((p) => (p.id === property.id ? { ...p, width } : p)),
+      }));
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", up);
+    };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", up);
+  };
   const helper = createColumnHelper<DbRecord>();
-  const columns = visible.map((property) => helper.accessor((record) => cellValue(record, property, state), { id: property.id, size: property.width, header: property.name }));
+  const columns = visible.map((property) =>
+    helper.accessor((record) => cellValue(record, property, state), {
+      id: property.id,
+      size: property.width,
+      header: property.name,
+    }),
+  );
   // TanStack intentionally owns mutable table state; React Compiler must skip this hook.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({ data: records, columns, getCoreRowModel: getCoreRowModel() });
   const rows = table.getRowModel().rows;
-  const virtualizer = useVirtualizer({ count: rows.length, getScrollElement: () => scrollRef.current, estimateSize: () => 39, overscan: 12, enabled: rows.length > 100 });
-  const virtualRows = rows.length > 100 ? virtualizer.getVirtualItems() : rows.map((_, index) => ({ index, start: index * 39, size: 39 }));
-  const groupProperty = view.group_by === '' ? undefined : properties.find((p) => p.id === view.group_by) || properties.find((p) => p.type === 'status' || p.type === 'select');
-  const groups = groupProperty ? [...new Set([...(groupProperty.config.options || []), ...records.map((r) => String(cellValue(r, groupProperty, state) || 'No status'))])] : ['All records'];
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 39,
+    overscan: 12,
+    enabled: rows.length > 100,
+  });
+  const virtualRows =
+    rows.length > 100
+      ? virtualizer.getVirtualItems()
+      : rows.map((_, index) => ({ index, start: index * 39, size: 39 }));
+  const groupProperty =
+    view.group_by === ""
+      ? undefined
+      : properties.find((p) => p.id === view.group_by) ||
+        properties.find((p) => p.type === "status" || p.type === "select");
+  const groups = groupProperty
+    ? [
+        ...new Set([
+          ...(groupProperty.config.options || []),
+          ...records.map((r) => String(cellValue(r, groupProperty, state) || "No status")),
+        ]),
+      ]
+    : ["All records"];
   if (!database) return <div className="db-empty">This database is unavailable.</div>;
 
-  const rowActions = (record: DbRecord, trigger?: React.ReactNode) => <Menu open={recordMenuId === record.id} onOpenChange={(open) => setRecordMenuId(open ? record.id : null)} align={trigger ? 'start' : 'end'} label="Record actions" trigger={trigger ?? <button className="db-row-menu-trigger" aria-label={`Actions for ${recordTitle(record, state)}`}><MoreHorizontal size={16} /></button>}><div onClick={() => setRecordMenuId(null)}><MenuAction icon={<OpenModeIcon mode={openMode} />} onClick={() => onOpenRecord(record)}>{OPEN_LABEL[openMode]}</MenuAction><MenuAction icon={<Copy size={16} />} onClick={() => duplicateRecord(record)}>Duplicate</MenuAction><MenuAction icon={<ArrowUp size={16} />} onClick={() => { const previous = records[records.findIndex((r) => r.id === record.id) - 1]; if (previous) onChange((current) => ({ ...current, records: current.records.map((r) => r.id === record.id ? { ...r, position: previous.position } : r.id === previous.id ? { ...r, position: record.position } : r) })); }}>Move up</MenuAction><MenuAction icon={<ArrowDown size={16} />} onClick={() => { const next = records[records.findIndex((r) => r.id === record.id) + 1]; if (next) onChange((current) => ({ ...current, records: current.records.map((r) => r.id === record.id ? { ...r, position: next.position } : r.id === next.id ? { ...r, position: record.position } : r) })); }}>Move down</MenuAction><div className="db-menu-divider" /><MenuAction danger icon={<Trash2 size={16} />} onClick={() => trashRecord(record)}>Move to Trash</MenuAction></div></Menu>;
+  const rowActions = (record: DbRecord, trigger?: React.ReactNode) => (
+    <Menu
+      open={recordMenuId === record.id}
+      onOpenChange={(open) => setRecordMenuId(open ? record.id : null)}
+      align={trigger ? "start" : "end"}
+      label="Record actions"
+      trigger={
+        trigger ?? (
+          <button className="db-row-menu-trigger" aria-label={`Actions for ${recordTitle(record, state)}`}>
+            <MoreHorizontal size={16} />
+          </button>
+        )
+      }
+    >
+      <div onClick={() => setRecordMenuId(null)}>
+        <MenuAction icon={<OpenModeIcon mode={openMode} />} onClick={() => onOpenRecord(record)}>
+          {OPEN_LABEL[openMode]}
+        </MenuAction>
+        <MenuAction icon={<Copy size={16} />} onClick={() => duplicateRecord(record)}>
+          Duplicate
+        </MenuAction>
+        <MenuAction
+          icon={<ArrowUp size={16} />}
+          onClick={() => {
+            const previous = records[records.findIndex((r) => r.id === record.id) - 1];
+            if (previous)
+              onChange((current) => ({
+                ...current,
+                records: current.records.map((r) =>
+                  r.id === record.id
+                    ? { ...r, position: previous.position }
+                    : r.id === previous.id
+                      ? { ...r, position: record.position }
+                      : r,
+                ),
+              }));
+          }}
+        >
+          Move up
+        </MenuAction>
+        <MenuAction
+          icon={<ArrowDown size={16} />}
+          onClick={() => {
+            const next = records[records.findIndex((r) => r.id === record.id) + 1];
+            if (next)
+              onChange((current) => ({
+                ...current,
+                records: current.records.map((r) =>
+                  r.id === record.id
+                    ? { ...r, position: next.position }
+                    : r.id === next.id
+                      ? { ...r, position: record.position }
+                      : r,
+                ),
+              }));
+          }}
+        >
+          Move down
+        </MenuAction>
+        <div className="db-menu-divider" />
+        <MenuAction danger icon={<Trash2 size={16} />} onClick={() => trashRecord(record)}>
+          Move to Trash
+        </MenuAction>
+      </div>
+    </Menu>
+  );
   /**
    * The ⋮⋮ grip beside a table row, like the page's block grip: drag it to reorder,
    * click (or Enter/Space) for the row's menu. Sorted views can't be reordered by hand,
@@ -391,30 +1608,913 @@ export function DatabaseView({ databaseId, state, onChange, onOpenRecord, onOpen
    */
   const rowGrip = (record: DbRecord) => {
     const locked = view.sorts.length > 0;
-    return <span role="button" tabIndex={0} aria-haspopup="menu" aria-label={`Actions for ${recordTitle(record, state)}`} className={`db-row-drag ${locked ? 'is-locked' : ''}`} title={locked ? 'Click for options · Rows are sorted, so clear the sort to drag them' : 'Drag to move · Click for options'} draggable={!locked} onKeyDown={(e) => { if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); setRecordMenuId(record.id); }} onDragStart={(e) => { setRecordMenuId(null); setDraggedRecord(record.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('application/x-slate-record', record.id); const row = e.currentTarget.closest('tr'); if (row) e.dataTransfer.setDragImage(row, 24, row.getBoundingClientRect().height / 2); }} onDragEnd={() => { setDraggedRecord(null); setDropHint(null); }}><GripVertical size={14} /></span>;
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        aria-haspopup="menu"
+        aria-label={`Actions for ${recordTitle(record, state)}`}
+        className={`db-row-drag ${locked ? "is-locked" : ""}`}
+        title={
+          locked
+            ? "Click for options · Rows are sorted, so clear the sort to drag them"
+            : "Drag to move · Click for options"
+        }
+        draggable={!locked}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          setRecordMenuId(record.id);
+        }}
+        onDragStart={(e) => {
+          setRecordMenuId(null);
+          setDraggedRecord(record.id);
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("application/x-slate-record", record.id);
+          const row = e.currentTarget.closest("tr");
+          if (row) e.dataTransfer.setDragImage(row, 24, row.getBoundingClientRect().height / 2);
+        }}
+        onDragEnd={() => {
+          setDraggedRecord(null);
+          setDropHint(null);
+        }}
+      >
+        <GripVertical size={14} />
+      </span>
+    );
   };
-  return <div className={`database-view ${compact ? 'db-compact' : ''}`}>
-    {compact && <InlineTitle database={database} state={state} onChange={onChange} onOpenPage={onOpenPage} linkedFrom={linkedFrom} ownViews={!!placement} autoFocus={autoFocusTitle} onAutoFocused={onTitleFocused} />}
-    <div className="db-toolbar"><div className="db-tabs" role="tablist" aria-label="Database views">{(views.length ? views : [fallback]).slice(0, 4).map((item) => <button key={item.id} role="tab" aria-selected={item.id === view.id} className={`db-view-tab ${item.id === view.id ? 'active' : ''}`} onClick={() => setActiveId(item.id)}><ViewIcon type={item.type} /><span>{item.name}</span></button>)}{views.length > 4 && <Menu open={moreViewsOpen} onOpenChange={setMoreViewsOpen} trigger={<button className="db-view-tab">{views.length - 4} more…</button>} label="More views">{views.slice(4).map((item) => <MenuAction key={item.id} icon={<ViewIcon type={item.type} />} onClick={() => { setActiveId(item.id); setMoreViewsOpen(false); }}>{item.name}</MenuAction>)}</Menu>}<Menu open={newViewOpen} onOpenChange={setNewViewOpen} trigger={<button className="db-icon-button db-add-view" title="Add a view" aria-label="Add a view"><Plus size={16} /></button>} label="New database view"><div className="db-menu-heading">Add a view</div><input className="db-menu-input" placeholder="View name" aria-label="View name" value={viewName} onChange={(e) => setViewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addView(); }} />{(['table', 'list', 'board'] as const).map((type) => <MenuAction key={type} icon={<ViewIcon type={type} />} onClick={() => setNewViewType(type)}>{type[0].toUpperCase() + type.slice(1)}{newViewType === type && <Check size={14} />}</MenuAction>)}<button className="db-primary db-full-button" disabled={!viewName.trim()} onClick={addView}>Create view</button></Menu></div>
-      <div className="db-tools">
-        <Menu align="end" label="Filter records" trigger={<button className={`db-icon-button ${view.filters.length ? 'is-active' : ''}`} title="Filter" aria-label="Filter records"><ListFilter size={18} />{view.filters.length > 0 && <span className="db-tool-count">{view.filters.length}</span>}</button>}><div className="db-menu-heading">Filters <span>Only show matching records</span></div>{view.filters.map((filter, index) => <div className="db-filter-rule" key={index}><select className="db-menu-select" aria-label="Filter property" value={filter.property_id} onChange={(e) => updateView({ filters: view.filters.map((f, i) => i === index ? { ...f, property_id: e.target.value } : f) })}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><select className="db-menu-select" aria-label="Filter condition" value={filter.operator} onChange={(e) => updateView({ filters: view.filters.map((f, i) => i === index ? { ...f, operator: e.target.value as typeof f.operator } : f) })}>{[['contains', 'Contains'], ['equals', 'Is'], ['not_equals', 'Is not'], ['is_empty', 'Is empty'], ['greater_than', 'Greater than'], ['less_than', 'Less than']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{filter.operator !== 'is_empty' && <input className="db-menu-input" aria-label="Filter value" placeholder="Value…" value={filter.value} onChange={(e) => updateView({ filters: view.filters.map((f, i) => i === index ? { ...f, value: e.target.value } : f) })} />}<button className="db-icon-button" aria-label="Remove filter" onClick={() => updateView({ filters: view.filters.filter((_, i) => i !== index) })}><X size={14} /></button></div>)}<MenuAction icon={<Plus size={16} />} onClick={() => updateView({ filters: [...view.filters, { property_id: properties[0]?.id || '', operator: 'contains', value: '' }] })}>Add filter</MenuAction>{view.filters.length > 0 && <MenuAction onClick={() => updateView({ filters: [] })}>Clear filters</MenuAction>}</Menu>
-        <Menu align="end" label="Sort records" trigger={<button className={`db-icon-button ${view.sorts.length ? 'is-active' : ''}`} title="Sort" aria-label="Sort records"><ArrowDownUp size={16} /></button>}><div className="db-menu-heading">Sort</div>{view.sorts.map((sort, index) => <div className="db-sort-rule" key={index}><select className="db-menu-select" aria-label="Sort property" value={sort.property_id} onChange={(e) => updateView({ sorts: view.sorts.map((s, i) => i === index ? { ...s, property_id: e.target.value } : s) })}>{properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><select className="db-menu-select" aria-label="Sort direction" value={sort.direction} onChange={(e) => updateView({ sorts: view.sorts.map((s, i) => i === index ? { ...s, direction: e.target.value as 'asc' | 'desc' } : s) })}><option value="asc">Ascending</option><option value="desc">Descending</option></select><button className="db-icon-button" aria-label="Remove sort" onClick={() => updateView({ sorts: view.sorts.filter((_, i) => i !== index) })}><X size={14} /></button></div>)}<MenuAction icon={<Plus size={16} />} onClick={() => updateView({ sorts: [...view.sorts, { property_id: properties[0]?.id || '', direction: 'asc' }] })}>Add sort</MenuAction>{view.sorts.length > 0 && <MenuAction onClick={() => updateView({ sorts: [] })}>Clear sorting</MenuAction>}</Menu>
-        <Menu align="end" label="Database actions" trigger={<button className="db-icon-button db-automation-button" title="Database actions" aria-label="Database actions"><Zap size={16} /></button>}><div className="db-menu-heading">{database.name || 'Untitled database'}</div><MenuAction icon={<Download size={16} />} onClick={download}>Export view as CSV</MenuAction><MenuAction icon={<Copy size={16} />} onClick={() => { const next = { ...view, id: token(), name: `${view.name} copy` }; onChange((current) => ({ ...current, views: [...current.views, next] })); setActiveId(next.id); }}>Duplicate view</MenuAction></Menu>
-        <button className={`db-icon-button ${showSearch ? 'is-active' : ''}`} title="Search database" aria-label="Search database" onClick={() => setShowSearch((value) => !value)}><Search size={18} /></button>
-        <Menu align="end" label="View settings" trigger={<button className="db-icon-button" title="View settings" aria-label="View settings"><SlidersHorizontal size={18} /></button>}><div className="db-menu-heading">View settings</div><label className="db-menu-label">View name<input className="db-menu-input" aria-label="Rename view" value={view.name} onChange={(e) => updateView({ name: e.target.value })} /></label><label className="db-menu-label">Layout<select className="db-menu-select" aria-label="View layout" value={view.type} onChange={(e) => updateView({ type: e.target.value as View['type'] })}><option value="table">Table</option><option value="list">List</option><option value="board">Board</option></select></label>{view.type === 'board' && <label className="db-menu-label">Group by<select className="db-menu-select" value={view.group_by || groupProperty?.id || ''} onChange={(e) => updateView({ group_by: e.target.value })}><option value="">No grouping</option>{properties.filter((p) => ['status', 'select', 'text'].includes(p.type)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}{!phone && <><div className="db-menu-divider" /><div className="db-menu-heading">Open records in <span>For every view of this database</span></div><div className="db-open-mode" role="radiogroup" aria-label="Open records in">{(['peek', 'page'] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={savedOpenMode === mode} className={savedOpenMode === mode ? 'active' : ''} onClick={() => setOpenMode(mode)}><OpenModeIcon mode={mode} size={15} /><span>{mode === 'peek' ? 'Side panel' : 'Full page'}</span></button>)}</div>{!touchOnly && <p className="db-menu-hint">{shortcut.platform === "apple" ? "⌘" : "Ctrl"}-click Open to use a full page just once.</p>}</>}<div className="db-menu-divider" /><div className="db-menu-heading">Properties</div>{properties.map((property) => <MenuAction key={property.id} icon={<PropertyIcon type={property.type} />} disabled={property.type === 'title'} onClick={() => updateView({ hidden_properties: view.hidden_properties.includes(property.id) ? view.hidden_properties.filter((id) => id !== property.id) : [...view.hidden_properties, property.id] })}>{property.name}{!view.hidden_properties.includes(property.id) && <Check size={14} />}</MenuAction>)}{views.length > 1 && <><div className="db-menu-divider" /><MenuAction danger icon={<Trash2 size={16} />} onClick={() => { onChange((current) => ({ ...current, views: current.views.filter((v) => v.id !== view.id) })); setActiveId(''); }}>Delete view</MenuAction></>}</Menu>
-        <div className="db-new-control"><button className="db-primary" onClick={() => { const record = addRecord(); if (record) onOpenRecord(record); }}>New</button><Menu align="end" label="New record options" trigger={<button className="db-primary db-new-chevron" aria-label="New record options"><ChevronDown size={16} /></button>}><MenuAction icon={<Plus size={16} />} onClick={() => addRecord()}>Add empty record</MenuAction><MenuAction icon={<OpenModeIcon mode={openMode} />} onClick={() => { const record = addRecord(); if (record) onOpenRecord(record); }}>{openMode === 'page' ? 'New as full page' : 'New in side panel'}</MenuAction></Menu></div>
+  return (
+    <div className={`database-view ${compact ? "db-compact" : ""}`}>
+      {compact && (
+        <InlineTitle
+          database={database}
+          state={state}
+          onChange={onChange}
+          onOpenPage={onOpenPage}
+          linkedFrom={linkedFrom}
+          ownViews={!!placement}
+          autoFocus={autoFocusTitle}
+          onAutoFocused={onTitleFocused}
+        />
+      )}
+      <div className="db-toolbar">
+        <div className="db-tabs" role="tablist" aria-label="Database views">
+          {(views.length ? views : [fallback]).slice(0, 4).map((item) => (
+            <button
+              key={item.id}
+              role="tab"
+              aria-selected={item.id === view.id}
+              className={`db-view-tab ${item.id === view.id ? "active" : ""}`}
+              onClick={() => setActiveId(item.id)}
+            >
+              <ViewIcon type={item.type} />
+              <span>{item.name}</span>
+            </button>
+          ))}
+          {views.length > 4 && (
+            <Menu
+              open={moreViewsOpen}
+              onOpenChange={setMoreViewsOpen}
+              trigger={<button className="db-view-tab">{views.length - 4} more…</button>}
+              label="More views"
+            >
+              {views.slice(4).map((item) => (
+                <MenuAction
+                  key={item.id}
+                  icon={<ViewIcon type={item.type} />}
+                  onClick={() => {
+                    setActiveId(item.id);
+                    setMoreViewsOpen(false);
+                  }}
+                >
+                  {item.name}
+                </MenuAction>
+              ))}
+            </Menu>
+          )}
+          <Menu
+            open={newViewOpen}
+            onOpenChange={setNewViewOpen}
+            trigger={
+              <button className="db-icon-button db-add-view" title="Add a view" aria-label="Add a view">
+                <Plus size={16} />
+              </button>
+            }
+            label="New database view"
+          >
+            <div className="db-menu-heading">Add a view</div>
+            <input
+              className="db-menu-input"
+              placeholder="View name"
+              aria-label="View name"
+              value={viewName}
+              onChange={(e) => setViewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addView();
+              }}
+            />
+            {(["table", "list", "board"] as const).map((type) => (
+              <MenuAction key={type} icon={<ViewIcon type={type} />} onClick={() => setNewViewType(type)}>
+                {type[0].toUpperCase() + type.slice(1)}
+                {newViewType === type && <Check size={14} />}
+              </MenuAction>
+            ))}
+            <button className="db-primary db-full-button" disabled={!viewName.trim()} onClick={addView}>
+              Create view
+            </button>
+          </Menu>
+        </div>
+        <div className="db-tools">
+          <Menu
+            align="end"
+            label="Filter records"
+            trigger={
+              <button
+                className={`db-icon-button ${view.filters.length ? "is-active" : ""}`}
+                title="Filter"
+                aria-label="Filter records"
+              >
+                <ListFilter size={18} />
+                {view.filters.length > 0 && <span className="db-tool-count">{view.filters.length}</span>}
+              </button>
+            }
+          >
+            <div className="db-menu-heading">
+              Filters <span>Only show matching records</span>
+            </div>
+            {view.filters.map((filter, index) => (
+              <div className="db-filter-rule" key={index}>
+                <select
+                  className="db-menu-select"
+                  aria-label="Filter property"
+                  value={filter.property_id}
+                  onChange={(e) =>
+                    updateView({
+                      filters: view.filters.map((f, i) => (i === index ? { ...f, property_id: e.target.value } : f)),
+                    })
+                  }
+                >
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="db-menu-select"
+                  aria-label="Filter condition"
+                  value={filter.operator}
+                  onChange={(e) =>
+                    updateView({
+                      filters: view.filters.map((f, i) =>
+                        i === index ? { ...f, operator: e.target.value as typeof f.operator } : f,
+                      ),
+                    })
+                  }
+                >
+                  {[
+                    ["contains", "Contains"],
+                    ["equals", "Is"],
+                    ["not_equals", "Is not"],
+                    ["is_empty", "Is empty"],
+                    ["greater_than", "Greater than"],
+                    ["less_than", "Less than"],
+                  ].map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {filter.operator !== "is_empty" && (
+                  <input
+                    className="db-menu-input"
+                    aria-label="Filter value"
+                    placeholder="Value…"
+                    value={filter.value}
+                    onChange={(e) =>
+                      updateView({
+                        filters: view.filters.map((f, i) => (i === index ? { ...f, value: e.target.value } : f)),
+                      })
+                    }
+                  />
+                )}
+                <button
+                  className="db-icon-button"
+                  aria-label="Remove filter"
+                  onClick={() => updateView({ filters: view.filters.filter((_, i) => i !== index) })}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <MenuAction
+              icon={<Plus size={16} />}
+              onClick={() =>
+                updateView({
+                  filters: [...view.filters, { property_id: properties[0]?.id || "", operator: "contains", value: "" }],
+                })
+              }
+            >
+              Add filter
+            </MenuAction>
+            {view.filters.length > 0 && (
+              <MenuAction onClick={() => updateView({ filters: [] })}>Clear filters</MenuAction>
+            )}
+          </Menu>
+          <Menu
+            align="end"
+            label="Sort records"
+            trigger={
+              <button
+                className={`db-icon-button ${view.sorts.length ? "is-active" : ""}`}
+                title="Sort"
+                aria-label="Sort records"
+              >
+                <ArrowDownUp size={16} />
+              </button>
+            }
+          >
+            <div className="db-menu-heading">Sort</div>
+            {view.sorts.map((sort, index) => (
+              <div className="db-sort-rule" key={index}>
+                <select
+                  className="db-menu-select"
+                  aria-label="Sort property"
+                  value={sort.property_id}
+                  onChange={(e) =>
+                    updateView({
+                      sorts: view.sorts.map((s, i) => (i === index ? { ...s, property_id: e.target.value } : s)),
+                    })
+                  }
+                >
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="db-menu-select"
+                  aria-label="Sort direction"
+                  value={sort.direction}
+                  onChange={(e) =>
+                    updateView({
+                      sorts: view.sorts.map((s, i) =>
+                        i === index ? { ...s, direction: e.target.value as "asc" | "desc" } : s,
+                      ),
+                    })
+                  }
+                >
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+                <button
+                  className="db-icon-button"
+                  aria-label="Remove sort"
+                  onClick={() => updateView({ sorts: view.sorts.filter((_, i) => i !== index) })}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <MenuAction
+              icon={<Plus size={16} />}
+              onClick={() =>
+                updateView({ sorts: [...view.sorts, { property_id: properties[0]?.id || "", direction: "asc" }] })
+              }
+            >
+              Add sort
+            </MenuAction>
+            {view.sorts.length > 0 && <MenuAction onClick={() => updateView({ sorts: [] })}>Clear sorting</MenuAction>}
+          </Menu>
+          <Menu
+            align="end"
+            label="Database actions"
+            trigger={
+              <button
+                className="db-icon-button db-automation-button"
+                title="Database actions"
+                aria-label="Database actions"
+              >
+                <Zap size={16} />
+              </button>
+            }
+          >
+            <div className="db-menu-heading">{database.name || "Untitled database"}</div>
+            <MenuAction icon={<Download size={16} />} onClick={download}>
+              Export view as CSV
+            </MenuAction>
+            <MenuAction
+              icon={<Copy size={16} />}
+              onClick={() => {
+                const next = { ...view, id: token(), name: `${view.name} copy` };
+                onChange((current) => ({ ...current, views: [...current.views, next] }));
+                setActiveId(next.id);
+              }}
+            >
+              Duplicate view
+            </MenuAction>
+          </Menu>
+          <button
+            className={`db-icon-button ${showSearch ? "is-active" : ""}`}
+            title="Search database"
+            aria-label="Search database"
+            onClick={() => setShowSearch((value) => !value)}
+          >
+            <Search size={18} />
+          </button>
+          <Menu
+            align="end"
+            label="View settings"
+            trigger={
+              <button className="db-icon-button" title="View settings" aria-label="View settings">
+                <SlidersHorizontal size={18} />
+              </button>
+            }
+          >
+            <div className="db-menu-heading">View settings</div>
+            <label className="db-menu-label">
+              View name
+              <input
+                className="db-menu-input"
+                aria-label="Rename view"
+                value={view.name}
+                onChange={(e) => updateView({ name: e.target.value })}
+              />
+            </label>
+            <label className="db-menu-label">
+              Layout
+              <select
+                className="db-menu-select"
+                aria-label="View layout"
+                value={view.type}
+                onChange={(e) => updateView({ type: e.target.value as View["type"] })}
+              >
+                <option value="table">Table</option>
+                <option value="list">List</option>
+                <option value="board">Board</option>
+              </select>
+            </label>
+            {view.type === "board" && (
+              <label className="db-menu-label">
+                Group by
+                <select
+                  className="db-menu-select"
+                  value={view.group_by || groupProperty?.id || ""}
+                  onChange={(e) => updateView({ group_by: e.target.value })}
+                >
+                  <option value="">No grouping</option>
+                  {properties
+                    .filter((p) => ["status", "select", "text"].includes(p.type))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            {!phone && (
+              <>
+                <div className="db-menu-divider" />
+                <div className="db-menu-heading">
+                  Open records in <span>For every view of this database</span>
+                </div>
+                <div className="db-open-mode" role="radiogroup" aria-label="Open records in">
+                  {(["peek", "page"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={savedOpenMode === mode}
+                      className={savedOpenMode === mode ? "active" : ""}
+                      onClick={() => setOpenMode(mode)}
+                    >
+                      <OpenModeIcon mode={mode} size={15} />
+                      <span>{mode === "peek" ? "Side panel" : "Full page"}</span>
+                    </button>
+                  ))}
+                </div>
+                {!touchOnly && (
+                  <p className="db-menu-hint">
+                    {shortcut.platform === "apple" ? "⌘" : "Ctrl"}-click Open to use a full page just once.
+                  </p>
+                )}
+              </>
+            )}
+            <div className="db-menu-divider" />
+            <div className="db-menu-heading">Properties</div>
+            {properties.map((property) => (
+              <MenuAction
+                key={property.id}
+                icon={<PropertyIcon type={property.type} />}
+                disabled={property.type === "title"}
+                onClick={() =>
+                  updateView({
+                    hidden_properties: view.hidden_properties.includes(property.id)
+                      ? view.hidden_properties.filter((id) => id !== property.id)
+                      : [...view.hidden_properties, property.id],
+                  })
+                }
+              >
+                {property.name}
+                {!view.hidden_properties.includes(property.id) && <Check size={14} />}
+              </MenuAction>
+            ))}
+            {views.length > 1 && (
+              <>
+                <div className="db-menu-divider" />
+                <MenuAction
+                  danger
+                  icon={<Trash2 size={16} />}
+                  onClick={() => {
+                    onChange((current) => ({ ...current, views: current.views.filter((v) => v.id !== view.id) }));
+                    setActiveId("");
+                  }}
+                >
+                  Delete view
+                </MenuAction>
+              </>
+            )}
+          </Menu>
+          <div className="db-new-control">
+            <button
+              className="db-primary"
+              onClick={() => {
+                const record = addRecord();
+                if (record) onOpenRecord(record);
+              }}
+            >
+              New
+            </button>
+            <Menu
+              align="end"
+              label="New record options"
+              trigger={
+                <button className="db-primary db-new-chevron" aria-label="New record options">
+                  <ChevronDown size={16} />
+                </button>
+              }
+            >
+              <MenuAction icon={<Plus size={16} />} onClick={() => addRecord()}>
+                Add empty record
+              </MenuAction>
+              <MenuAction
+                icon={<OpenModeIcon mode={openMode} />}
+                onClick={() => {
+                  const record = addRecord();
+                  if (record) onOpenRecord(record);
+                }}
+              >
+                {openMode === "page" ? "New as full page" : "New in side panel"}
+              </MenuAction>
+            </Menu>
+          </div>
+        </div>
+      </div>
+      {showSearch && (
+        <div className="db-search-row">
+          <Search size={16} />
+          <input
+            autoFocus
+            aria-label="Search database records"
+            placeholder="Search records…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearch("");
+                setShowSearch(false);
+              }
+            }}
+          />
+          <span>{records.length} results</span>
+          <button
+            className="db-icon-button"
+            aria-label="Close database search"
+            onClick={() => {
+              setSearch("");
+              setShowSearch(false);
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      {(view.filters.length > 0 || view.sorts.length > 0) && (
+        <div className="db-active-rules">
+          {view.filters.map((filter, index) => (
+            <span key={`f-${index}`}>
+              <Filter size={12} />
+              {properties.find((p) => p.id === filter.property_id)?.name} {filter.operator.replaceAll("_", " ")}{" "}
+              {filter.value}
+              <button
+                aria-label="Remove filter"
+                onClick={() => updateView({ filters: view.filters.filter((_, i) => i !== index) })}
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+          {view.sorts.map((sort, index) => (
+            <span key={`s-${index}`}>
+              <ArrowDownUp size={12} />
+              {properties.find((p) => p.id === sort.property_id)?.name}
+              <button
+                aria-label="Remove sort"
+                onClick={() => updateView({ sorts: view.sorts.filter((_, i) => i !== index) })}
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {view.type === "table" && (
+        <div ref={scrollRef} className={`db-table-scroll ${rows.length > 100 ? "db-virtual-scroll" : ""}`}>
+          <table className="db-table" style={{ width: table.getTotalSize() + 45 }}>
+            <thead>
+              {table.getHeaderGroups().map((group) => (
+                <tr key={group.id}>
+                  {group.headers.map((header) => {
+                    const property = visible.find((p) => p.id === header.id)!;
+                    return (
+                      <th
+                        key={header.id}
+                        style={{ width: property.width, minWidth: property.width, maxWidth: property.width }}
+                        draggable={property.type !== "title"}
+                        onDragStart={() => setDraggedColumn(property.id)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => dropColumn(property)}
+                      >
+                        <PropertyMenu
+                          property={property}
+                          properties={properties}
+                          state={state}
+                          onChange={onChange}
+                          view={view}
+                          updateView={updateView}
+                        />
+                        <div
+                          className="db-column-resizer"
+                          onPointerDown={(e) => startResize(e, property)}
+                          role="separator"
+                          tabIndex={0}
+                          aria-orientation="vertical"
+                          aria-valuenow={property.width}
+                          aria-valuemin={100}
+                          aria-valuemax={700}
+                          onKeyDown={(e) => {
+                            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                            e.preventDefault();
+                            const width = Math.max(
+                              100,
+                              Math.min(700, property.width + (e.key === "ArrowLeft" ? -10 : 10)),
+                            );
+                            onChange((current) => ({
+                              ...current,
+                              properties: current.properties.map((p) => (p.id === property.id ? { ...p, width } : p)),
+                            }));
+                          }}
+                          aria-label={`Resize ${property.name}`}
+                        />
+                      </th>
+                    );
+                  })}
+                  <th className="db-add-column">
+                    <Menu
+                      open={addPropertyOpen}
+                      onOpenChange={setAddPropertyOpen}
+                      label="New property"
+                      trigger={
+                        <button className="db-icon-button" aria-label="Add property" title="Add property">
+                          <Plus size={16} />
+                        </button>
+                      }
+                    >
+                      <div className="db-name-field">
+                        <Plus size={16} />
+                        <input
+                          placeholder="Property name"
+                          aria-label="New property name"
+                          value={propertyName}
+                          onChange={(e) => setPropertyName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") addProperty("text");
+                          }}
+                        />
+                      </div>
+                      <div className="db-menu-heading">Choose a type</div>
+                      <div className="db-options-scroll db-type-grid">
+                        {TYPES.map((type) => (
+                          <MenuAction
+                            key={type.value}
+                            icon={<PropertyIcon type={type.value} />}
+                            onClick={() => addProperty(type.value)}
+                          >
+                            {type.label}
+                          </MenuAction>
+                        ))}
+                      </div>
+                    </Menu>
+                  </th>
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {rows.length > 100 && virtualRows[0]?.start > 0 && (
+                <tr>
+                  <td colSpan={visible.length + 1} style={{ height: virtualRows[0].start }} />
+                </tr>
+              )}
+              {virtualRows.map(({ index }) => {
+                const row = rows[index],
+                  record = row.original;
+                return (
+                  <tr
+                    key={record.id}
+                    className={`${draggedRecord === record.id ? "db-dragging-row" : ""} ${dropHint?.id === record.id ? (dropHint.after ? "db-drop-after" : "db-drop-before") : ""}`}
+                    onDragOver={(e) => {
+                      if (!draggedRecord) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      const box = e.currentTarget.getBoundingClientRect();
+                      const after = e.clientY > box.top + box.height / 2;
+                      if (dropHint?.id !== record.id || dropHint.after !== after) setDropHint({ id: record.id, after });
+                    }}
+                    onDrop={(e) => {
+                      if (!draggedRecord) return;
+                      e.preventDefault();
+                      dropRecord(record, dropHint?.id === record.id ? dropHint.after : false);
+                      setDropHint(null);
+                      setDraggedRecord(null);
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell, cellIndex) => (
+                      <td
+                        key={cell.id}
+                        style={{
+                          width: cell.column.getSize(),
+                          minWidth: cell.column.getSize(),
+                          maxWidth: cell.column.getSize(),
+                        }}
+                      >
+                        {cellIndex === 0 && rowActions(record, rowGrip(record))}
+                        <Cell
+                          record={record}
+                          property={visible.find((property) => property.id === cell.column.id)!}
+                          state={state}
+                          onChange={onChange}
+                          onOpenRecord={onOpenRecord}
+                          onOpenLinked={onOpenLinked}
+                          autoEdit={
+                            typingRecordId === record.id &&
+                            visible.find((property) => property.id === cell.column.id)?.type === "title"
+                          }
+                          onAutoEdited={doneTyping}
+                        />
+                      </td>
+                    ))}
+                    <td className="db-row-actions" />
+                  </tr>
+                );
+              })}
+              {rows.length > 100 && virtualRows.length > 0 && (
+                <tr>
+                  <td
+                    colSpan={visible.length + 1}
+                    style={{
+                      height:
+                        virtualizer.getTotalSize() -
+                        (virtualRows[virtualRows.length - 1].start + virtualRows[virtualRows.length - 1].size),
+                    }}
+                  />
+                </tr>
+              )}
+              {!records.length && (search || view.filters.length > 0) && (
+                <tr className="db-empty-row">
+                  <td colSpan={visible.length + 1}>
+                    <div className="db-empty">
+                      <span>No records match your view.</span>
+                      {search && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearch("");
+                            setShowSearch(false);
+                          }}
+                        >
+                          Clear search
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              <tr className="db-add-tr">
+                <td colSpan={visible.length + 1}>
+                  <button
+                    className="db-add-row"
+                    onClick={() => {
+                      const record = addRecord();
+                      if (record) setTypingRecordId(record.id);
+                    }}
+                  >
+                    <Plus size={16} />
+                    <span>New page</span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      {view.type === "list" && (
+        <div className="db-list">
+          {records.map((record) => (
+            <div
+              className="db-list-row"
+              key={record.id}
+              draggable
+              onDragStart={() => setDraggedRecord(record.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => dropRecord(record)}
+            >
+              <button className="db-list-title" onClick={() => onOpenRecord(record)}>
+                <RecordIcon record={record} state={state} size={16} />
+                <span>{recordTitle(record, state)}</span>
+              </button>
+              <div className="db-list-values">
+                {visible
+                  .filter((p) => p.type !== "title")
+                  .slice(0, 3)
+                  .map((p) => (
+                    <div key={p.id} style={{ maxWidth: p.width }}>
+                      <Cell
+                        record={record}
+                        property={p}
+                        state={state}
+                        onChange={onChange}
+                        onOpenRecord={onOpenRecord}
+                        onOpenLinked={onOpenLinked}
+                      />
+                    </div>
+                  ))}
+              </div>
+              {rowActions(record)}
+            </div>
+          ))}
+          <button
+            className="db-add-row"
+            onClick={() => {
+              const record = addRecord();
+              if (record) onOpenRecord(record);
+            }}
+          >
+            <Plus size={16} />
+            New page
+          </button>
+        </div>
+      )}
+      {view.type === "board" && (
+        <div className="db-board">
+          {groups.map((group) => {
+            const groupedRecords = records.filter(
+              (record) => !groupProperty || String(cellValue(record, groupProperty, state) || "No status") === group,
+            );
+            return (
+              <div
+                className="db-board-column"
+                key={group}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedRecord && groupProperty)
+                    onChange((current) =>
+                      updateCell(current, draggedRecord, groupProperty, group === "No status" ? null : group),
+                    );
+                  setDraggedRecord(null);
+                }}
+              >
+                <div className="db-board-heading">
+                  <Badge value={group} />
+                  <span>{groupedRecords.length}</span>
+                  <button
+                    className="db-icon-button"
+                    aria-label={`Add record to ${group}`}
+                    onClick={() =>
+                      addRecord(groupProperty && group !== "No status" ? { [groupProperty.id]: group } : {})
+                    }
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                {groupedRecords.map((record) => (
+                  <div
+                    className="db-board-card"
+                    key={record.id}
+                    draggable
+                    onDragStart={() => setDraggedRecord(record.id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (draggedRecord && groupProperty)
+                        onChange((current) =>
+                          updateCell(current, draggedRecord, groupProperty, group === "No status" ? null : group),
+                        );
+                      dropRecord(record);
+                    }}
+                  >
+                    <button className="db-board-card-title" onClick={() => onOpenRecord(record)}>
+                      <RecordIcon record={record} state={state} size={16} />
+                      {recordTitle(record, state)}
+                    </button>
+                    {visible
+                      .filter((p) => p.type !== "title" && p.id !== groupProperty?.id)
+                      .slice(0, 3)
+                      .map((property) => (
+                        <div className="db-board-property" key={property.id}>
+                          <span>{property.name}</span>
+                          <Cell
+                            record={record}
+                            property={property}
+                            state={state}
+                            onChange={onChange}
+                            onOpenRecord={onOpenRecord}
+                            onOpenLinked={onOpenLinked}
+                          />
+                        </div>
+                      ))}
+                    {rowActions(record)}
+                  </div>
+                ))}
+                <button
+                  className="db-add-row"
+                  onClick={() => {
+                    const record = addRecord(
+                      groupProperty && group !== "No status" ? { [groupProperty.id]: group } : {},
+                    );
+                    if (record) onOpenRecord(record);
+                  }}
+                >
+                  <Plus size={16} />
+                  New page
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="db-footer">
+        {records.length > 0 && (
+          <span>
+            {records.length} {records.length === 1 ? "record" : "records"}
+          </span>
+        )}
       </div>
     </div>
-    {showSearch && <div className="db-search-row"><Search size={16} /><input autoFocus aria-label="Search database records" placeholder="Search records…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setShowSearch(false); } }} /><span>{records.length} results</span><button className="db-icon-button" aria-label="Close database search" onClick={() => { setSearch(''); setShowSearch(false); }}><X size={14} /></button></div>}
-    {(view.filters.length > 0 || view.sorts.length > 0) && <div className="db-active-rules">{view.filters.map((filter, index) => <span key={`f-${index}`}><Filter size={12} />{properties.find((p) => p.id === filter.property_id)?.name} {filter.operator.replaceAll('_', ' ')} {filter.value}<button aria-label="Remove filter" onClick={() => updateView({ filters: view.filters.filter((_, i) => i !== index) })}><X size={12} /></button></span>)}{view.sorts.map((sort, index) => <span key={`s-${index}`}><ArrowDownUp size={12} />{properties.find((p) => p.id === sort.property_id)?.name}<button aria-label="Remove sort" onClick={() => updateView({ sorts: view.sorts.filter((_, i) => i !== index) })}><X size={12} /></button></span>)}</div>}
-    {view.type === 'table' && <div ref={scrollRef} className={`db-table-scroll ${rows.length > 100 ? 'db-virtual-scroll' : ''}`}><table className="db-table" style={{ width: table.getTotalSize() + 45 }}><thead>{table.getHeaderGroups().map((group) => <tr key={group.id}>{group.headers.map((header) => { const property = visible.find((p) => p.id === header.id)!; return <th key={header.id} style={{ width: property.width, minWidth: property.width, maxWidth: property.width }} draggable={property.type !== 'title'} onDragStart={() => setDraggedColumn(property.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => dropColumn(property)}><PropertyMenu property={property} properties={properties} state={state} onChange={onChange} view={view} updateView={updateView} /><div className="db-column-resizer" onPointerDown={(e) => startResize(e, property)} role="separator" tabIndex={0} aria-orientation="vertical" aria-valuenow={property.width} aria-valuemin={100} aria-valuemax={700} onKeyDown={(e) => { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); const width = Math.max(100, Math.min(700, property.width + (e.key === 'ArrowLeft' ? -10 : 10))); onChange((current) => ({ ...current, properties: current.properties.map((p) => p.id === property.id ? { ...p, width } : p) })); }} aria-label={`Resize ${property.name}`} /></th>; })}<th className="db-add-column"><Menu open={addPropertyOpen} onOpenChange={setAddPropertyOpen} label="New property" trigger={<button className="db-icon-button" aria-label="Add property" title="Add property"><Plus size={16} /></button>}><div className="db-name-field"><Plus size={16} /><input placeholder="Property name" aria-label="New property name" value={propertyName} onChange={(e) => setPropertyName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addProperty('text'); }} /></div><div className="db-menu-heading">Choose a type</div><div className="db-options-scroll db-type-grid">{TYPES.map((type) => <MenuAction key={type.value} icon={<PropertyIcon type={type.value} />} onClick={() => addProperty(type.value)}>{type.label}</MenuAction>)}</div></Menu></th></tr>)}</thead><tbody>{rows.length > 100 && virtualRows[0]?.start > 0 && <tr><td colSpan={visible.length + 1} style={{ height: virtualRows[0].start }} /></tr>}{virtualRows.map(({ index }) => { const row = rows[index], record = row.original; return <tr key={record.id} className={`${draggedRecord === record.id ? 'db-dragging-row' : ''} ${dropHint?.id === record.id ? (dropHint.after ? 'db-drop-after' : 'db-drop-before') : ''}`} onDragOver={(e) => { if (!draggedRecord) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const box = e.currentTarget.getBoundingClientRect(); const after = e.clientY > box.top + box.height / 2; if (dropHint?.id !== record.id || dropHint.after !== after) setDropHint({ id: record.id, after }); }} onDrop={(e) => { if (!draggedRecord) return; e.preventDefault(); dropRecord(record, dropHint?.id === record.id ? dropHint.after : false); setDropHint(null); setDraggedRecord(null); }}>{row.getVisibleCells().map((cell, cellIndex) => <td key={cell.id} style={{ width: cell.column.getSize(), minWidth: cell.column.getSize(), maxWidth: cell.column.getSize() }}>{cellIndex === 0 && rowActions(record, rowGrip(record))}<Cell record={record} property={visible.find((property) => property.id === cell.column.id)!} state={state} onChange={onChange} onOpenRecord={onOpenRecord} onOpenLinked={onOpenLinked} autoEdit={typingRecordId === record.id && visible.find((property) => property.id === cell.column.id)?.type === 'title'} onAutoEdited={doneTyping} /></td>)}<td className="db-row-actions" /></tr>; })}{rows.length > 100 && virtualRows.length > 0 && <tr><td colSpan={visible.length + 1} style={{ height: virtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1].start + virtualRows[virtualRows.length - 1].size) }} /></tr>}{!records.length && (search || view.filters.length > 0) && <tr className="db-empty-row"><td colSpan={visible.length + 1}><div className="db-empty"><span>No records match your view.</span>{search && <button type="button" onClick={() => { setSearch(''); setShowSearch(false); }}>Clear search</button>}</div></td></tr>}<tr className="db-add-tr"><td colSpan={visible.length + 1}><button className="db-add-row" onClick={() => { const record = addRecord(); if (record) setTypingRecordId(record.id); }}><Plus size={16} /><span>New page</span></button></td></tr></tbody></table></div>}
-    {view.type === 'list' && <div className="db-list">{records.map((record) => <div className="db-list-row" key={record.id} draggable onDragStart={() => setDraggedRecord(record.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => dropRecord(record)}><button className="db-list-title" onClick={() => onOpenRecord(record)}><RecordIcon record={record} state={state} size={16} /><span>{recordTitle(record, state)}</span></button><div className="db-list-values">{visible.filter((p) => p.type !== 'title').slice(0, 3).map((p) => <div key={p.id} style={{ maxWidth: p.width }}><Cell record={record} property={p} state={state} onChange={onChange} onOpenRecord={onOpenRecord} onOpenLinked={onOpenLinked} /></div>)}</div>{rowActions(record)}</div>)}<button className="db-add-row" onClick={() => { const record = addRecord(); if (record) onOpenRecord(record); }}><Plus size={16} />New page</button></div>}
-    {view.type === 'board' && <div className="db-board">{groups.map((group) => { const groupedRecords = records.filter((record) => !groupProperty || String(cellValue(record, groupProperty, state) || 'No status') === group); return <div className="db-board-column" key={group} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedRecord && groupProperty) onChange((current) => updateCell(current, draggedRecord, groupProperty, group === 'No status' ? null : group)); setDraggedRecord(null); }}><div className="db-board-heading"><Badge value={group} /><span>{groupedRecords.length}</span><button className="db-icon-button" aria-label={`Add record to ${group}`} onClick={() => addRecord(groupProperty && group !== 'No status' ? { [groupProperty.id]: group } : {})}><Plus size={16} /></button></div>{groupedRecords.map((record) => <div className="db-board-card" key={record.id} draggable onDragStart={() => setDraggedRecord(record.id)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); if (draggedRecord && groupProperty) onChange((current) => updateCell(current, draggedRecord, groupProperty, group === 'No status' ? null : group)); dropRecord(record); }}><button className="db-board-card-title" onClick={() => onOpenRecord(record)}><RecordIcon record={record} state={state} size={16} />{recordTitle(record, state)}</button>{visible.filter((p) => p.type !== 'title' && p.id !== groupProperty?.id).slice(0, 3).map((property) => <div className="db-board-property" key={property.id}><span>{property.name}</span><Cell record={record} property={property} state={state} onChange={onChange} onOpenRecord={onOpenRecord} onOpenLinked={onOpenLinked} /></div>)}{rowActions(record)}</div>)}<button className="db-add-row" onClick={() => { const record = addRecord(groupProperty && group !== 'No status' ? { [groupProperty.id]: group } : {}); if (record) onOpenRecord(record); }}><Plus size={16} />New page</button></div>; })}</div>}
-    <div className="db-footer">{records.length > 0 && <span>{records.length} {records.length === 1 ? 'record' : 'records'}</span>}</div>
-  </div>;
+  );
 }
-export function RecordProperties({ record, state, onChange, onOpenRecord, onOpenLinked }: { record: DbRecord; state: WorkspaceState; onChange: Props['onChange']; onOpenRecord: Props['onOpenRecord']; onOpenLinked?: (record: DbRecord) => void }) {
-  const properties = state.properties.filter((property) => property.database_id === record.database_id && property.type !== 'title' && !property.config.system).sort((a, b) => a.position - b.position);
-  return <div className="db-record-properties">{properties.map((property) => <div className="db-record-property" key={property.id}><span className="db-record-property-label"><PropertyIcon type={property.type} /><span>{property.name}</span></span><div className="db-record-property-value"><Cell record={record} property={property} state={state} onChange={onChange} onOpenRecord={onOpenRecord} onOpenLinked={onOpenLinked} /></div></div>)}</div>;
+export function RecordProperties({
+  record,
+  state,
+  onChange,
+  onOpenRecord,
+  onOpenLinked,
+}: {
+  record: DbRecord;
+  state: WorkspaceState;
+  onChange: Props["onChange"];
+  onOpenRecord: Props["onOpenRecord"];
+  onOpenLinked?: (record: DbRecord) => void;
+}) {
+  const properties = state.properties
+    .filter(
+      (property) => property.database_id === record.database_id && property.type !== "title" && !property.config.system,
+    )
+    .sort((a, b) => a.position - b.position);
+  return (
+    <div className="db-record-properties">
+      {properties.map((property) => (
+        <div className="db-record-property" key={property.id}>
+          <span className="db-record-property-label">
+            <PropertyIcon type={property.type} />
+            <span>{property.name}</span>
+          </span>
+          <div className="db-record-property-value">
+            <Cell
+              record={record}
+              property={property}
+              state={state}
+              onChange={onChange}
+              onOpenRecord={onOpenRecord}
+              onOpenLinked={onOpenLinked}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 export default DatabaseView;

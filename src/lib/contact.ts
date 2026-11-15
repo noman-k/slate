@@ -38,8 +38,7 @@ export interface ContactInput {
 }
 export type ContactErrors = Partial<Record<keyof ContactInput, string>>;
 
-export const isTopic = (value: unknown): value is ContactTopic =>
-  CONTACT_TOPICS.some((topic) => topic.id === value);
+export const isTopic = (value: unknown): value is ContactTopic => CONTACT_TOPICS.some((topic) => topic.id === value);
 
 /** What's wrong with a message, field by field, in plain words. Empty when it can be sent. */
 export function validateContact(input: ContactInput): ContactErrors {
@@ -47,10 +46,13 @@ export function validateContact(input: ContactInput): ContactErrors {
   if (!isTopic(input.topic)) errors.topic = "Choose what your message is about.";
   const email = input.email.trim();
   if (!email) errors.email = "Add your email, so you can get a reply.";
-  else if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "That email address doesn't look right.";
+  else if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    errors.email = "That email address doesn't look right.";
   const message = input.message.trim();
   if (!message) errors.message = "Write a message.";
-  else if (message.length < MESSAGE_MIN) errors.message = `A little more detail, please (at least ${MESSAGE_MIN} characters).`;
-  else if (message.length > MESSAGE_MAX) errors.message = `That's over ${MESSAGE_MAX.toLocaleString("en")} characters. Please shorten it.`;
+  else if (message.length < MESSAGE_MIN)
+    errors.message = `A little more detail, please (at least ${MESSAGE_MIN} characters).`;
+  else if (message.length > MESSAGE_MAX)
+    errors.message = `That's over ${MESSAGE_MAX.toLocaleString("en")} characters. Please shorten it.`;
   return errors;
 }

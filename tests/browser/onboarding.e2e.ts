@@ -59,7 +59,18 @@ test("when email confirmation is on, sign-up says where the link went and can re
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ id: "00000000-0000-4000-8000-0000000000aa", aud: "authenticated", role: "", email, confirmation_sent_at: new Date().toISOString(), app_metadata: {}, user_metadata: {}, identities: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+      body: JSON.stringify({
+        id: "00000000-0000-4000-8000-0000000000aa",
+        aud: "authenticated",
+        role: "",
+        email,
+        confirmation_sent_at: new Date().toISOString(),
+        app_metadata: {},
+        user_metadata: {},
+        identities: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
     }),
   );
   await page.route("**/auth/v1/resend*", async (route) => {
@@ -82,7 +93,10 @@ test("when email confirmation is on, sign-up says where the link went and can re
   await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
 });
 
-test("an email confirmation link survives being opened by a mail scanner, and works in any browser", async ({ page, request }) => {
+test("an email confirmation link survives being opened by a mail scanner, and works in any browser", async ({
+  page,
+  request,
+}) => {
   const { email, password } = newCredentials();
   try {
     const token = await emailLinkToken("signup", email, password);

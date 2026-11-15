@@ -16,9 +16,7 @@ const options = () => {
 const databaseFor = (state: WorkspaceState, name: string) =>
   state.databases.find((database) => database.name === name)!;
 const propertyFor = (state: WorkspaceState, databaseId: string, name: string) =>
-  state.properties.find(
-    (property) => property.database_id === databaseId && property.name === name,
-  )!;
+  state.properties.find((property) => property.database_id === databaseId && property.name === name)!;
 
 function relationFixture() {
   const state = createSeedState();
@@ -37,9 +35,7 @@ function relationFixture() {
       reciprocal_property_id: tenantRelation.id,
     },
   });
-  const tenant = state.records.find(
-    (record) => record.database_id === tenants.id,
-  )!;
+  const tenant = state.records.find((record) => record.database_id === tenants.id)!;
   tenant.values["rent-reciprocal"] = state.records
     .filter((record) => record.database_id === SEED_IDS.database)
     .map((record) => record.id);
@@ -56,9 +52,7 @@ function relationFixture() {
       aggregation: "count",
     },
   });
-  const firstRecord = state.records.find(
-    (record) => record.database_id === SEED_IDS.database,
-  )!;
+  const firstRecord = state.records.find((record) => record.database_id === SEED_IDS.database)!;
   state.documents.push({
     page_id: firstRecord.page_id,
     markdown: "## Payment notes\n\nProof of payment attached.",
@@ -87,28 +81,18 @@ describe("recursive page duplication", () => {
     expect(result.databases).toHaveLength(state.databases.length * 2);
     expect(result.records).toHaveLength(state.records.length * 2);
     expect(result.views).toHaveLength(state.views.length * 2);
-    const copiedRecordPages = new Set(
-      result.records
-        .slice(state.records.length)
-        .map((record) => record.page_id),
-    );
+    const copiedRecordPages = new Set(result.records.slice(state.records.length).map((record) => record.page_id));
     expect(
       result.documents.some(
-        (document) =>
-          copiedRecordPages.has(document.page_id) &&
-          document.markdown.includes("Proof of payment"),
+        (document) => copiedRecordPages.has(document.page_id) && document.markdown.includes("Proof of payment"),
       ),
     ).toBe(true);
-    expect(
-      copies.every((page) => !page.favorite && page.created_at === now),
-    ).toBe(true);
+    expect(copies.every((page) => !page.favorite && page.created_at === now)).toBe(true);
   });
 
   it("remaps internal database, relation, rollup and view property references to copies", () => {
     const state = relationFixture();
-    const originalView = state.views.find(
-      (view) => view.database_id === SEED_IDS.database && view.name === "Paid",
-    )!;
+    const originalView = state.views.find((view) => view.database_id === SEED_IDS.database && view.name === "Paid")!;
     Object.assign(originalView, {
       property_order: state.properties
         .filter((property) => property.database_id === SEED_IDS.database)
@@ -117,12 +101,8 @@ describe("recursive page duplication", () => {
     });
     const result = duplicatePageSubtree(state, SEED_IDS.hub, options());
     const copiedDatabases = result.databases.slice(state.databases.length);
-    const rent = copiedDatabases.find(
-      (database) => database.name === "Rent Ledger",
-    )!;
-    const tenants = copiedDatabases.find(
-      (database) => database.name === "Tenants",
-    )!;
+    const rent = copiedDatabases.find((database) => database.name === "Rent Ledger")!;
+    const tenants = copiedDatabases.find((database) => database.name === "Tenants")!;
     const relation = propertyFor(result, rent.id, "Tenant");
     const inverse = propertyFor(result, tenants.id, "Rent payments");
     expect(relation.config.related_database_id).toBe(tenants.id);
@@ -131,80 +111,45 @@ describe("recursive page duplication", () => {
     expect(inverse.config.reciprocal_property_id).toBe(relation.id);
     const rollup = propertyFor(result, rent.id, "Tenant count");
     expect(rollup.config.relation_property_id).toBe(relation.id);
-    expect(rollup.config.rollup_property_id).toBe(
-      propertyFor(result, tenants.id, "Tenant name").id,
-    );
-    const tenant = result.records.find(
-      (record) => record.database_id === tenants.id,
-    )!;
-    const copiedRentRecords = result.records.filter(
-      (record) => record.database_id === rent.id,
-    );
-    expect(
-      copiedRentRecords.every(
-        (record) => record.values[relation.id]?.toString() === tenant.id,
-      ),
-    ).toBe(true);
-    expect(tenant.values[inverse.id]).toEqual(
-      copiedRentRecords.map((record) => record.id),
-    );
-    const paid = result.views.find(
-      (view) => view.database_id === rent.id && view.name === "Paid",
-    )!;
-    expect(paid.filters[0].property_id).toBe(
-      propertyFor(result, rent.id, "Status").id,
-    );
+    expect(rollup.config.rollup_property_id).toBe(propertyFor(result, tenants.id, "Tenant name").id);
+    const tenant = result.records.find((record) => record.database_id === tenants.id)!;
+    const copiedRentRecords = result.records.filter((record) => record.database_id === rent.id);
+    expect(copiedRentRecords.every((record) => record.values[relation.id]?.toString() === tenant.id)).toBe(true);
+    expect(tenant.values[inverse.id]).toEqual(copiedRentRecords.map((record) => record.id));
+    const paid = result.views.find((view) => view.database_id === rent.id && view.name === "Paid")!;
+    expect(paid.filters[0].property_id).toBe(propertyFor(result, rent.id, "Status").id);
     expect(paid).toMatchObject({
       property_order: result.properties
         .filter((property) => property.database_id === rent.id)
         .map((property) => property.id)
         .reverse(),
     });
-    const board = result.views.find(
-      (view) => view.database_id === rent.id && view.type === "board",
-    )!;
+    const board = result.views.find((view) => view.database_id === rent.id && view.type === "board")!;
     expect(board.group_by).toBe(propertyFor(result, rent.id, "Status").id);
-    expect(new Set(result.properties.map((property) => property.id)).size).toBe(
-      result.properties.length,
-    );
+    expect(new Set(result.properties.map((property) => property.id)).size).toBe(result.properties.length);
   });
 
   it("preserves external links while preventing invalid inverse links into the original database", () => {
     const state = relationFixture();
-    const originalTenant = state.records.find(
-      (record) => record.database_id === databaseFor(state, "Tenants").id,
-    )!;
+    const originalTenant = state.records.find((record) => record.database_id === databaseFor(state, "Tenants").id)!;
     const result = duplicatePageSubtree(state, SEED_IDS.ledger, options());
-    const database = result.databases.find(
-      (database) => database.page_id === "copied-root",
-    )!;
+    const database = result.databases.find((database) => database.page_id === "copied-root")!;
     const relation = propertyFor(result, database.id, "Tenant");
-    expect(relation.config.related_database_id).toBe(
-      databaseFor(state, "Tenants").id,
-    );
+    expect(relation.config.related_database_id).toBe(databaseFor(state, "Tenants").id);
     expect(relation.config.reciprocal_property_id).toBeUndefined();
     expect(
       result.records
         .filter((record) => record.database_id === database.id)
-        .every(
-          (record) =>
-            (record.values[relation.id] as string[])[0] === originalTenant.id,
-        ),
+        .every((record) => (record.values[relation.id] as string[])[0] === originalTenant.id),
     ).toBe(true);
-    expect(
-      result.records.find((record) => record.id === originalTenant.id),
-    ).toEqual(originalTenant);
+    expect(result.records.find((record) => record.id === originalTenant.id)).toEqual(originalTenant);
     const rollup = propertyFor(result, database.id, "Tenant count");
-    expect(rollup.config.rollup_property_id).toBe(
-      propertyFor(state, originalTenant.database_id, "Tenant name").id,
-    );
+    expect(rollup.config.rollup_property_id).toBe(propertyFor(state, originalTenant.database_id, "Tenant name").id);
   });
 
   it("rewrites embedded database views and page nodes while preserving code examples and unknown source", () => {
     const state = createSeedState();
-    const ledgerView = state.views.find(
-      (view) => view.database_id === SEED_IDS.database,
-    )!;
+    const ledgerView = state.views.find((view) => view.database_id === SEED_IDS.database)!;
     const embed = encodeDirective({
       kind: "database",
       id: SEED_IDS.database,
@@ -216,19 +161,13 @@ describe("recursive page duplication", () => {
       title: "Tenant Rent Log",
     });
     const source = `${embed}\n\n${pageEmbed}\n\n\`\`\`md\n${embed}\n\`\`\`\n\n:::unknown\n${SEED_IDS.database}\n:::`;
-    state.documents.find(
-      (document) => document.page_id === SEED_IDS.hub,
-    )!.markdown = source;
+    state.documents.find((document) => document.page_id === SEED_IDS.hub)!.markdown = source;
     const result = duplicatePageSubtree(state, SEED_IDS.hub, options());
-    const document = result.documents.find(
-      (document) => document.page_id === "copied-root",
-    )!;
+    const document = result.documents.find((document) => document.page_id === "copied-root")!;
     const copiedDatabase = result.databases
       .slice(state.databases.length)
       .find((database) => database.name === "Rent Ledger")!;
-    const copiedView = result.views
-      .slice(state.views.length)
-      .find((view) => view.database_id === copiedDatabase.id)!;
+    const copiedView = result.views.slice(state.views.length).find((view) => view.database_id === copiedDatabase.id)!;
     expect(document.markdown).toContain(
       encodeDirective({
         kind: "database",
@@ -239,59 +178,42 @@ describe("recursive page duplication", () => {
     expect(document.markdown).toContain(
       encodeDirective({
         kind: "page",
-        id: result.pages
-          .slice(state.pages.length)
-          .find((page) => page.title === "Tenant Rent Log")!.id,
+        id: result.pages.slice(state.pages.length).find((page) => page.title === "Tenant Rent Log")!.id,
         title: "Tenant Rent Log",
       }),
     );
     expect(document.markdown).toContain(`\`\`\`md\n${embed}\n\`\`\``);
-    expect(document.markdown).toContain(
-      `:::unknown\n${SEED_IDS.database}\n:::`,
-    );
+    expect(document.markdown).toContain(`:::unknown\n${SEED_IDS.database}\n:::`);
   });
 
   it("copies a record page with its title value and reciprocal relationships intact", () => {
     const state = relationFixture();
-    const record = state.records.find(
-      (record) => record.database_id === SEED_IDS.database,
-    )!;
+    const record = state.records.find((record) => record.database_id === SEED_IDS.database)!;
     const result = duplicatePageSubtree(state, record.page_id, options());
     const copy = result.records.find((item) => item.page_id === "copied-root")!;
     expect(copy.database_id).toBe(record.database_id);
-    expect(
-      copy.values[propertyFor(state, SEED_IDS.database, "Rent Entry").id],
-    ).toBe(
+    expect(copy.values[propertyFor(state, SEED_IDS.database, "Rent Entry").id]).toBe(
       `${state.pages.find((page) => page.id === record.page_id)!.title} (copy)`,
     );
-    const tenant = result.records.find(
-      (item) => item.database_id === databaseFor(state, "Tenants").id,
-    )!;
+    const tenant = result.records.find((item) => item.database_id === databaseFor(state, "Tenants").id)!;
     expect(tenant.values["rent-reciprocal"]).toContain(copy.id);
     expect(result.databases).toHaveLength(state.databases.length);
-    expect(
-      result.documents.find((document) => document.page_id === "copied-root")!
-        .markdown,
-    ).toContain("Proof of payment");
+    expect(result.documents.find((document) => document.page_id === "copied-root")!.markdown).toContain(
+      "Proof of payment",
+    );
   });
 
   it("drops deleted relation targets rather than copying invalid references", () => {
     const state = relationFixture();
-    const tenant = state.records.find(
-      (record) => record.database_id === databaseFor(state, "Tenants").id,
-    )!;
+    const tenant = state.records.find((record) => record.database_id === databaseFor(state, "Tenants").id)!;
     state.pages.find((page) => page.id === tenant.page_id)!.deleted_at = now;
     const result = duplicatePageSubtree(state, SEED_IDS.ledger, options());
-    const database = result.databases.find(
-      (database) => database.page_id === "copied-root",
-    )!;
+    const database = result.databases.find((database) => database.page_id === "copied-root")!;
     const relation = propertyFor(result, database.id, "Tenant");
     expect(
       result.records
         .filter((record) => record.database_id === database.id)
-        .every(
-          (record) => (record.values[relation.id] as string[]).length === 0,
-        ),
+        .every((record) => (record.values[relation.id] as string[]).length === 0),
     ).toBe(true);
   });
 
@@ -299,14 +221,10 @@ describe("recursive page duplication", () => {
     const state = createSeedState();
     state.pages.find((page) => page.id === SEED_IDS.deposits)!.deleted_at = now;
     const result = duplicatePageSubtree(state, SEED_IDS.hub, options());
-    expect(
-      result.pages
-        .slice(state.pages.length)
-        .some((page) => page.title === "Last Month Rent Deposits"),
-    ).toBe(false);
-    expect(() =>
-      duplicatePageSubtree(state, SEED_IDS.hub, { rootId: SEED_IDS.log }),
-    ).toThrow("unique ID");
+    expect(result.pages.slice(state.pages.length).some((page) => page.title === "Last Month Rent Deposits")).toBe(
+      false,
+    );
+    expect(() => duplicatePageSubtree(state, SEED_IDS.hub, { rootId: SEED_IDS.log })).toThrow("unique ID");
     expect(duplicatePageSubtree(state, "missing")).toBe(state);
   });
 });
@@ -320,11 +238,22 @@ describe("linked database views", () => {
     const withLink = {
       ...state,
       documents: state.documents.map((d) =>
-        d.page_id === host.id ? { ...d, markdown: `Notes\n\n:::slate {"kind":"database","id":"${tenants.id}","block":"${block}"}\n` } : d,
+        d.page_id === host.id
+          ? { ...d, markdown: `Notes\n\n:::slate {"kind":"database","id":"${tenants.id}","block":"${block}"}\n` }
+          : d,
       ),
       views: [
         ...state.views,
-        { id: "linked-view", database_id: tenants.id, placement: block, name: "Mine", type: "board" as const, filters: [], sorts: [], hidden_properties: [] },
+        {
+          id: "linked-view",
+          database_id: tenants.id,
+          placement: block,
+          name: "Mine",
+          type: "board" as const,
+          filters: [],
+          sorts: [],
+          hidden_properties: [],
+        },
       ],
     };
     const copied = duplicatePageSubtree(withLink, host.id, { rootId: "copy-root" });

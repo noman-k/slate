@@ -1,0 +1,96 @@
+/* Search: clear, and the phone view. (Part of globals.css; the parts load in order.) */
+/* ---------- Search: clear, and the phone view ---------- */
+.search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--hover-strong);
+  color: var(--text-secondary);
+}
+.search-cancel {
+  display: none;
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 4px 0 8px;
+  font-size: 16px;
+  color: var(--accent-text);
+}
+.search-meta .search-time {
+  white-space: nowrap;
+}
+/* With a keyboard, the highlighted result shows ↵ in place of its date. */
+@media (hover: hover) {
+  .search-result.active .search-time {
+    display: none;
+  }
+}
+/* By touch there's no "highlighted" result to press Enter on, and no keys to hint at. */
+@media (hover: none) {
+  .search-result.active {
+    background: transparent;
+  }
+  .search-footer {
+    display: none;
+  }
+}
+/* On a phone, search takes the whole screen: the field at the top with Cancel beside it,
+   and room for the results (the keyboard covers the bottom half). */
+@media (max-width: 760px) {
+  .search-dialog {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    animation: search-sheet-in var(--motion-base) var(--ease);
+  }
+  .search-dialog[data-state="closed"] {
+    animation: search-sheet-out 120ms var(--ease-in) forwards;
+  }
+  .search-dialog .search-input-wrap {
+    gap: 10px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px 16px;
+    min-height: 56px;
+  }
+  .search-input-wrap input {
+    font-size: 16px;
+  }
+  .search-cancel {
+    display: inline-flex;
+    align-items: center;
+  }
+  .search-results {
+    padding: 4px 6px calc(12px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  .search-result {
+    min-height: 58px;
+    padding: 10px 12px;
+  }
+  .search-result strong {
+    font-size: 15px;
+  }
+  .search-result small {
+    font-size: 12.5px;
+  }
+}
+@keyframes search-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes search-sheet-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}

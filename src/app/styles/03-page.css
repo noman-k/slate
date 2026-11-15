@@ -1,0 +1,279 @@
+/* Pages, menus and buttons. (Part of globals.css; the parts load in order.) */
+/* Switching pages should feel instant: a short fade, no movement (none at all for
+   reduced motion), so rapid hops between pages never feel sluggish. */
+@media (prefers-reduced-motion: no-preference) {
+  .page-content {
+    animation: page-switch 0.12s ease-out;
+  }
+}
+@keyframes page-switch {
+  from {
+    opacity: 0.4;
+  }
+}
+.database-page .page-content {
+  /* Right padding a wide table may run into, so it reaches the window edge. */
+  --db-bleed: 40px;
+  padding-right: var(--db-bleed);
+}
+.page-quiet-actions {
+  height: 23px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  opacity: 0;
+  margin-top: -23px;
+  margin-bottom: 5px;
+  /* Pull back by the buttons' padding so their icons line up with the title. */
+  margin-left: -8px;
+}
+.page-quiet-actions:focus-within {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .page-content:hover .page-quiet-actions {
+    opacity: 1;
+  }
+}
+.page-quiet-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 0 8px;
+  border-radius: var(--radius);
+}
+@media (hover: hover) {
+  .page-quiet-actions button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+.page-title {
+  display: block;
+  width: 100%;
+  background: transparent;
+  resize: none;
+  font-size: 38px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -1.2px;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 0;
+  outline: none !important;
+  box-shadow: none !important;
+  min-height: 48px;
+  overflow: hidden;
+  color: var(--text-strong);
+}
+.page-description::placeholder {
+  color: var(--text-tertiary);
+}
+.page-description {
+  background: transparent;
+  border: 0;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+  margin: 0 0 22px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: none !important;
+}
+.page-body {
+  margin-top: 1px;
+}
+.document-page .page-content {
+  /* About 75 characters a line: a comfortable reading measure, like Notion's. */
+  max-width: 880px;
+  margin: 0 auto;
+  padding-left: 80px;
+  padding-right: 80px;
+}
+.document-page .page-title {
+  margin-bottom: 14px;
+}
+.document-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 16px -6px;
+  padding: 6px;
+  border-radius: var(--radius-lg);
+}
+.document-icon.is-open {
+  background: var(--hover-strong);
+}
+@media (hover: hover) {
+  .document-icon:hover {
+    background: var(--hover-strong);
+  }
+}
+.help-button {
+  position: absolute;
+  bottom: 20px;
+  right: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 31px;
+  height: 31px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: 0 2px 8px #0002;
+  z-index: 25;
+}
+.menu-surface {
+  /* Never taller than the room Radix measured on the chosen side; scroll instead. */
+  max-height: var(--radix-dropdown-menu-content-available-height, var(--radix-popover-content-available-height, 80vh));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar);
+  background: var(--bg-elevated);
+  border: 0;
+  box-shadow: var(--shadow-popover);
+  border-radius: var(--radius-lg);
+  min-width: 230px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  z-index: 100;
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, var(--radix-popover-content-transform-origin));
+  animation: menu-in 0.12s var(--ease);
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  padding: 0 8px;
+  line-height: 20px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: var(--radius);
+  outline: none;
+  user-select: none;
+  white-space: nowrap;
+}
+.menu-item[data-highlighted] {
+  background: var(--hover);
+}
+.menu-item svg {
+  height: 14px;
+  width: 14px;
+  color: var(--text-secondary);
+}
+.menu-item.danger,
+.menu-item.danger svg {
+  color: var(--danger-text);
+}
+.menu-item[data-disabled] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.menu-separator {
+  height: 1px;
+  background: var(--bg-strong);
+  margin: 4px -5px;
+}
+.menu-label {
+  padding: 7px 10px 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+.privacy-popover {
+  padding: 13px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.privacy-popover > svg {
+  color: var(--text-secondary);
+}
+.privacy-popover strong {
+  font-size: 14px;
+}
+.privacy-popover p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+.secondary-button,
+.primary-button,
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 32px;
+  font-size: 14px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.secondary-button {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+@media (hover: hover) {
+  .secondary-button:hover {
+    background: var(--hover-strong);
+  }
+}
+.primary-button {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--on-accent);
+}
+@media (hover: hover) {
+  .primary-button:hover {
+    background: var(--accent-hover);
+  }
+}
+.danger-button {
+  background: var(--danger);
+  border: 1px solid var(--danger);
+  color: var(--on-accent);
+}
+@media (hover: hover) {
+  .danger-button:hover {
+    background: var(--danger-hover);
+  }
+}
+.danger-text {
+  color: var(--danger-text);
+  font-size: 13px;
+  padding: 5px 0;
+}
+@media (hover: hover) {
+  .danger-text:hover {
+    background: transparent;
+    text-decoration: underline;
+  }
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  z-index: 70;
+  animation: appear 0.12s ease;
+}

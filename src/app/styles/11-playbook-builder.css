@@ -1,0 +1,693 @@
+/* The playbook builder. (Part of globals.css; the parts load in order.) */
+/* ---------- Playbook builder ---------- */
+.document-page .page-content:has(.pb) {
+  max-width: 1240px;
+}
+.pb {
+  display: grid;
+  grid-template-columns: 288px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 4px;
+  padding-bottom: 48px;
+}
+/* The side panel scrolls with the page (one scrollbar); only the outline stays in view,
+   once you've scrolled past the setup above it. */
+.pb-side {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 2px 12px;
+}
+.pb-side > .pb-sticky {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* While the outline is pinned beside the steps (wide windows), a very long one scrolls inside
+   itself rather than running off the screen. Stacked above the steps, it just grows: no second
+   scrollbar inside the page. */
+@media (min-width: 1101px) {
+  .pb-outline {
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+.pb-panel {
+  padding: 12px 12px 10px;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.pb-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pb-panel-head h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.pb-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pb-details label {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pb-details input,
+.pb-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--divider);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.pb-textarea {
+  resize: none;
+  line-height: 1.5;
+  /* Grows with the text, so it never scrolls inside the panel. */
+  field-sizing: content;
+  min-height: 4.5em;
+  overflow: hidden;
+}
+.pb-textarea.is-notes {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.pb-details input:focus,
+.pb-textarea:focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--accent-border),
+    0 0 0 2px var(--accent-soft);
+}
+/* Inputs in the narrow panel: one small card each. */
+.pb-inputs.proc-params {
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+  background: none;
+}
+.pb-inputs .proc-params-head {
+  display: none;
+}
+.pb-inputs .proc-params-row {
+  grid-template-columns: 1fr 1fr 24px;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--hover);
+}
+.pb-inputs .proc-params-row.is-head {
+  display: none;
+}
+.pb-inputs .proc-params-row > :first-child {
+  grid-column: 1 / 3;
+}
+.pb-inputs .proc-params-row > .proc-remove {
+  grid-column: 3;
+  grid-row: 1;
+}
+.pb-inputs .proc-params-row > .proc-required {
+  grid-column: 1;
+  grid-row: 3;
+  justify-content: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+/* The checkbox says what it is in the narrow panel. */
+.pb-inputs .proc-params-row > .proc-required::after {
+  content: "Required";
+}
+.pb-inputs .proc-name-input {
+  min-width: 0 !important;
+}
+.pb-outline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pb-outline:empty::before {
+  content: "Sections you add appear here.";
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.pb-outline li {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+.pb-outline li.is-dragging {
+  position: relative;
+  z-index: 2;
+  box-shadow: var(--shadow-popover);
+}
+.pb-outline-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+}
+@media (hover: hover) {
+  .pb-outline-link:hover {
+    background: var(--hover);
+  }
+}
+.pb-outline-number {
+  width: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+.pb-outline-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pb-outline-link small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.pb-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+}
+.pb-grip:focus-visible {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .pb-outline li:hover .pb-grip,
+  .pb-step:hover > .proc-step-row > .pb-grip {
+    opacity: 1;
+  }
+}
+@media (hover: hover) {
+  .pb-grip:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+@media (hover: none) {
+  .pb-grip {
+    opacity: 1;
+  }
+}
+.pb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+@media (hover: hover) {
+  .pb-link:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+
+/* Sections and steps */
+.pb-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.pb-section {
+  padding: 14px 14px 10px;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--border);
+  scroll-margin-top: 16px;
+}
+.pb-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.pb-section-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--hover-strong);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-secondary);
+}
+.pb-section-names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pb-section-title,
+.pb-section-description {
+  width: 100%;
+  padding: 1px 4px;
+  margin-left: -4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+}
+.pb-section-title {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.pb-section-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+@media (hover: hover) {
+  .pb-section-title:hover,
+  .pb-section-description:hover {
+    background: var(--hover);
+  }
+}
+.pb-section-title:focus,
+.pb-section-description:focus {
+  outline: none;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.pb-section-title::placeholder,
+.pb-section-description::placeholder {
+  color: var(--text-tertiary);
+  font-weight: inherit;
+}
+.pb-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin-top: 3px;
+  padding: 0 8px 0 5px;
+  border-radius: 6px;
+  background: var(--hover);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .pb-count:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+.pb-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--icon);
+}
+.pb-icon-button[data-state="open"] {
+  background: var(--hover-strong);
+  color: var(--text);
+}
+@media (hover: hover) {
+  .pb-icon-button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+.pb-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pb-step {
+  margin: 0;
+  background-clip: padding-box;
+}
+.pb-step.is-dragging {
+  position: relative;
+  z-index: 3;
+  box-shadow: var(--shadow-popover);
+  opacity: 0.95;
+}
+.pb-step > .proc-step-row {
+  align-items: flex-start;
+  gap: 8px;
+}
+.pb-step > .proc-step-row > .pb-grip {
+  margin: 0 -4px 0 -6px;
+}
+.pb-step-number {
+  min-width: 26px;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+.pb-step > .proc-step-row > .pb-icon-button {
+  margin-top: -2px;
+  opacity: 0;
+}
+.pb-step:focus-within > .proc-step-row > .pb-icon-button,
+.pb-step > .proc-step-row > .pb-icon-button[data-state="open"] {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .pb-step:hover > .proc-step-row > .pb-icon-button {
+    opacity: 1;
+  }
+}
+.pb-step .proc-step-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.pb-step-text-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.pb-step-text {
+  outline: none;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.pb-step-text p {
+  margin: 0;
+}
+.pb-step-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.pb-step .proc-step-config {
+  margin-left: 64px;
+}
+.pb-drop {
+  min-height: 6px;
+  border-radius: 8px;
+}
+.pb-drop.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  box-shadow: inset 0 0 0 1px dashed var(--border);
+  border: 1px dashed var(--border-strong);
+}
+.pb-drop.is-over {
+  background: var(--accent-soft);
+}
+.pb-add-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  margin-top: 6px;
+  padding: 0 10px 0 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pb-add-step[data-state="open"] {
+  background: var(--hover);
+  color: var(--text);
+}
+@media (hover: hover) {
+  .pb-add-step:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.pb-type-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--icon-blue);
+  align-self: flex-start;
+}
+.pb-type-dot.is-ask {
+  background: var(--icon-purple);
+}
+.pb-type-dot.is-check {
+  background: var(--icon-green);
+}
+.pb-type-dot.is-if {
+  background: var(--icon-orange);
+}
+.pb-type-dot.is-api {
+  background: var(--icon-pink);
+}
+.pb-type-dot.is-end {
+  background: var(--icon-gray);
+}
+.pb-type-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pb-type-choice strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pb-type-choice small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.pb-add-section {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-strong);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+@media (hover: hover) {
+  .pb-add-section:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+@media (max-width: 1100px) {
+  .pb {
+    grid-template-columns: 1fr;
+  }
+  .pb-side {
+    position: static;
+    max-height: none;
+  }
+}
+@media (max-width: 760px) {
+  .pb-step .proc-step-config {
+    margin-left: 0;
+  }
+}
+
+/* Playbook checks */
+.pb-issues {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pb-step .pb-issues {
+  margin-left: 64px;
+}
+.pb-section-head + .pb-issues {
+  margin: -4px 0 10px 36px;
+}
+.pb-issues li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.pb-issues li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.pb-issues li.is-warning {
+  color: var(--icon-orange);
+}
+.pb-issues li.is-tip {
+  color: var(--text-tertiary);
+}
+.pb-step.has-warning {
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--step-color) 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--icon-orange) 45%, transparent);
+}
+.pb-outline-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--icon-orange);
+}
+.pb-issue-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--icon-orange) 14%, transparent);
+  color: var(--icon-orange);
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .pb-issue-summary:hover {
+    background: color-mix(in srgb, var(--icon-orange) 22%, transparent);
+  }
+}
+.pb-all-good {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--icon-green);
+}
+@media (max-width: 760px) {
+  .pb-step .pb-issues {
+    margin-left: 0;
+  }
+}
+
+/* Inputs in the side panel: one line each until opened */
+.pb-inputs .proc-params-table {
+  gap: 4px;
+}
+.proc-input-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  text-align: left;
+}
+.proc-input-summary:focus-visible {
+  background: var(--hover);
+}
+@media (hover: hover) {
+  .proc-input-summary:hover {
+    background: var(--hover);
+  }
+}
+.proc-input-summary strong {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.proc-input-summary strong.is-untitled {
+  color: var(--text-tertiary);
+}
+.proc-input-summary small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.pb-inputs .proc-params-row > .proc-input-done {
+  grid-column: 2 / -1;
+  grid-row: 3;
+  justify-self: end;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+@media (hover: hover) {
+  .pb-inputs .proc-params-row > .proc-input-done:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+
+.run-field small.run-field-hint {
+  color: var(--text-tertiary);
+}
+
+.procedure-group {
+  margin: 8px 10px 2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.procedure-group:first-child {
+  margin-top: 0;
+}
+.procedure-preview {
+  align-self: start;
+}

@@ -5,12 +5,7 @@
  * line, like callouts and toggles, and read back by `parseProcedure` to run the page.
  */
 import { createContext, useContext, useEffect, useState } from "react";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type NodeViewProps,
-} from "@tiptap/react";
+import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import { Extension, InputRule, Node, mergeAttributes, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -79,7 +74,6 @@ function useDocumentInfo(editor: Editor) {
   return info;
 }
 
-
 function TargetSelect({
   label,
   value,
@@ -119,7 +113,8 @@ function TargetSelect({
 export function renameValue(editor: Editor, from: string, to: string) {
   if (!from || !to || from === to) return;
   const pattern = new RegExp(`\\{\\{(\\s*)${from}((?:_status)?)(?=[\\s.}])`, "g");
-  const swap = (text: string) => text.replace(pattern, (_m, space: string, suffix: string) => `{{${space}${to}${suffix}`);
+  const swap = (text: string) =>
+    text.replace(pattern, (_m, space: string, suffix: string) => `{{${space}${to}${suffix}`);
   const { state } = editor;
   const tr = state.tr;
   const edits: { from: number; to: number; text: string }[] = [];
@@ -140,7 +135,10 @@ export function renameValue(editor: Editor, from: string, to: string) {
           changed = true;
         }
       const variable = String(attrs.variable || "");
-      if (node.attrs.step === "if" && (variable === from || variable.startsWith(`${from}.`) || variable === `${from}_status`)) {
+      if (
+        node.attrs.step === "if" &&
+        (variable === from || variable.startsWith(`${from}.`) || variable === `${from}_status`)
+      ) {
         attrs.variable = to + variable.slice(from.length);
         changed = true;
       }
@@ -187,7 +185,13 @@ function NameField({
 }
 
 /** "+ Value": inserts an input or earlier answer into the step text, by name. */
-export function ValuePicker({ values, onPick }: { values: ReturnType<typeof valuesOf>; onPick: (key: string) => void }) {
+export function ValuePicker({
+  values,
+  onPick,
+}: {
+  values: ReturnType<typeof valuesOf>;
+  onPick: (key: string) => void;
+}) {
   const groups: [string, typeof values][] = [
     ["Inputs", values.filter((v) => v.kind === "input")],
     ["Answers", values.filter((v) => v.kind === "answer")],
@@ -388,9 +392,7 @@ export function StepSettings({
               )}
             </>
           )}
-          {step === "check" && (
-            <CheckSettings attrs={node.attrs} set={set} sections={sections} />
-          )}
+          {step === "check" && <CheckSettings attrs={node.attrs} set={set} sections={sections} />}
           {step === "api" && (
             <>
               <span className="proc-config-line">
@@ -474,11 +476,7 @@ export function StepSettings({
               <span className="proc-config-line">
                 <span className="proc-config-word">When</span>
                 <ValueSelect variable={variable} values={values} onChange={(next) => set({ variable: next })} />
-                <select
-                  aria-label="Condition"
-                  value={op}
-                  onChange={(event) => set({ op: event.target.value })}
-                >
+                <select aria-label="Condition" value={op} onChange={(event) => set({ op: event.target.value })}>
                   {(Object.keys(OP_LABELS) as ConditionOp[]).map((key) => (
                     <option key={key} value={key}>
                       {OP_LABELS[key]}
@@ -594,11 +592,7 @@ function StepView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
 const stopFormEvents = ({ event }: { event: Event }) => {
   const target = event.target as HTMLElement | null;
   const dragging = event.type.startsWith("drag") || event.type === "drop";
-  return (
-    !dragging &&
-    !!target &&
-    ["INPUT", "BUTTON", "SELECT", "TEXTAREA", "OPTION"].includes(target.tagName)
-  );
+  return !dragging && !!target && ["INPUT", "BUTTON", "SELECT", "TEXTAREA", "OPTION"].includes(target.tagName);
 };
 
 export const ProcedureStep = Node.create({
@@ -736,81 +730,81 @@ export function InputsEditor({
                 </small>
               </button>
             ) : (
-            <div className="proc-params-row" role="row" key={index}>
-              <input
-                className="proc-name-input"
-                aria-label="Input name"
-                placeholder="e.g. Order number"
-                title={param.name ? `Use it in steps as {{${param.name}}}` : undefined}
-                value={param.label ?? (param.name ? labelOf(param) : "")}
-                onChange={(event) => relabel(index, event.target.value)}
-              />
-              <select
-                aria-label={`Type of ${labelOf(param) || "input"}`}
-                value={param.type}
-                onChange={(event) => edit(index, { type: event.target.value as ParamType })}
-              >
-                {PARAM_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-              {param.type === "record" ? (
+              <div className="proc-params-row" role="row" key={index}>
+                <input
+                  className="proc-name-input"
+                  aria-label="Input name"
+                  placeholder="e.g. Order number"
+                  title={param.name ? `Use it in steps as {{${param.name}}}` : undefined}
+                  value={param.label ?? (param.name ? labelOf(param) : "")}
+                  onChange={(event) => relabel(index, event.target.value)}
+                />
                 <select
-                  aria-label={`Database for ${labelOf(param) || "input"}`}
-                  value={param.databaseId || ""}
-                  onChange={(event) => edit(index, { databaseId: event.target.value })}
+                  aria-label={`Type of ${labelOf(param) || "input"}`}
+                  value={param.type}
+                  onChange={(event) => edit(index, { type: event.target.value as ParamType })}
                 >
-                  <option value="">Choose a database…</option>
-                  {databases.map((db) => (
-                    <option key={db.id} value={db.id}>
-                      {db.name || "Untitled"}
+                  {PARAM_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
                     </option>
                   ))}
                 </select>
-              ) : param.type === "choice" ? (
-                <input
-                  aria-label={`Choices for ${labelOf(param) || "input"}`}
-                  placeholder="Choices, separated by commas"
-                  value={(param.options || []).join(", ")}
-                  onChange={(event) =>
-                    edit(index, {
-                      options: event.target.value.split(",").map((o) => o.trimStart()),
-                    })
-                  }
-                />
-              ) : (
-                <input
-                  aria-label={`Default for ${labelOf(param) || "input"}`}
-                  placeholder="No default"
-                  type={param.type === "date" ? "date" : param.type === "number" ? "number" : "text"}
-                  value={param.default || ""}
-                  onChange={(event) => edit(index, { default: event.target.value })}
-                />
-              )}
-              <label className="proc-required">
-                <input
-                  type="checkbox"
-                  aria-label={`${labelOf(param) || "Input"} is required`}
-                  checked={param.required}
-                  onChange={(event) => edit(index, { required: event.target.checked })}
-                />
-              </label>
-              <button
-                className="proc-remove"
-                aria-label={`Remove ${labelOf(param) || "input"}`}
-                title="Remove"
-                onClick={() => save(params.filter((_, i) => i !== index))}
-              >
-                <X size={14} />
-              </button>
-              {compact && (
-                <button className="proc-input-done" onClick={() => setOpen(null)}>
-                  Done
+                {param.type === "record" ? (
+                  <select
+                    aria-label={`Database for ${labelOf(param) || "input"}`}
+                    value={param.databaseId || ""}
+                    onChange={(event) => edit(index, { databaseId: event.target.value })}
+                  >
+                    <option value="">Choose a database…</option>
+                    {databases.map((db) => (
+                      <option key={db.id} value={db.id}>
+                        {db.name || "Untitled"}
+                      </option>
+                    ))}
+                  </select>
+                ) : param.type === "choice" ? (
+                  <input
+                    aria-label={`Choices for ${labelOf(param) || "input"}`}
+                    placeholder="Choices, separated by commas"
+                    value={(param.options || []).join(", ")}
+                    onChange={(event) =>
+                      edit(index, {
+                        options: event.target.value.split(",").map((o) => o.trimStart()),
+                      })
+                    }
+                  />
+                ) : (
+                  <input
+                    aria-label={`Default for ${labelOf(param) || "input"}`}
+                    placeholder="No default"
+                    type={param.type === "date" ? "date" : param.type === "number" ? "number" : "text"}
+                    value={param.default || ""}
+                    onChange={(event) => edit(index, { default: event.target.value })}
+                  />
+                )}
+                <label className="proc-required">
+                  <input
+                    type="checkbox"
+                    aria-label={`${labelOf(param) || "Input"} is required`}
+                    checked={param.required}
+                    onChange={(event) => edit(index, { required: event.target.checked })}
+                  />
+                </label>
+                <button
+                  className="proc-remove"
+                  aria-label={`Remove ${labelOf(param) || "input"}`}
+                  title="Remove"
+                  onClick={() => save(params.filter((_, i) => i !== index))}
+                >
+                  <X size={14} />
                 </button>
-              )}
-            </div>
+                {compact && (
+                  <button className="proc-input-done" onClick={() => setOpen(null)}>
+                    Done
+                  </button>
+                )}
+              </div>
             ),
           )}
         </div>
@@ -856,7 +850,13 @@ const VALUE_TEXT = /\{\{\s*([A-Za-z_][\w]*)(?:\.([^}]+?))?\s*\}\}/g;
 const refText = (attrs: { key?: string; path?: string | null }) =>
   `{{${attrs.key || ""}${attrs.path ? `.${attrs.path}` : ""}}}`;
 
-type JsonContent = { type?: string; text?: string; marks?: unknown[]; attrs?: Record<string, unknown>; content?: JsonContent[] };
+type JsonContent = {
+  type?: string;
+  text?: string;
+  marks?: unknown[];
+  attrs?: Record<string, unknown>;
+  content?: JsonContent[];
+};
 
 /** Saved step JSON → editor JSON: "{{order_number}}" text becomes value chips. */
 export function chipsFromText(node: JsonContent): JsonContent {
@@ -883,8 +883,7 @@ export function chipsToText(node: JsonContent): JsonContent {
   if (!node.content) return node;
   const content: JsonContent[] = [];
   for (const child of node.content) {
-    const piece: JsonContent =
-      child.type === "valueRef" ? { type: "text", text: refText(child.attrs || {}) } : child;
+    const piece: JsonContent = child.type === "valueRef" ? { type: "text", text: refText(child.attrs || {}) } : child;
     const previous = content[content.length - 1];
     // Plain text next to plain text joins up again, as it was typed.
     if (piece.type === "text" && previous?.type === "text" && !piece.marks?.length && !previous.marks?.length)
@@ -919,7 +918,11 @@ function ValueChipView({ node, editor, getPos }: NodeViewProps) {
         event.preventDefault();
         const box = event.currentTarget.getBoundingClientRect();
         const after = event.clientX > box.left + box.width / 2;
-        editor.chain().focus().setTextSelection(after ? pos + node.nodeSize : pos).run();
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(after ? pos + node.nodeSize : pos)
+          .run();
       }}
     >
       {label}
@@ -959,7 +962,10 @@ export const ValueRef = Node.create<{ anywhere: boolean }>({
   renderHTML({ node }) {
     return [
       "span",
-      mergeAttributes({ "data-value-ref": node.attrs.key, ...(node.attrs.path ? { "data-path": node.attrs.path } : {}) }),
+      mergeAttributes({
+        "data-value-ref": node.attrs.key,
+        ...(node.attrs.path ? { "data-path": node.attrs.path } : {}),
+      }),
       refText(node.attrs),
     ];
   },
@@ -997,7 +1003,11 @@ export const ValueRef = Node.create<{ anywhere: boolean }>({
         find: /\{\{\s*([A-Za-z_][\w]*)(?:\.([^}]+?))?\s*\}\}$/,
         handler: ({ state, range, match }) => {
           if (!this.options.anywhere && state.doc.resolve(range.from).parent.type.name !== "procedureStep") return null;
-          state.tr.replaceWith(range.from, range.to, this.type.create({ key: match[1], path: match[2]?.trim() || null }));
+          state.tr.replaceWith(
+            range.from,
+            range.to,
+            this.type.create({ key: match[1], path: match[2]?.trim() || null }),
+          );
         },
       }),
     ];
@@ -1234,8 +1244,7 @@ export const ProcedureSections = Extension.create<object, SectionStorage>({
             }
             if (changed) tr = tr.setNodeMarkup(pos, undefined, attrs);
           });
-          for (const [from, to] of renames)
-            if (storage.collapsed.delete(from)) storage.collapsed.add(to);
+          for (const [from, to] of renames) if (storage.collapsed.delete(from)) storage.collapsed.add(to);
           return tr.docChanged ? tr : null;
         },
       }),

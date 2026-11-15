@@ -39,7 +39,6 @@ const READ_ONLY_KEY =
   "This agent key can only read. To let an agent create pages, databases and playbooks, create a key with " +
   "“Read and create” in Slate's Settings › AI agents.";
 
-
 /** What a request may do: read (every key), create and edit when the key allows it. */
 export interface AgentAccess {
   load: () => Promise<WorkspaceState>;
@@ -96,7 +95,8 @@ export async function handleMcpMessage(
       const name = String(args.name || "");
       const writes = isWriteTool(name);
       const edits = isEditTool(name);
-      if (!writes && !edits && !AGENT_TOOLS.some((tool) => tool.name === name)) return error(id, -32602, `Unknown tool: ${name}`);
+      if (!writes && !edits && !AGENT_TOOLS.some((tool) => tool.name === name))
+        return error(id, -32602, `Unknown tool: ${name}`);
       const input = (args.arguments && typeof args.arguments === "object" ? args.arguments : {}) as Json;
       try {
         if (edits) {

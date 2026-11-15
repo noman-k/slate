@@ -21,11 +21,7 @@ export function decodeDirective(source: string): WorkspaceDirective | null {
     const data: unknown = JSON.parse(source.replace(/^:::slate\s+/, "").trim());
     if (!data || typeof data !== "object") return null;
     const value = data as Record<string, unknown>;
-    if (
-      !["database", "page"].includes(String(value.kind)) ||
-      typeof value.id !== "string"
-    )
-      return null;
+    if (!["database", "page"].includes(String(value.kind)) || typeof value.id !== "string") return null;
     return value as WorkspaceDirective;
   } catch {
     return null;
@@ -50,9 +46,7 @@ export function splitMarkdown(source: string): MarkdownPart[] {
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
     if (index === 0 && line.trim() === "---") {
-      const closing = lines.findIndex(
-        (entry, offset) => offset > 0 && ["---", "..."].includes(entry.trim()),
-      );
+      const closing = lines.findIndex((entry, offset) => offset > 0 && ["---", "..."].includes(entry.trim()));
       if (closing > 0) {
         result.push({
           kind: "preserved",
@@ -65,26 +59,18 @@ export function splitMarkdown(source: string): MarkdownPart[] {
     const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
     if (marker) {
       if (!fence) fence = marker[1];
-      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length)
-        fence = "";
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = "";
       pending.push(line);
       continue;
     }
     if (!fence && line.startsWith(":::slate ")) {
       flush();
       const directive = decodeDirective(line);
-      result.push(
-        directive
-          ? { kind: "embed", source: line, directive }
-          : { kind: "preserved", source: line },
-      );
+      result.push(directive ? { kind: "embed", source: line, directive } : { kind: "preserved", source: line });
     } else if (!fence && line.startsWith(":::slate-node ")) {
       flush();
       try {
-        const node = JSON.parse(line.slice(":::slate-node ".length)) as Record<
-          string,
-          unknown
-        >;
+        const node = JSON.parse(line.slice(":::slate-node ".length)) as Record<string, unknown>;
         result.push(
           RICH_NODES.includes(String(node.type))
             ? { kind: "rich", source: line, node }
@@ -101,22 +87,14 @@ export function splitMarkdown(source: string): MarkdownPart[] {
         if (lines[index].trim() === ":::") break;
       }
       result.push({ kind: "preserved", source: raw.join("\n") });
-    } else if (
-      !fence &&
-      /(?:<\/?[a-z][\w:-]*(?:\s[^>]*|\s*)\/?\s*>|<!--)|^\s*(?:\[\^[^\]]+\]:|\$\$)/i.test(
-        line,
-      )
-    ) {
+    } else if (!fence && /(?:<\/?[a-z][\w:-]*(?:\s[^>]*|\s*)\/?\s*>|<!--)|^\s*(?:\[\^[^\]]+\]:|\$\$)/i.test(line)) {
       // Unknown HTML/math/footnotes stay editable in source rather than being silently stripped.
       flush();
       const raw = [line];
       const commentStart = line.indexOf("<!--");
       const openTag = line.match(/<([a-z][\w:-]*)(?=[\s/>])/i)?.[1];
       const voidTag =
-        openTag &&
-        /^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(
-          openTag,
-        );
+        openTag && /^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(openTag);
       if (commentStart >= 0 && !line.slice(commentStart).includes("-->")) {
         while (index + 1 < lines.length) {
           raw.push(lines[++index]);
@@ -131,8 +109,7 @@ export function splitMarkdown(source: string): MarkdownPart[] {
         const tags = new RegExp(`<\\/?${openTag}(?=[\\s/>])[^>]*>`, "gi");
         const depthChange = (entry: string) =>
           (entry.match(tags) ?? []).reduce(
-            (depth, tag) =>
-              depth + (tag.startsWith("</") ? -1 : /\/>$/.test(tag) ? 0 : 1),
+            (depth, tag) => depth + (tag.startsWith("</") ? -1 : /\/>$/.test(tag) ? 0 : 1),
             0,
           );
         let depth = depthChange(line);
@@ -141,8 +118,7 @@ export function splitMarkdown(source: string): MarkdownPart[] {
           depth += depthChange(lines[index]);
         }
       } else {
-        while (index + 1 < lines.length && lines[index + 1].trim())
-          raw.push(lines[++index]);
+        while (index + 1 < lines.length && lines[index + 1].trim()) raw.push(lines[++index]);
       }
       result.push({ kind: "preserved", source: raw.join("\n") });
     } else pending.push(line);
@@ -164,12 +140,7 @@ export function fencedCode(code: string, language = ""): string {
 export function safeImageUrl(value: string): string | null {
   // Private uploads are resolved by the authenticated application route. Accept
   // only its exact UUID path, never arbitrary relative or protocol-relative URLs.
-  if (
-    /^\/api\/attachments\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
-  )
-    return value;
+  if (/^\/api\/attachments\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)) return value;
   try {
     const url = new URL(value);
     return ["https:", "http:"].includes(url.protocol) ? url.href : null;

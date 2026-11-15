@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
-import {
-  createDocumentExtensions,
-  parseDocument,
-} from "../src/components/editor/extensions";
+import { createDocumentExtensions, parseDocument } from "../src/components/editor/extensions";
 import { encodeDirective } from "../src/lib/markdown";
 
 const extensions = createDocumentExtensions();
@@ -34,14 +31,8 @@ describe("interactive editor / Markdown round-trip", () => {
   });
   it("retains stable private attachment URLs without signing them into Markdown", () => {
     const path = "/api/attachments/00000000-0000-4000-8000-000000000001";
-    const { first, second, markdown } = roundTrip(
-      `![Payment receipt](${path})`,
-    );
-    expect(
-      first.content?.some(
-        (node) => node.type === "image" && node.attrs?.src === path,
-      ),
-    ).toBe(true);
+    const { first, second, markdown } = roundTrip(`![Payment receipt](${path})`);
+    expect(first.content?.some((node) => node.type === "image" && node.attrs?.src === path)).toBe(true);
     expect(second).toEqual(first);
     expect(markdown).toContain(path);
   });
@@ -56,10 +47,7 @@ describe("interactive editor / Markdown round-trip", () => {
   it("keeps unsupported syntax in explicit preserved source nodes", () => {
     const raw = ":::future-block\nKeep **this** exactly.\n:::";
     const { first, second, markdown } = roundTrip(`Before\n\n${raw}\n\nAfter`);
-    expect(
-      first.content?.find((node) => node.type === "preservedSource")?.attrs
-        ?.source,
-    ).toBe(raw);
+    expect(first.content?.find((node) => node.type === "preservedSource")?.attrs?.source).toBe(raw);
     expect(markdown).toContain(raw);
     expect(second).toEqual(first);
   });
@@ -67,11 +55,10 @@ describe("interactive editor / Markdown round-trip", () => {
     const raw = "<div>\n  <div>nested content</div>\n\n  More content\n</div>";
     const comment = "<!-- Keep this comment\n\nincluding its blank lines -->";
     const { first, second, markdown } = roundTrip(`${raw}\n\n${comment}`);
-    expect(
-      first.content
-        ?.filter((node) => node.type === "preservedSource")
-        .map((node) => node.attrs?.source),
-    ).toEqual([raw, comment]);
+    expect(first.content?.filter((node) => node.type === "preservedSource").map((node) => node.attrs?.source)).toEqual([
+      raw,
+      comment,
+    ]);
     expect(second).toEqual(first);
     expect(markdown).toContain(raw);
     expect(markdown).toContain(comment);
@@ -100,9 +87,7 @@ describe("interactive editor / Markdown round-trip", () => {
         },
       ],
     };
-    const { first, second } = roundTrip(
-      `:::slate-node ${JSON.stringify(node)}`,
-    );
+    const { first, second } = roundTrip(`:::slate-node ${JSON.stringify(node)}`);
     expect(first.content?.[0].type).toBe("toggle");
     expect(second).toEqual(first);
   });

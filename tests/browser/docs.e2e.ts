@@ -10,7 +10,8 @@ test("the MCP guide is public and documents every tool", async ({ page, baseURL 
   // The endpoint is this server's own address.
   await expect(page.locator(".docs-endpoint code")).toHaveText(`${baseURL}/api/mcp`);
   // The tools reference comes from the same list the server answers tools/list with.
-  for (const tool of [...AGENT_TOOLS, ...WRITE_TOOLS]) await expect(page.locator(`#tool-${tool.name}`)).toContainText(tool.title);
+  for (const tool of [...AGENT_TOOLS, ...WRITE_TOOLS])
+    await expect(page.locator(`#tool-${tool.name}`)).toContainText(tool.title);
   await expect(page.locator("#tool-create_page")).toContainText("Creates");
   await expect(page.locator("#tool-read_page")).toContainText("Read-only");
 });
@@ -42,8 +43,14 @@ test("the privacy page is public and gives a way to reach the operator", async (
   await page.getByRole("contentinfo").getByRole("link", { name: "Privacy" }).click();
   await expect(page).toHaveURL(/\/privacy$/);
   await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Send a message" }).first()).toHaveAttribute("href", "/contact?topic=privacy");
-  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
+  await expect(page.getByRole("link", { name: "Send a message" }).first()).toHaveAttribute(
+    "href",
+    "/contact?topic=privacy",
+  );
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Contact" })).toHaveAttribute(
+    "href",
+    "/contact",
+  );
   // No email address on the page: everything goes through the contact form.
   await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
 });

@@ -12,7 +12,16 @@ describe("value chips in steps", () => {
       ],
     };
     const editor = chipsFromText(saved);
-    expect(editor.content?.map((n) => n.type)).toEqual(["text", "valueRef", "text", "valueRef", "text", "valueRef", "text", "text"]);
+    expect(editor.content?.map((n) => n.type)).toEqual([
+      "text",
+      "valueRef",
+      "text",
+      "valueRef",
+      "text",
+      "valueRef",
+      "text",
+      "text",
+    ]);
     expect(editor.content?.[5]).toEqual({ type: "valueRef", attrs: { key: "order", path: "carrier.name" } });
     const back = chipsToText(editor);
     expect(back.content).toEqual([

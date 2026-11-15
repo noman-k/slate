@@ -37,11 +37,7 @@ export function EditorUrlPopover({
   const upload = async (file: File) => {
     if (!onUploadImage) return;
     setError("");
-    if (
-      !["image/png", "image/jpeg", "image/gif", "image/webp"].includes(
-        file.type,
-      )
-    ) {
+    if (!["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.type)) {
       setError("Choose a PNG, JPEG, GIF, or WebP image.");
       return;
     }
@@ -57,22 +53,14 @@ export function EditorUrlPopover({
       if (mounted.current) onSubmit(url);
     } catch (cause) {
       if (mounted.current)
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "The image could not be uploaded. Try again.",
-        );
+        setError(cause instanceof Error ? cause.message : "The image could not be uploaded. Try again.");
     } finally {
       if (mounted.current) setUploading(false);
     }
   };
   return (
     <>
-      <button
-        className="editor-menu-scrim"
-        aria-label="Close URL input"
-        onClick={onClose}
-      />
+      <button className="editor-menu-scrim" aria-label="Close URL input" onClick={onClose} />
       <form
         className="editor-url-input"
         style={position}
@@ -90,11 +78,7 @@ export function EditorUrlPopover({
               disabled={uploading}
               onClick={() => inputRef.current?.click()}
             >
-              {uploading ? (
-                <LoaderCircle size={14} className="editor-upload-spinner" />
-              ) : (
-                <Upload size={14} />
-              )}
+              {uploading ? <LoaderCircle size={14} className="editor-upload-spinner" /> : <Upload size={14} />}
               {uploading ? "Uploading image…" : "Upload image"}
             </button>
             <input
@@ -129,11 +113,7 @@ export function EditorUrlPopover({
           </p>
         )}
         <div>
-          <small>
-            {kind === "image"
-              ? "A link to an image"
-              : "Leave empty to remove the link"}
-          </small>
+          <small>{kind === "image" ? "A link to an image" : "Leave empty to remove the link"}</small>
           <button type="submit" disabled={uploading}>
             {kind === "image" ? "Insert" : "Apply"}
           </button>

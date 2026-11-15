@@ -13,8 +13,13 @@ const plan = (name: string, args: Record<string, unknown>) => planCreation(creat
 
 describe("create_page", () => {
   it("adds a top-level page with its text", () => {
-    const { creation, pageId, result } = plan("create_page", { title: "Trip ideas", content: "# Lisbon\n\n- [ ] Book flights" });
-    expect(creation.pages).toEqual([expect.objectContaining({ id: pageId, title: "Trip ideas", kind: "document", parent_id: null })]);
+    const { creation, pageId, result } = plan("create_page", {
+      title: "Trip ideas",
+      content: "# Lisbon\n\n- [ ] Book flights",
+    });
+    expect(creation.pages).toEqual([
+      expect.objectContaining({ id: pageId, title: "Trip ideas", kind: "document", parent_id: null }),
+    ]);
     expect(creation.documents).toEqual([{ page_id: pageId, markdown: "# Lisbon\n\n- [ ] Book flights\n" }]);
     expect(creation.appends).toEqual([]);
     expect(result.text).toContain("at the top level");
@@ -25,7 +30,9 @@ describe("create_page", () => {
     expect(creation.appends).toEqual([]);
   });
   it("keeps agent text as text: embed and step lines are dropped", () => {
-    expect(plainMarkdown(`Hi\n:::slate {"kind":"database","id":"x"}\n:::slate-node {"type":"procedureStep"}\nBye`)).toBe("Hi\nBye");
+    expect(
+      plainMarkdown(`Hi\n:::slate {"kind":"database","id":"x"}\n:::slate-node {"type":"procedureStep"}\nBye`),
+    ).toBe("Hi\nBye");
   });
   it("explains what's wrong", () => {
     expect(() => plan("create_page", {})).toThrow("Add a title.");
@@ -64,11 +71,13 @@ describe("create_database", () => {
     expect(creation.properties.map((p) => p.name)).toEqual(["Name", "Status"]);
   });
   it("rejects values that don't fit, naming the row", () => {
-    expect(() => plan("create_database", { title: "x", properties: [{ name: "N", type: "number" }], rows: [{ N: "lots" }] })).toThrow(
-      "“N” in row 1 must be a number.",
-    );
+    expect(() =>
+      plan("create_database", { title: "x", properties: [{ name: "N", type: "number" }], rows: [{ N: "lots" }] }),
+    ).toThrow("“N” in row 1 must be a number.");
     expect(() => plan("create_database", { title: "x", rows: [{ Colour: "red" }] })).toThrow(/isn't a property/);
-    expect(() => plan("create_database", { title: "x", properties: [{ name: "Name", type: "text" }] })).toThrow(/Two properties/);
+    expect(() => plan("create_database", { title: "x", properties: [{ name: "Name", type: "text" }] })).toThrow(
+      /Two properties/,
+    );
   });
 });
 
@@ -76,15 +85,14 @@ describe("create_playbook", () => {
   const refund = {
     title: "Refund request",
     when_to_use: "A customer asks for their money back.",
-    inputs: [
-      { label: "Order number" },
-      { label: "Days since delivery", type: "number" },
-    ],
+    inputs: [{ label: "Order number" }, { label: "Days since delivery", type: "number" }],
     guidelines: ["Apologize once."],
     sections: [
       {
         title: "Check eligibility",
-        steps: [{ type: "decide", value: "Days since delivery", is: "lt", compare_to: "31", otherwise_go_to: "Offer credit" }],
+        steps: [
+          { type: "decide", value: "Days since delivery", is: "lt", compare_to: "31", otherwise_go_to: "Offer credit" },
+        ],
       },
       {
         title: "Refund",
@@ -111,30 +119,46 @@ describe("create_playbook", () => {
     expect(procedure.params.map((p) => p.name)).toEqual(["order_number", "days_since_delivery"]);
     expect(procedure.sections).toEqual(["Guidelines", "Check eligibility", "Refund", "Offer credit"]);
     expect(procedure.steps.map((s) => s.step)).toEqual(["if", "check", "end", "ask", "if", "send", "end"]);
-    expect(procedure.steps[0]).toMatchObject({ variable: "days_since_delivery", op: "lt", value: "31", else: "Offer credit" });
+    expect(procedure.steps[0]).toMatchObject({
+      variable: "days_since_delivery",
+      op: "lt",
+      value: "31",
+      else: "Offer credit",
+    });
     expect(checkPlaybook(parsePlaybook(markdown)).warnings).toBe(0);
-    expect(creation.pages[0]).toMatchObject({ icon: "icon:compass:blue", description: "When to use: A customer asks for their money back." });
+    expect(creation.pages[0]).toMatchObject({
+      icon: "icon:compass:blue",
+      description: "When to use: A customer asks for their money back.",
+    });
     expect(result.data).toMatchObject({ inputs: ["order_number", "days_since_delivery"], steps: 7 });
   });
   it("sends back the builder's problems instead of creating a broken playbook", () => {
     const broken = { title: "x", sections: [{ title: "Start", steps: [{ type: "say", text: "Hi {{customer}}" }] }] };
     expect(() => plan("create_playbook", broken)).toThrow(/wasn't created[\s\S]*“customer”/);
-    expect(() => plan("create_playbook", { title: "x", sections: [{ title: "A", steps: [{ type: "decide", value: "v", otherwise_go_to: "Nowhere" }] }] })).toThrow(
-      /goes to “Nowhere”, but the sections are: A/,
-    );
+    expect(() =>
+      plan("create_playbook", {
+        title: "x",
+        sections: [{ title: "A", steps: [{ type: "decide", value: "v", otherwise_go_to: "Nowhere" }] }],
+      }),
+    ).toThrow(/goes to “Nowhere”, but the sections are: A/);
   });
 });
 
 describe("MCP with keys of each scope", () => {
   const state = createSeedState();
   const list = async (access: Parameters<typeof handleMcpMessage>[1]) =>
-    ((await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/list" }, access)).body!.result as { tools: { name: string }[] }).tools.map((t) => t.name);
+    (
+      (await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/list" }, access)).body!.result as {
+        tools: { name: string }[];
+      }
+    ).tools.map((t) => t.name);
   it("offers create tools only to keys that may create", async () => {
     const read = await list({ load: async () => state, scope: "read" });
     expect(read).not.toContain("create_page");
     const write = await list({ load: async () => state, scope: "write", create: async () => "" });
     expect(write).toEqual(expect.arrayContaining(WRITE_TOOLS.map((t) => t.name)));
-    for (const tool of WRITE_TOOLS) expect(tool.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+    for (const tool of WRITE_TOOLS)
+      expect(tool.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
   });
   it("tells a read-only key how to get one that can create", async () => {
     const reply = await handleMcpMessage(
@@ -151,7 +175,11 @@ describe("MCP with keys of each scope", () => {
       { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "create_page", arguments: { title: "Hello" } } },
       { load: async () => state, scope: "write", create },
     );
-    const answer = reply.body!.result as { isError: boolean; content: { text: string }[]; structuredContent: { url: string } };
+    const answer = reply.body!.result as {
+      isError: boolean;
+      content: { text: string }[];
+      structuredContent: { url: string };
+    };
     expect(create).toHaveBeenCalledOnce();
     expect(answer.isError).toBe(false);
     expect(answer.structuredContent.url).toBe("https://slate.example/p/abc");
@@ -160,8 +188,16 @@ describe("MCP with keys of each scope", () => {
   it("throws nothing to the agent's tool error path for bad input", async () => {
     const reply = await handleMcpMessage(
       { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "create_database", arguments: {} } },
-      { load: async () => state, scope: "write", create: async () => { throw new ToolError("should not be called"); } },
+      {
+        load: async () => state,
+        scope: "write",
+        create: async () => {
+          throw new ToolError("should not be called");
+        },
+      },
     );
-    expect((reply.body!.result as { content: { text: string }[] }).content[0].text).toBe("Add a name for the database.");
+    expect((reply.body!.result as { content: { text: string }[] }).content[0].text).toBe(
+      "Add a name for the database.",
+    );
   });
 });

@@ -20,8 +20,7 @@ export function resolvedTheme(): Theme {
 export function useReapplyTheme() {
   useLayoutEffect(() => {
     const theme = resolvedTheme();
-    if (document.documentElement.dataset.theme !== theme)
-      document.documentElement.dataset.theme = theme;
+    if (document.documentElement.dataset.theme !== theme) document.documentElement.dataset.theme = theme;
   }, []);
 }
 
@@ -57,9 +56,7 @@ export function useTheme() {
   // Stay in sync with other switchers (and the OS) by watching the attribute itself.
   useEffect(() => {
     const root = document.documentElement;
-    const observer = new MutationObserver(() =>
-      setTheme(root.dataset.theme === "light" ? "light" : "dark"),
-    );
+    const observer = new MutationObserver(() => setTheme(root.dataset.theme === "light" ? "light" : "dark"));
     observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
   }, []);

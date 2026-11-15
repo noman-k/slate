@@ -12,7 +12,9 @@ describe("playbook checks", () => {
   it("finds nothing wrong with the templates", () => {
     for (const template of PROCEDURE_TEMPLATES) {
       const checks = checkPlaybook(parsePlaybook(templateMarkdown(template)));
-      expect(checks.total, `${template.name}: ${messages(parsePlaybook(templateMarkdown(template))).join(" / ")}`).toBe(0);
+      expect(checks.total, `${template.name}: ${messages(parsePlaybook(templateMarkdown(template))).join(" / ")}`).toBe(
+        0,
+      );
     }
   });
 

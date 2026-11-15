@@ -1,0 +1,573 @@
+/* New-page starters, small windows, motion, toasts. (Part of globals.css; the parts load in order.) */
+/* Touch tips: the "how" reads as plain text, right-aligned like the keys. */
+.shortcuts-how {
+  text-align: right;
+  color: var(--text);
+}
+@media (hover: none) and (pointer: coarse) {
+  .shortcuts {
+    width: min(300px, calc(100vw - 32px));
+  }
+  .shortcuts > div {
+    font-size: 13px;
+  }
+}
+.shortcuts p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.save-error {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  padding: 8px 21px;
+  font-size: 13px;
+}
+.save-error button {
+  color: var(--on-accent);
+  text-decoration: underline;
+  margin-left: auto;
+}
+.record-dialog {
+  --peek-gutter: 64px;
+  padding: 0 var(--peek-gutter) 96px;
+  overflow-x: hidden;
+}
+.record-dialog > .peek-heading {
+  margin: 0 calc(-1 * var(--peek-gutter));
+}
+.record-dialog > .record-title-input {
+  margin-top: 36px;
+}
+.record-title-input::placeholder {
+  color: var(--text-tertiary);
+}
+.record-title-input {
+  font-size: 34px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  color: var(--text-strong);
+  font-weight: 700;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  margin: 0 0 25px;
+  padding: 0;
+  box-shadow: none !important;
+}
+.empty-workspace {
+  min-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-secondary);
+}
+.empty-workspace h2 {
+  font-size: 23px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 20px 0 0;
+  letter-spacing: -0.5px;
+}
+.empty-workspace p {
+  font-size: 13px;
+  margin: 12px 0 23px;
+}
+.empty-workspace-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* A blank new page offers its first move: write, or become a database. */
+.page-starter {
+  margin: 4px 0 18px;
+  animation: appear 0.2s ease;
+}
+.page-starter p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.page-starter kbd {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+.page-starter-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-left: -8px;
+}
+.page-starter-options button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.page-starter-options button svg {
+  color: var(--icon);
+}
+@media (hover: hover) {
+  .page-starter-options button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+@media (hover: hover) {
+  .page-starter-options button:hover svg {
+    color: var(--text);
+  }
+}
+.page-starter-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+/* Names what the next three options make, without looking like a button. */
+.page-starter-label {
+  padding: 0 4px 0 6px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.page-starter-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--divider);
+}
+.workspace-loading {
+  height: 65vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.loading-logo {
+  height: 40px;
+  width: 40px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--text);
+  animation: pulse 1.5s infinite;
+}
+.editor-loading {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 24px 0;
+}
+.app-error {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.app-error h1 {
+  font-size: 24px;
+}
+.app-error p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 10px 0 25px;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.98);
+  }
+}
+@keyframes search-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(0.98);
+  }
+}
+@keyframes peek-in {
+  from {
+    opacity: 0.4;
+    transform: translateX(40px);
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Closing: menus, dialogs and the side panel fade away instead of vanishing. Radix keeps
+   them on screen until the animation ends, and they ignore clicks meanwhile. */
+.menu-surface[data-state="closed"],
+.db-menu[data-state="closed"],
+.icon-popover[data-state="closed"] {
+  animation: menu-out 90ms var(--ease-in) forwards;
+  pointer-events: none;
+}
+.modal-backdrop[data-state="closed"] {
+  animation: fade-out 140ms var(--ease-in) forwards;
+}
+.modal-surface[data-state="closed"] {
+  animation: modal-out 120ms var(--ease-in) forwards;
+  pointer-events: none;
+}
+.search-dialog[data-state="closed"] {
+  animation: search-out 110ms var(--ease-in) forwards;
+}
+.peek-surface[data-state="closed"] {
+  animation: peek-out 160ms var(--ease-in) forwards;
+  pointer-events: none;
+}
+@keyframes menu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes modal-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.98);
+  }
+}
+@keyframes search-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -4px) scale(0.98);
+  }
+}
+@keyframes peek-out {
+  to {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@media (min-width: 1600px) {
+  .page-content {
+    padding-left: 105px;
+    padding-top: 70px;
+  }
+  .page-title {
+    font-size: 40px;
+  }
+  .page-description {
+    max-width: 1150px;
+    font-size: 15px;
+  }
+  .topbar {
+    height: 56px;
+  }
+}
+@media (max-width: 1150px) {
+  .page-content {
+    padding-left: 48px;
+    padding-right: 30px;
+    padding-top: 55px;
+  }
+  .breadcrumbs button {
+    max-width: 165px;
+  }
+  .save-status {
+    display: none;
+  }
+  .topbar {
+    padding-right: 13px;
+    gap: 7px;
+  }
+  .topbar-actions {
+    gap: 5px;
+  }
+  .document-page .page-content {
+    padding-left: 52px;
+    padding-right: 52px;
+  }
+}
+@media (max-width: 900px) {
+  .breadcrumbs > span:first-child:not(:last-child) {
+    display: none;
+  }
+  .page-content {
+    padding-left: 35px;
+  }
+  .topbar-actions .private-button span {
+    display: none;
+  }
+  .page-title {
+    font-size: 34px;
+  }
+  .page-description {
+    font-size: 13px;
+  }
+  .record-dialog {
+    --peek-gutter: 32px;
+  }
+}
+@media (hover: none) {
+  /* A long press picks a page up to move it: no text selection or link callout instead. */
+  .tree-row {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+@media (max-width: 760px) {
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 55;
+    box-shadow: var(--shadow-drawer);
+  }
+  .sidebar.is-collapsed {
+    box-shadow: none;
+  }
+  /* On a phone the sidebar is a drawer: it slides in over the page (moving it, rather
+     than growing its width, keeps it smooth), and it's hidden once it has slid away. */
+  .sidebar {
+    width: 272px !important;
+    max-width: calc(100vw - 48px);
+    /* "none", not translateX(0): any transform here would throw off where menus opened
+       from the sidebar are placed. */
+    transform: none;
+    transition:
+      transform var(--motion-slow) var(--ease),
+      visibility 0s;
+  }
+  .sidebar.is-collapsed {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 200ms var(--ease-in),
+      visibility 0s linear 200ms;
+  }
+  /* Before the app has settled, the drawer starts closed and still. */
+  .workspace-app:not(.is-settled) .sidebar {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: none;
+  }
+  .workspace-app:not(.is-settled) .sidebar-scrim {
+    opacity: 0;
+    visibility: hidden;
+    transition: none;
+  }
+  .main-pane {
+    width: 100%;
+  }
+  .sidebar:not(.is-collapsed) + .main-pane {
+    margin-left: 0;
+  }
+  .topbar {
+    padding-left: 12px;
+  }
+  .topbar-left > .icon-button {
+    display: flex;
+  }
+  .page-content,
+  .document-page .page-content {
+    padding: 50px 24px 100px;
+  }
+  .database-page .page-content {
+    --db-bleed: 0px;
+    padding-right: 0;
+  }
+  .page-title {
+    font-size: 32px;
+  }
+  .page-description {
+    padding-right: 20px;
+    min-height: 84px;
+    font-size: 13px;
+  }
+  .breadcrumbs button {
+    max-width: 170px;
+    font-size: 11px;
+  }
+  .breadcrumbs > span:not(:last-child) {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 3px;
+  }
+  .topbar-actions > .save-status {
+    display: none;
+  }
+  .private-button {
+    display: none;
+  }
+  .search-dialog {
+    top: 12%;
+  }
+  .search-footer > span:last-child {
+    display: none;
+  }
+  .help-button {
+    bottom: 14px;
+    right: 14px;
+  }
+  .modal-surface {
+    padding: 20px;
+  }
+  .search-dialog {
+    padding: 0;
+  }
+  .search-dialog .search-input-wrap {
+    padding: 17px;
+  }
+  .peek-surface {
+    width: 100vw;
+  }
+  .record-dialog {
+    --peek-gutter: 20px;
+  }
+  .page-quiet-actions {
+    opacity: 1;
+    margin-top: -12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .breadcrumbs > span:last-child .breadcrumb-separator {
+    display: none;
+  }
+} /* Mobile sidebar overlay: tap outside to close. Hidden on wider screens. */
+
+.sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 54;
+  background: var(--backdrop);
+  /* Fades with the drawer, both ways, and is out of the way once faded. (Hidden, not
+     pointer-events: setting those would override a menu's "nothing else is clickable".) */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms var(--ease-in),
+    visibility 0s linear 200ms;
+}
+.sidebar-scrim.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-slow) var(--ease);
+}
+@media (hover: hover) {
+  .sidebar-scrim:hover {
+    background: var(--backdrop);
+  }
+} /* Touch screens have no hover: keep hover-only controls reachable. */
+
+@media (hover: none) {
+  .section-heading .icon-button,
+  .page-quiet-actions {
+    opacity: 1;
+  }
+  .tree-row.selected .tree-actions {
+    display: flex;
+  }
+  .tree-actions .icon-button {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* …except loading spinners: a frozen one looks like a hang. They turn slowly instead. */
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .auth-spinner,
+  .contact-spinner,
+  .editor-upload-spinner {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar-scrim {
+    display: block;
+  }
+}
+
+/* Toasts follow the same elevated surface as menus. */
+.slate-toast {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+  border: 0 !important;
+  box-shadow: var(--shadow-popover) !important;
+  border-radius: var(--radius-lg) !important;
+  font: 14px/1.4 var(--font) !important;
+}
+.slate-toast [data-description] {
+  color: var(--text-secondary) !important;
+}
+.slate-toast [data-button] {
+  background: var(--hover-strong) !important;
+  color: var(--text-strong) !important;
+  border-radius: var(--radius) !important;
+  font-weight: 500 !important;
+}
+.slate-toast [data-close-button] {
+  background: var(--bg-raised) !important;
+  border-color: var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+.slate-toast[data-type="success"] [data-icon] {
+  color: var(--success);
+}
+.slate-toast[data-type="error"] [data-icon] {
+  color: var(--danger-text);
+}

@@ -3,7 +3,13 @@ import { getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { createDocumentExtensions, parseDocument } from "../src/components/editor/extensions";
 import { PAGE_ICON_SET, parsePageIcon } from "../src/components/page-icon";
-import { PROCEDURE_TEMPLATES, TEMPLATE_CATEGORIES, templateMarkdown, templateOutline, templatesInOrder } from "../src/lib/procedures";
+import {
+  PROCEDURE_TEMPLATES,
+  TEMPLATE_CATEGORIES,
+  templateMarkdown,
+  templateOutline,
+  templatesInOrder,
+} from "../src/lib/procedures";
 
 const extensions = createDocumentExtensions();
 const manager = new MarkdownManager({ extensions, markedOptions: { gfm: true } });
@@ -23,7 +29,10 @@ describe("playbook templates", () => {
     for (const t of PROCEDURE_TEMPLATES) expect(parsePageIcon(t.icon).kind).toBe("icon");
     expect(Object.keys(PAGE_ICON_SET).length).toBeGreaterThan(0);
     // Late evening locally is still that day, whatever the UTC date is.
-    const md = templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "runbook-deploy")!, new Date(2026, 10, 13, 23, 30));
+    const md = templateMarkdown(
+      PROCEDURE_TEMPLATES.find((t) => t.id === "runbook-deploy")!,
+      new Date(2026, 10, 13, 23, 30),
+    );
     expect(md).toContain("| 2026-11-13 |");
     expect(md).not.toMatch(/(?<!\{)\{today\}(?!\})/);
     // A value named {{today}} in a step isn't touched.
@@ -34,7 +43,11 @@ describe("playbook templates", () => {
   it("outlines sections with their step counts", () => {
     const refund = PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-refund")!;
     expect(templateOutline(refund).map((s) => s.title)).toEqual([
-      "Guidelines", "Check eligibility", "Refund", "Offer store credit", "Escalate",
+      "Guidelines",
+      "Check eligibility",
+      "Refund",
+      "Offer store credit",
+      "Escalate",
     ]);
     expect(templateOutline(refund).map((s) => s.items)).toEqual([0, 1, 3, 5, 2]);
   });
@@ -48,7 +61,9 @@ describe("playbook templates", () => {
       expect(types.has("procedureStep")).toBe(true);
       if (t.category === "operations") expect(types.has("table")).toBe(true);
       // Every branch goes somewhere real.
-      const sections = new Set(doc.content?.filter((n) => n.type === "heading").map((n) => n.content?.map((c) => c.text).join("")));
+      const sections = new Set(
+        doc.content?.filter((n) => n.type === "heading").map((n) => n.content?.map((c) => c.text).join("")),
+      );
       for (const n of doc.content || [])
         if (n.type === "procedureStep")
           for (const target of [n.attrs?.then, n.attrs?.else])

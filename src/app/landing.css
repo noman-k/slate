@@ -1,5 +1,5 @@
 /*
- * Front page. It uses the workspace's own design tokens (globals.css), so it follows the
+ * Front page. It uses the workspace's own design tokens (styles/01-base.css), so it follows the
  * same light/dark theme as the app and looks like it: the system font, quiet neutral
  * surfaces, hairline borders, one blue accent and Notion-style tag colors. No gradients.
  */
@@ -74,9 +74,15 @@ html:has(.landing) {
 .skip-link:focus {
   top: 12px;
 }
-.t-blue { color: var(--icon-blue); }
-.t-green { color: var(--icon-green); }
-.t-orange { color: var(--icon-orange); }
+.t-blue {
+  color: var(--icon-blue);
+}
+.t-green {
+  color: var(--icon-green);
+}
+.t-orange {
+  color: var(--icon-orange);
+}
 .muted {
   color: var(--text-tertiary);
 }
@@ -125,7 +131,9 @@ html:has(.landing) {
   font-size: 14px;
   font-weight: 500;
   color: var(--ink-3);
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 @media (hover: hover) {
   .landing-sections a:hover,
@@ -156,7 +164,9 @@ html:has(.landing) {
   color: var(--on-accent) !important;
   background: var(--accent);
   border: 1px solid var(--accent);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 @media (hover: hover) {
   .landing-button:hover {
@@ -220,8 +230,7 @@ html:has(.landing) {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(var(--divider) 1px, transparent 1px),
-    linear-gradient(90deg, var(--divider) 1px, transparent 1px);
+    linear-gradient(var(--divider) 1px, transparent 1px), linear-gradient(90deg, var(--divider) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(55% 65% at 50% 0%, #000 15%, transparent 75%);
   -webkit-mask-image: radial-gradient(55% 65% at 50% 0%, #000 15%, transparent 75%);
@@ -246,7 +255,9 @@ html:has(.landing) {
   color: var(--ink-2);
   background: var(--canvas);
   box-shadow: inset 0 0 0 1px var(--line-soft);
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 @media (hover: hover) {
   .hero-pill:hover {
@@ -407,9 +418,15 @@ html:has(.landing) {
   flex-shrink: 0;
   color: var(--icon);
 }
-.shot-row .t-blue { color: var(--icon-blue); }
-.shot-row .t-green { color: var(--icon-green); }
-.shot-row .t-orange { color: var(--icon-orange); }
+.shot-row .t-blue {
+  color: var(--icon-blue);
+}
+.shot-row .t-green {
+  color: var(--icon-green);
+}
+.shot-row .t-orange {
+  color: var(--icon-orange);
+}
 .shot-row.sub {
   padding-left: 24px;
 }
@@ -492,10 +509,22 @@ html:has(.landing) {
   text-align: center;
   color: var(--tag-text);
 }
-.is-check > span, .mini-steps .is-check { background: var(--tag-green-bg); }
-.is-ask > span, .mini-steps .is-ask { background: var(--tag-blue-bg); }
-.is-if > span, .mini-steps .is-if { background: var(--tag-purple-bg); }
-.is-api > span, .mini-steps .is-api { background: var(--tag-orange-bg); }
+.is-check > span,
+.mini-steps .is-check {
+  background: var(--tag-green-bg);
+}
+.is-ask > span,
+.mini-steps .is-ask {
+  background: var(--tag-blue-bg);
+}
+.is-if > span,
+.mini-steps .is-if {
+  background: var(--tag-purple-bg);
+}
+.is-api > span,
+.mini-steps .is-api {
+  background: var(--tag-orange-bg);
+}
 
 .shot-card {
   position: absolute;
@@ -549,10 +578,18 @@ html:has(.landing) {
   font-weight: 400;
   color: var(--tag-text);
 }
-.tag.green { background: var(--tag-green-bg); }
-.tag.red { background: var(--tag-red-bg); }
-.tag.blue { background: var(--tag-blue-bg); }
-.tag.gray { background: var(--tag-gray-bg); }
+.tag.green {
+  background: var(--tag-green-bg);
+}
+.tag.red {
+  background: var(--tag-red-bg);
+}
+.tag.blue {
+  background: var(--tag-blue-bg);
+}
+.tag.gray {
+  background: var(--tag-gray-bg);
+}
 .shot-runcard {
   right: -40px;
   bottom: 40px;
@@ -697,9 +734,15 @@ html:has(.landing) {
   position: relative;
   padding: clamp(56px, 8vw, 96px) 0 clamp(24px, 4vw, 40px) 76px;
 }
-.chapter.tone-blue { --tone: var(--icon-blue); }
-.chapter.tone-orange { --tone: var(--icon-orange); }
-.chapter.tone-purple { --tone: var(--icon-purple); }
+.chapter.tone-blue {
+  --tone: var(--icon-blue);
+}
+.chapter.tone-orange {
+  --tone: var(--icon-orange);
+}
+.chapter.tone-purple {
+  --tone: var(--icon-purple);
+}
 .chapter::before {
   content: "";
   position: absolute;
@@ -775,7 +818,9 @@ html:has(.landing) {
   background: var(--canvas);
   box-shadow: inset 0 0 0 1px var(--line-soft);
   overflow: hidden;
-  transition: box-shadow 0.2s, background 0.2s;
+  transition:
+    box-shadow 0.2s,
+    background 0.2s;
 }
 @media (hover: hover) {
   .bento-card:hover,
@@ -811,10 +856,18 @@ html:has(.landing) {
   color: var(--tone);
   background: color-mix(in srgb, var(--tone) 15%, transparent);
 }
-.tone-blue { --tone: var(--icon-blue); }
-.tone-green { --tone: var(--icon-green); }
-.tone-orange { --tone: var(--icon-orange); }
-.tone-purple { --tone: var(--icon-purple); }
+.tone-blue {
+  --tone: var(--icon-blue);
+}
+.tone-green {
+  --tone: var(--icon-green);
+}
+.tone-orange {
+  --tone: var(--icon-orange);
+}
+.tone-purple {
+  --tone: var(--icon-purple);
+}
 .mini-doc {
   display: flex;
   flex-direction: column;
@@ -955,7 +1008,9 @@ html:has(.landing) {
   border-radius: var(--card-radius);
   font-size: 13.5px;
   background: var(--bg);
-  box-shadow: 0 0 0 1px var(--line-soft), var(--shadow-showcase);
+  box-shadow:
+    0 0 0 1px var(--line-soft),
+    var(--shadow-showcase);
 }
 .run-demo-head {
   display: flex;
@@ -1288,8 +1343,7 @@ html:has(.landing) {
   inset: 0;
   z-index: -1;
   background-image:
-    linear-gradient(var(--divider) 1px, transparent 1px),
-    linear-gradient(90deg, var(--divider) 1px, transparent 1px);
+    linear-gradient(var(--divider) 1px, transparent 1px), linear-gradient(90deg, var(--divider) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(60% 70% at 50% 40%, #000, transparent 75%);
   -webkit-mask-image: radial-gradient(60% 70% at 50% 40%, #000, transparent 75%);
@@ -1355,10 +1409,15 @@ html:has(.landing) {
 
 /* Motion, only for those who want it. */
 @keyframes landing-pulse {
-  50% { box-shadow: 0 0 0 6px transparent; }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
 }
 @keyframes landing-rise {
-  from { opacity: 0; transform: translateY(12px); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 /* The hero arrives in a short cascade, settled in under a second: text first, then the
    app picture and its two cards. */
@@ -1366,10 +1425,18 @@ html:has(.landing) {
   .hero-copy > * {
     animation: landing-rise 0.5s var(--ease) both;
   }
-  .hero-copy > :nth-child(2) { animation-delay: 0.04s; }
-  .hero-copy > :nth-child(3) { animation-delay: 0.08s; }
-  .hero-copy > :nth-child(4) { animation-delay: 0.12s; }
-  .hero-copy > :nth-child(5) { animation-delay: 0.16s; }
+  .hero-copy > :nth-child(2) {
+    animation-delay: 0.04s;
+  }
+  .hero-copy > :nth-child(3) {
+    animation-delay: 0.08s;
+  }
+  .hero-copy > :nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  .hero-copy > :nth-child(5) {
+    animation-delay: 0.16s;
+  }
   .shot {
     animation: landing-rise 0.6s 0.15s var(--ease) both;
   }
@@ -1393,8 +1460,12 @@ html:has(.landing) {
 
 /* Responsive */
 @media (max-width: 1180px) {
-  .shot-board { left: -12px; }
-  .shot-runcard { right: -12px; }
+  .shot-board {
+    left: -12px;
+  }
+  .shot-runcard {
+    right: -12px;
+  }
   .audiences {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

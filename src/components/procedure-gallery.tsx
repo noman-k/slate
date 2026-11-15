@@ -14,8 +14,7 @@ import {
 import { labelOf } from "@/lib/runner";
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-const categoryLabel = (id: ProcedureTemplate["category"]) =>
-  TEMPLATE_CATEGORIES.find((c) => c.id === id)?.label ?? "";
+const categoryLabel = (id: ProcedureTemplate["category"]) => TEMPLATE_CATEGORIES.find((c) => c.id === id)?.label ?? "";
 
 /**
  * Pick a playbook to start from: templates grouped by what they're for (a blank one
@@ -75,26 +74,26 @@ export function ProcedureGallery({
         >
           {list.map((template, i) => (
             <Fragment key={template.id}>
-            {(i === 0 || template.category !== list[i - 1].category) && (
-              <div className="procedure-group" role="presentation">
-                {categoryLabel(template.category)}
+              {(i === 0 || template.category !== list[i - 1].category) && (
+                <div className="procedure-group" role="presentation">
+                  {categoryLabel(template.category)}
+                </div>
+              )}
+              <div
+                id={`procedure-${template.id}`}
+                role="option"
+                aria-selected={i === index}
+                className={`procedure-option ${i === index ? "is-active" : ""}`}
+                onMouseMove={() => setIndex(i)}
+                onClick={() => setIndex(i)}
+                onDoubleClick={() => onUse(template)}
+              >
+                <PageIcon page={{ icon: template.icon, kind: "document" }} size={18} />
+                <span>
+                  <strong>{template.name}</strong>
+                  <small>{template.summary}</small>
+                </span>
               </div>
-            )}
-            <div
-              id={`procedure-${template.id}`}
-              role="option"
-              aria-selected={i === index}
-              className={`procedure-option ${i === index ? "is-active" : ""}`}
-              onMouseMove={() => setIndex(i)}
-              onClick={() => setIndex(i)}
-              onDoubleClick={() => onUse(template)}
-            >
-              <PageIcon page={{ icon: template.icon, kind: "document" }} size={18} />
-              <span>
-                <strong>{template.name}</strong>
-                <small>{template.summary}</small>
-              </span>
-            </div>
             </Fragment>
           ))}
           {hidden.length > 0 && (
@@ -154,11 +153,7 @@ export function ProcedureGallery({
         <button className="secondary-button" onClick={onClose}>
           Cancel
         </button>
-        <button
-          className="primary-button"
-          disabled={!chosen}
-          onClick={() => chosen && onUse(chosen)}
-        >
+        <button className="primary-button" disabled={!chosen} onClick={() => chosen && onUse(chosen)}>
           Use template
         </button>
       </div>

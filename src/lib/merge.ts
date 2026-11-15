@@ -20,7 +20,8 @@ const KEYS: Record<Collection, string> = {
   views: "id",
 };
 
-const same = (a: unknown, b: unknown) => a === b || (a !== undefined && b !== undefined && JSON.stringify(a) === JSON.stringify(b));
+const same = (a: unknown, b: unknown) =>
+  a === b || (a !== undefined && b !== undefined && JSON.stringify(a) === JSON.stringify(b));
 
 export interface Merged {
   state: WorkspaceState;
@@ -50,7 +51,14 @@ export function mergeStates(base: WorkspaceState, local: WorkspaceState, remote:
       if (changedHere) {
         if (!same(b, r) && !same(l, r)) {
           // Both sides changed it: note the page it belongs to.
-          const page = collection === "pages" ? id : collection === "documents" ? id : collection === "records" ? String((l ?? r)?.page_id ?? "") : "";
+          const page =
+            collection === "pages"
+              ? id
+              : collection === "documents"
+                ? id
+                : collection === "records"
+                  ? String((l ?? r)?.page_id ?? "")
+                  : "";
           if (page) overlaps.add(page);
         }
         if (l) out.push(l);

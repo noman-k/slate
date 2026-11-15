@@ -141,7 +141,8 @@ export function KeyboardToolbar({ editor }: { editor: Editor | null }) {
     const touch = event.changedTouches[0];
     const box = event.currentTarget.getBoundingClientRect();
     if (!touch || event.currentTarget.disabled) return;
-    if (touch.clientX < box.left || touch.clientX > box.right || touch.clientY < box.top || touch.clientY > box.bottom) return;
+    if (touch.clientX < box.left || touch.clientX > box.right || touch.clientY < box.top || touch.clientY > box.bottom)
+      return;
     run();
   };
   const button = (label: string, icon: React.ReactNode, run: () => void, enabled = true, active = false) => (
@@ -171,8 +172,20 @@ export function KeyboardToolbar({ editor }: { editor: Editor | null }) {
       {button("Outdent", <IndentDecrease size={20} />, () => changeIndent(editor, true), canIndent(editor, true))}
       {button("Indent", <IndentIncrease size={20} />, () => changeIndent(editor, false), canIndent(editor, false))}
       <span className="keyboard-toolbar-divider" aria-hidden />
-      {button("To-do list", <ListChecks size={20} />, () => editor.chain().focus().toggleTaskList().run(), true, editor.isActive("taskList"))}
-      {button("Bulleted list", <List size={20} />, () => editor.chain().focus().toggleBulletList().run(), true, editor.isActive("bulletList"))}
+      {button(
+        "To-do list",
+        <ListChecks size={20} />,
+        () => editor.chain().focus().toggleTaskList().run(),
+        true,
+        editor.isActive("taskList"),
+      )}
+      {button(
+        "Bulleted list",
+        <List size={20} />,
+        () => editor.chain().focus().toggleBulletList().run(),
+        true,
+        editor.isActive("bulletList"),
+      )}
       <span className="keyboard-toolbar-divider" aria-hidden />
       {button("Undo", <Undo2 size={20} />, () => editor.chain().focus().undo().run(), editor.can().undo())}
       {button("Redo", <Redo2 size={20} />, () => editor.chain().focus().redo().run(), editor.can().redo())}

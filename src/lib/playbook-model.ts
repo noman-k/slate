@@ -152,7 +152,9 @@ export function parsePlaybook(markdown: string): PlaybookModel {
 
 /** Only the settings in use, like the editor saves them. */
 const compactAttrs = (attrs: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(attrs).filter(([, value]) => value !== null && value !== undefined && value !== ""));
+  Object.fromEntries(
+    Object.entries(attrs).filter(([, value]) => value !== null && value !== undefined && value !== ""),
+  );
 
 export function stepLine(step: Pick<BuilderStep, "attrs" | "content">) {
   const content = step.content.filter((piece) => piece.type !== "text" || piece.text);
@@ -206,7 +208,8 @@ export function newStep(type: StepAttrs["step"]): BuilderStep {
 export function renameInModel(model: PlaybookModel, from: string, to: string): PlaybookModel {
   if (!from || !to || from === to) return model;
   const pattern = new RegExp(`\\{\\{(\\s*)${from}((?:_status)?)(?=[\\s.}])`, "g");
-  const swap = (text: string) => text.replace(pattern, (_m, space: string, suffix: string) => `{{${space}${to}${suffix}`);
+  const swap = (text: string) =>
+    text.replace(pattern, (_m, space: string, suffix: string) => `{{${space}${to}${suffix}`);
   return {
     ...model,
     sections: model.sections.map((section) => ({
@@ -217,12 +220,17 @@ export function renameInModel(model: PlaybookModel, from: string, to: string): P
         for (const key of ["url", "headers", "body", "value", "expected"] as const)
           if (typeof attrs[key] === "string") attrs[key] = swap(attrs[key] as string) as never;
         const variable = String(attrs.variable || "");
-        if (attrs.step === "if" && (variable === from || variable.startsWith(`${from}.`) || variable === `${from}_status`))
+        if (
+          attrs.step === "if" &&
+          (variable === from || variable.startsWith(`${from}.`) || variable === `${from}_status`)
+        )
           attrs.variable = to + variable.slice(from.length);
         return {
           ...step,
           attrs,
-          content: step.content.map((piece) => (piece.type === "text" && piece.text ? { ...piece, text: swap(piece.text) } : piece)),
+          content: step.content.map((piece) =>
+            piece.type === "text" && piece.text ? { ...piece, text: swap(piece.text) } : piece,
+          ),
         };
       }),
     })),

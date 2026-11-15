@@ -1,43 +1,18 @@
 "use client";
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type NodeViewProps,
-} from "@tiptap/react";
-import {
-  Node,
-  mergeAttributes,
-  textblockTypeInputRule,
-  type Editor,
-  type JSONContent,
-} from "@tiptap/core";
+import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
+import { Node, mergeAttributes, textblockTypeInputRule, type Editor, type JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
-import {
-  Table,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@tiptap/extension-table";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
-import {
-  Database,
-  ChevronRight,
-  Info,
-  Code2,
-  Copy,
-  Check,
-  ChevronsUpDown,
-  Search,
-} from "lucide-react";
+import { Database, ChevronRight, Info, Code2, Copy, Check, ChevronsUpDown, Search } from "lucide-react";
 import { encodeDirective, fencedCode, splitMarkdown } from "../../lib/markdown";
 import { PageIcon } from "../page-icon";
 
@@ -46,16 +21,10 @@ import { ProcedureParams, ProcedureSections, ProcedureStep, ValueRef, chipsFromT
 export { EmbedContext, type EmbedOptions };
 function EmbedView({ node, extension }: NodeViewProps) {
   const context = useContext(EmbedContext);
-  const options =
-    context.renderDatabase || context.onOpenPage
-      ? context
-      : (extension.options as EmbedOptions);
+  const options = context.renderDatabase || context.onOpenPage ? context : (extension.options as EmbedOptions);
   if (node.attrs.kind === "database")
     return (
-      <NodeViewWrapper
-        className="document-database-embed"
-        contentEditable={false}
-      >
+      <NodeViewWrapper className="document-database-embed" contentEditable={false}>
         <EmbedSurface>
           {options.renderDatabase?.(String(node.attrs.id), node.attrs.block ? String(node.attrs.block) : undefined) ?? (
             <div className="editor-reference">
@@ -112,15 +81,7 @@ function EmbedSurface({ children }: { children: ReactNode }) {
  * press is stopped natively, before the editor's own listener sees it, and it doesn't
  * move focus into the editor. Keyboard and drag-handle selection still work.
  */
-function PageReferenceButton({
-  onOpen,
-  title,
-  children,
-}: {
-  onOpen: () => void;
-  title: string;
-  children: ReactNode;
-}) {
+function PageReferenceButton({ onOpen, title, children }: { onOpen: () => void; title: string; children: ReactNode }) {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const button = ref.current;
@@ -167,7 +128,9 @@ const TaskItemQuiet = TaskItem.extend({
           const position = typeof getPos === "function" ? getPos() : undefined;
           const node = typeof position === "number" ? editor.state.doc.nodeAt(position) : null;
           if (typeof position !== "number" || !node) return;
-          editor.view.dispatch(editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, checked: box.checked }));
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, checked: box.checked }),
+          );
         },
         true,
       );
@@ -206,10 +169,7 @@ const WorkspaceEmbed = Node.create<EmbedOptions>({
     return [{ tag: "div[data-workspace-embed]" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-workspace-embed": "" }),
-    ];
+    return ["div", mergeAttributes(HTMLAttributes, { "data-workspace-embed": "" })];
   },
   renderMarkdown(node) {
     return encodeDirective({
@@ -230,11 +190,7 @@ const WorkspaceEmbed = Node.create<EmbedOptions>({
         const target = event.target as HTMLElement | null;
         if (target?.closest?.(".database-view")) return true;
         const dragging = event.type.startsWith("drag") || event.type === "drop";
-        return (
-          !dragging &&
-          !!target &&
-          ["INPUT", "BUTTON", "SELECT", "TEXTAREA"].includes(target.tagName)
-        );
+        return !dragging && !!target && ["INPUT", "BUTTON", "SELECT", "TEXTAREA"].includes(target.tagName);
       },
     });
   },
@@ -262,10 +218,7 @@ const PreservedSource = Node.create({
     return [{ tag: "div[data-preserved-source]" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-preserved-source": "" }),
-    ];
+    return ["div", mergeAttributes(HTMLAttributes, { "data-preserved-source": "" })];
   },
   renderMarkdown(node) {
     return String(node.attrs?.source || "");
@@ -294,21 +247,13 @@ function ContainerView({ node, updateAttributes }: NodeViewProps) {
           <input
             aria-label="Toggle title"
             value={String(node.attrs.title)}
-            onChange={(event) =>
-              updateAttributes({ title: event.target.value })
-            }
+            onChange={(event) => updateAttributes({ title: event.target.value })}
           />
         </div>
       ) : (
         <Info size={18} className="callout-icon" />
       )}
-      <NodeViewContent
-        className={
-          toggle && !node.attrs.open
-            ? "toggle-content is-closed"
-            : "toggle-content"
-        }
-      />
+      <NodeViewContent className={toggle && !node.attrs.open ? "toggle-content is-closed" : "toggle-content"} />
     </NodeViewWrapper>
   );
 }
@@ -359,9 +304,29 @@ const lowlight = createLowlight(common);
  * colors little. Applies to the highlighting and to the label alike.
  */
 const AUTO_LANGUAGES = [
-  "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "xml", "java", "javascript",
-  "json", "kotlin", "markdown", "php", "python", "ruby", "rust", "scss", "sql", "swift",
-  "typescript", "yaml",
+  "bash",
+  "c",
+  "cpp",
+  "csharp",
+  "css",
+  "diff",
+  "go",
+  "graphql",
+  "xml",
+  "java",
+  "javascript",
+  "json",
+  "kotlin",
+  "markdown",
+  "php",
+  "python",
+  "ruby",
+  "rust",
+  "scss",
+  "sql",
+  "swift",
+  "typescript",
+  "yaml",
 ];
 const highlightAll = lowlight.highlightAuto.bind(lowlight);
 lowlight.highlightAuto = (value, options) => highlightAll(value, { subset: AUTO_LANGUAGES, ...options });
@@ -404,11 +369,31 @@ const CODE_LANGUAGES: [string, string][] = [
 ];
 /** Other names people write after ``` for the same languages. */
 const CODE_ALIASES: Record<string, string> = {
-  html: "xml", svg: "xml", sh: "bash", shell: "bash", zsh: "bash", console: "bash",
-  ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript",
-  py: "python", yml: "yaml", md: "markdown", rb: "ruby", rs: "rust", "c++": "cpp",
-  "c#": "csharp", cs: "csharp", golang: "go", toml: "ini", text: "plaintext", txt: "plaintext",
-  kt: "kotlin", objc: "objectivec",
+  html: "xml",
+  svg: "xml",
+  sh: "bash",
+  shell: "bash",
+  zsh: "bash",
+  console: "bash",
+  ts: "typescript",
+  tsx: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  mjs: "javascript",
+  py: "python",
+  yml: "yaml",
+  md: "markdown",
+  rb: "ruby",
+  rs: "rust",
+  "c++": "cpp",
+  "c#": "csharp",
+  cs: "csharp",
+  golang: "go",
+  toml: "ini",
+  text: "plaintext",
+  txt: "plaintext",
+  kt: "kotlin",
+  objc: "objectivec",
 };
 const canonicalLanguage = (language: string) => CODE_ALIASES[language.toLowerCase()] ?? language.toLowerCase();
 const languageLabel = (language: string) =>
@@ -448,16 +433,31 @@ function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
     <NodeViewWrapper className="editor-code-block" data-language={language || detected || undefined}>
       <div className="code-block-bar" contentEditable={false}>
         {editor.isEditable ? (
-          <Popover.Root open={picking} onOpenChange={(open) => { setPicking(open); if (!open) setQuery(""); }}>
+          <Popover.Root
+            open={picking}
+            onOpenChange={(open) => {
+              setPicking(open);
+              if (!open) setQuery("");
+            }}
+          >
             <Popover.Trigger asChild>
-              <button className="code-lang" aria-label={`Code language: ${language ? languageLabel(language) : "auto-detect"}`}>
+              <button
+                className="code-lang"
+                aria-label={`Code language: ${language ? languageLabel(language) : "auto-detect"}`}
+              >
                 {language ? languageLabel(language) : detected ? languageLabel(detected) : "Auto-detect"}
                 {!language && detected && <span className="code-lang-auto">auto</span>}
                 <ChevronsUpDown size={12} />
               </button>
             </Popover.Trigger>
             <Popover.Portal>
-              <Popover.Content className="menu-surface code-lang-menu" align="start" sideOffset={6} collisionPadding={12} aria-label="Code language">
+              <Popover.Content
+                className="menu-surface code-lang-menu"
+                align="start"
+                sideOffset={6}
+                collisionPadding={12}
+                aria-label="Code language"
+              >
                 <label className="code-lang-search">
                   <Search size={14} />
                   <input
@@ -478,7 +478,13 @@ function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
                   {choices.map(([value, label]) => {
                     const current = canonicalLanguage(language) === value;
                     return (
-                      <button key={value || "auto"} role="option" aria-selected={current} className="menu-item" onClick={() => choose(value)}>
+                      <button
+                        key={value || "auto"}
+                        role="option"
+                        aria-selected={current}
+                        className="menu-item"
+                        onClick={() => choose(value)}
+                      >
                         <span>{label}</span>
                         {value === "" && detected && <small>{languageLabel(detected)}</small>}
                         {current && <Check size={14} />}
@@ -491,7 +497,9 @@ function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
             </Popover.Portal>
           </Popover.Root>
         ) : (
-          <span className="code-lang is-static">{language ? languageLabel(language) : detected ? languageLabel(detected) : "Code"}</span>
+          <span className="code-lang is-static">
+            {language ? languageLabel(language) : detected ? languageLabel(detected) : "Code"}
+          </span>
         )}
         <button
           className="code-copy"
@@ -514,16 +522,10 @@ function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
 }
 const HighlightCode = CodeBlockLowlight.extend({
   addInputRules() {
-    return [
-      ...(this.parent?.() || []),
-      textblockTypeInputRule({ find: /^```$/, type: this.type }),
-    ];
+    return [...(this.parent?.() || []), textblockTypeInputRule({ find: /^```$/, type: this.type })];
   },
   renderMarkdown(node) {
-    return fencedCode(
-      (node.content || []).map((part) => part.text || "").join(""),
-      String(node.attrs?.language || ""),
-    );
+    return fencedCode((node.content || []).map((part) => part.text || "").join(""), String(node.attrs?.language || ""));
   },
   addNodeView() {
     return ReactNodeViewRenderer(CodeView);
@@ -569,17 +571,12 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
   ];
 }
 
-export function parseDocument(
-  editor: Pick<Editor, "schema" | "markdown">,
-  source: string,
-): JSONContent {
+export function parseDocument(editor: Pick<Editor, "schema" | "markdown">, source: string): JSONContent {
   const content: JSONContent[] = [];
   const parts = splitMarkdown(source);
   for (const [index, part] of parts.entries()) {
-    if (part.kind === "embed")
-      content.push({ type: "workspaceEmbed", attrs: part.directive });
-    else if (part.kind === "preserved")
-      content.push({ type: "preservedSource", attrs: { source: part.source } });
+    if (part.kind === "embed") content.push({ type: "workspaceEmbed", attrs: part.directive });
+    else if (part.kind === "preserved") content.push({ type: "preservedSource", attrs: { source: part.source } });
     else if (part.kind === "rich") {
       try {
         // Steps keep values as {{key}} text; the editor shows them as chips.
@@ -595,8 +592,7 @@ export function parseDocument(
     } else if (part.source.trim()) {
       // Blank lines before a block line (a table's serializer adds one) would come
       // back as an empty paragraph, one more on every save.
-      const text =
-        index < parts.length - 1 ? part.source.replace(/\n\s*$/, "") : part.source;
+      const text = index < parts.length - 1 ? part.source.replace(/\n\s*$/, "") : part.source;
       content.push(...(editor.markdown?.parse(text).content || []));
     }
   }

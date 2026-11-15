@@ -33,8 +33,12 @@ async function startConnecting(api: APIRequestContext, baseURL: string) {
   expect(metadataUrl).toBe(`${baseURL}/.well-known/oauth-protected-resource`);
   const resource = await (await api.get(metadataUrl!)).json();
   expect(resource.resource).toBe(`${baseURL}/api/mcp`);
-  const server = await (await api.get(`${resource.authorization_servers[0]}/.well-known/oauth-authorization-server`)).json();
-  const registered = await api.post(server.registration_endpoint, { data: { client_name: "E2E app", redirect_uris: [REDIRECT] } });
+  const server = await (
+    await api.get(`${resource.authorization_servers[0]}/.well-known/oauth-authorization-server`)
+  ).json();
+  const registered = await api.post(server.registration_endpoint, {
+    data: { client_name: "E2E app", redirect_uris: [REDIRECT] },
+  });
   expect(registered.status()).toBe(201);
   const { client_id } = await registered.json();
   const verifier = randomBytes(32).toString("base64url");
@@ -51,7 +55,12 @@ async function startConnecting(api: APIRequestContext, baseURL: string) {
   return { server, client_id, verifier, link };
 }
 
-test("an app connects by signing in, to the workspace chosen, with no key to copy", async ({ page, browser, playwright, baseURL }) => {
+test("an app connects by signing in, to the workspace chosen, with no key to copy", async ({
+  page,
+  browser,
+  playwright,
+  baseURL,
+}) => {
   const api = await playwright.request.newContext({ baseURL });
   const { server, client_id, verifier, link } = await startConnecting(api, baseURL!);
 
@@ -79,7 +88,9 @@ test("an app connects by signing in, to the workspace chosen, with no key to cop
 
   // The app swaps the code for tokens; the code works once.
   const exchange = () =>
-    api.post(server.token_endpoint, { form: { grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id, code_verifier: verifier } });
+    api.post(server.token_endpoint, {
+      form: { grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id, code_verifier: verifier },
+    });
   const issued = await exchange();
   expect(issued.status()).toBe(200);
   const tokens = await issued.json();
@@ -87,12 +98,16 @@ test("an app connects by signing in, to the workspace chosen, with no key to cop
   expect((await (await exchange()).json()).error).toBe("invalid_grant");
 
   // The token opens the workspace, with the creating tools allowed.
-  const tools = (await (await mcp(api, tokens.access_token, "tools/list")).json()).result.tools.map((t: { name: string }) => t.name);
+  const tools = (await (await mcp(api, tokens.access_token, "tools/list")).json()).result.tools.map(
+    (t: { name: string }) => t.name,
+  );
   expect(tools).toEqual(expect.arrayContaining(["search_workspace", "create_page"]));
 
   // Refreshing replaces both tokens.
   const refreshed = await (
-    await api.post(server.token_endpoint, { form: { grant_type: "refresh_token", refresh_token: tokens.refresh_token, client_id } })
+    await api.post(server.token_endpoint, {
+      form: { grant_type: "refresh_token", refresh_token: tokens.refresh_token, client_id },
+    })
   ).json();
   expect((await mcp(api, refreshed.access_token, "ping")).status()).toBe(200);
   expect((await mcp(api, tokens.access_token, "ping")).status()).toBe(401);
@@ -112,7 +127,11 @@ test("an app connects by signing in, to the workspace chosen, with no key to cop
   await api.dispose();
 });
 
-test("cancelling sends the app back empty-handed; an unknown app is never redirected", async ({ page, playwright, baseURL }) => {
+test("cancelling sends the app back empty-handed; an unknown app is never redirected", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
   const api = await playwright.request.newContext({ baseURL });
   const { link } = await startConnecting(api, baseURL!);
   await page.context().route("https://app.example.test/**", (route) => route.fulfill({ body: "Back in the app" }));
@@ -124,11 +143,15 @@ test("cancelling sends the app back empty-handed; an unknown app is never redire
   expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ error: "access_denied", state: "xyz" });
 
   // A made-up app, or a return address the app didn't register, gets an explanation instead.
-  await page.goto(`/oauth/authorize?${new URLSearchParams({ response_type: "code", client_id: "nope", redirect_uri: "https://evil.example.test/" })}`);
+  await page.goto(
+    `/oauth/authorize?${new URLSearchParams({ response_type: "code", client_id: "nope", redirect_uri: "https://evil.example.test/" })}`,
+  );
   await expect(page.getByRole("heading", { name: /This link can.t connect an app/ })).toBeVisible();
   expect(new URL(page.url()).hostname).not.toContain("evil");
   // Apps can't register return addresses that would run code or reach other sites in the clear.
-  const bad = await api.post("/api/oauth/register", { data: { client_name: "Bad", redirect_uris: ["javascript:alert(1)"] } });
+  const bad = await api.post("/api/oauth/register", {
+    data: { client_name: "Bad", redirect_uris: ["javascript:alert(1)"] },
+  });
   expect(bad.status()).toBe(400);
   await api.dispose();
 });

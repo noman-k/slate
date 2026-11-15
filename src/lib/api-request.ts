@@ -93,7 +93,8 @@ export function urlProblem(url: string, options: { allowPrivate?: boolean } = {}
   } catch {
     return "That isn't a full URL — it should start with https://";
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "Only http and https addresses can be called.";
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
+    return "Only http and https addresses can be called.";
   if (parsed.username || parsed.password) return "Put credentials in a header, not in the URL.";
   if (!options.allowPrivate && isPrivateHost(parsed.hostname))
     return "Private and local network addresses can't be called from Slate's server.";
@@ -116,7 +117,14 @@ export async function sendRequest(request: ApiRequest): Promise<ApiResponse> {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS + 5_000),
     });
     const data = (await response.json().catch(() => null)) as (ApiResponse & { error?: string }) | null;
-    if (!data) return { status: 0, ok: false, body: "", error: "Slate's server didn't answer. Try again.", ms: Math.round(performance.now() - started) };
+    if (!data)
+      return {
+        status: 0,
+        ok: false,
+        body: "",
+        error: "Slate's server didn't answer. Try again.",
+        ms: Math.round(performance.now() - started),
+      };
     return { ...data, ms: Math.round(performance.now() - started) };
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "TimeoutError";

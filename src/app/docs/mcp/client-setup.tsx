@@ -6,9 +6,12 @@ import { Check, Copy } from "lucide-react";
 export function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
   return (
     <button
       type="button"
@@ -48,15 +51,17 @@ export function CodeBlock({ code, caption }: { code: string; caption?: string })
 export function Inline({ text }: { text: string }) {
   return (
     <>
-      {text.split(/(`[^`]+`|\*\*[^*]+\*\*)/).map((part, index) =>
-        part.startsWith("`") && part.endsWith("`") ? (
-          <code key={index}>{part.slice(1, -1)}</code>
-        ) : part.startsWith("**") && part.endsWith("**") ? (
-          <strong key={index}>{part.slice(2, -2)}</strong>
-        ) : (
-          part
-        ),
-      )}
+      {text
+        .split(/(`[^`]+`|\*\*[^*]+\*\*)/)
+        .map((part, index) =>
+          part.startsWith("`") && part.endsWith("`") ? (
+            <code key={index}>{part.slice(1, -1)}</code>
+          ) : part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={index}>{part.slice(2, -2)}</strong>
+          ) : (
+            part
+          ),
+        )}
     </>
   );
 }
@@ -90,11 +95,19 @@ export function ClientSetup({ guides }: { guides: ClientGuide[] }) {
   const onKeyDown = (event: KeyboardEvent, index: number) => {
     const last = guides.length - 1;
     const next =
-      event.key === "ArrowRight" ? (index === last ? 0 : index + 1)
-      : event.key === "ArrowLeft" ? (index === 0 ? last : index - 1)
-      : event.key === "Home" ? 0
-      : event.key === "End" ? last
-      : null;
+      event.key === "ArrowRight"
+        ? index === last
+          ? 0
+          : index + 1
+        : event.key === "ArrowLeft"
+          ? index === 0
+            ? last
+            : index - 1
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : null;
     if (next === null) return;
     event.preventDefault();
     choose(guides[next].id);
@@ -134,12 +147,18 @@ export function ClientSetup({ guides }: { guides: ClientGuide[] }) {
           <ol className="docs-steps">
             {guide.steps.map((step, index) => (
               <li key={index}>
-                <p><Inline text={step.text} /></p>
+                <p>
+                  <Inline text={step.text} />
+                </p>
                 {step.code && <CodeBlock code={step.code} caption={step.caption} />}
               </li>
             ))}
           </ol>
-          {guide.note && <p className="docs-note"><Inline text={guide.note} /></p>}
+          {guide.note && (
+            <p className="docs-note">
+              <Inline text={guide.note} />
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -157,7 +176,8 @@ export function TableOfContents({ sections }: { sections: readonly (readonly [st
         if (el && el.getBoundingClientRect().top <= 120) id = sectionId;
       }
       // At the very bottom, the last section counts even if its heading never reached the top.
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) id = sections[sections.length - 1][0];
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4)
+        id = sections[sections.length - 1][0];
       setCurrent(id);
     };
     update();
@@ -179,7 +199,9 @@ export function TableOfContents({ sections }: { sections: readonly (readonly [st
       <ol>
         {sections.map(([id, label]) => (
           <li key={id}>
-            <a href={`#${id}`} aria-current={current === id ? "location" : undefined}>{label}</a>
+            <a href={`#${id}`} aria-current={current === id ? "location" : undefined}>
+              {label}
+            </a>
           </li>
         ))}
       </ol>

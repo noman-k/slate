@@ -40,7 +40,11 @@ export function withKeys(label: string, combo: string, platform: KeyPlatform) {
 }
 
 /** Apple devices (Mac, iPhone, iPad) name keys with ⌘; everything else with Ctrl. */
-export function detectKeyPlatform(nav: { platform?: string; userAgent?: string; userAgentData?: { platform?: string } }): KeyPlatform {
+export function detectKeyPlatform(nav: {
+  platform?: string;
+  userAgent?: string;
+  userAgentData?: { platform?: string };
+}): KeyPlatform {
   const name = nav.userAgentData?.platform || nav.platform || nav.userAgent || "";
   return /mac|iphone|ipad|ipod/i.test(name) ? "apple" : "other";
 }

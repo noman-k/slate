@@ -9,7 +9,13 @@
  */
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-export type LimiterName = "RUN_REQUEST_LIMITER" | "MCP_KEY_LIMITER" | "MCP_IP_LIMITER" | "MCP_WRITE_LIMITER" | "CONTACT_LIMITER" | "OAUTH_LIMITER";
+export type LimiterName =
+  | "RUN_REQUEST_LIMITER"
+  | "MCP_KEY_LIMITER"
+  | "MCP_IP_LIMITER"
+  | "MCP_WRITE_LIMITER"
+  | "CONTACT_LIMITER"
+  | "OAUTH_LIMITER";
 
 /** Requests per minute. Keep in step with "ratelimits" in wrangler.jsonc. */
 export const LIMITS: Record<LimiterName, number> = {
@@ -53,7 +59,12 @@ function devLimit(name: LimiterName) {
 const windows = new Map<string, { start: number; count: number }>();
 
 /** A fixed one-minute window per key, kept in this process's memory. */
-export function countLocally(name: LimiterName, key: string, limit = devLimit(name), now = Date.now()): RateLimitResult {
+export function countLocally(
+  name: LimiterName,
+  key: string,
+  limit = devLimit(name),
+  now = Date.now(),
+): RateLimitResult {
   const id = `${name}:${key}`;
   const period = PERIOD_SECONDS * 1000;
   let entry = windows.get(id);

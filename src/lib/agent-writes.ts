@@ -10,8 +10,28 @@
 import { ToolError, type ToolDefinition, type ToolResult } from "./agent-tools";
 import { checkPlaybook } from "./playbook-checks";
 import { serializePlaybook, type BuilderSection, type BuilderStep, type PlaybookModel } from "./playbook-model";
-import { END, NEXT, keyFor, type AnswerType, type ConditionOp, type HttpMethod, type Param, type ParamType, type StepAttrs } from "./runner";
-import type { CellValue, DbRecord, Database, DatabaseView, Document, Page, Property, PropertyType, WorkspaceState } from "./types";
+import {
+  END,
+  NEXT,
+  keyFor,
+  type AnswerType,
+  type ConditionOp,
+  type HttpMethod,
+  type Param,
+  type ParamType,
+  type StepAttrs,
+} from "./runner";
+import type {
+  CellValue,
+  DbRecord,
+  Database,
+  DatabaseView,
+  Document,
+  Page,
+  Property,
+  PropertyType,
+  WorkspaceState,
+} from "./types";
 
 /** What `agent_create` inserts. `appends` adds text to the end of an existing page. */
 export interface Creation {
@@ -31,7 +51,12 @@ export interface Planned {
   pageId: string;
 }
 
-export const CREATES = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const;
+export const CREATES = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const;
 export const TITLE_MAX = 200;
 export const TEXT_MAX = 100_000;
 export const MAX_PROPERTIES = 30;
@@ -39,7 +64,19 @@ export const MAX_RECORDS = 200;
 const MAX_SECTIONS = 30;
 const MAX_STEPS = 100;
 
-export const AGENT_PROPERTY_TYPES = ["text", "number", "currency", "checkbox", "date", "select", "multi_select", "status", "url", "email", "phone"] as const;
+export const AGENT_PROPERTY_TYPES = [
+  "text",
+  "number",
+  "currency",
+  "checkbox",
+  "date",
+  "select",
+  "multi_select",
+  "status",
+  "url",
+  "email",
+  "phone",
+] as const;
 export type AgentPropertyType = (typeof AGENT_PROPERTY_TYPES)[number];
 const STEP_KINDS = ["check", "ask", "say", "decide", "call", "finish"] as const;
 const STEP_TYPE: Record<(typeof STEP_KINDS)[number], StepAttrs["step"]> = {
@@ -57,7 +94,8 @@ const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
 const parentProp = {
   type: "string",
-  description: "Put it inside this page (an id from search_workspace or read_page). Leave out to add it at the top level.",
+  description:
+    "Put it inside this page (an id from search_workspace or read_page). Leave out to add it at the top level.",
 };
 
 export const WRITE_TOOLS: ToolDefinition[] = [
@@ -103,7 +141,11 @@ export const WRITE_TOOLS: ToolDefinition[] = [
             properties: {
               name: { type: "string" },
               type: { type: "string", enum: [...AGENT_PROPERTY_TYPES] },
-              options: { type: "array", items: { type: "string" }, description: "Choices for select, multi_select and status." },
+              options: {
+                type: "array",
+                items: { type: "string" },
+                description: "Choices for select, multi_select and status.",
+              },
             },
             required: ["name", "type"],
             additionalProperties: false,
@@ -113,11 +155,15 @@ export const WRITE_TOOLS: ToolDefinition[] = [
           type: "array",
           maxItems: MAX_RECORDS,
           description:
-            "Rows to start with: objects keyed by property name, e.g. {\"Name\": \"Unit 1A\", \"Rent\": 1300, \"Paid\": true, \"Due\": \"2026-12-01\"}. " +
+            'Rows to start with: objects keyed by property name, e.g. {"Name": "Unit 1A", "Rent": 1300, "Paid": true, "Due": "2026-12-01"}. ' +
             "Numbers as numbers, checkboxes as true/false, dates as YYYY-MM-DD, multi_select as a list.",
           items: { type: "object" },
         },
-        view: { type: "string", enum: ["table", "board", "list"], description: "How it opens (default table). A board groups by the first status or select column." },
+        view: {
+          type: "string",
+          enum: ["table", "board", "list"],
+          description: "How it opens (default table). A board groups by the first status or select column.",
+        },
       },
       required: ["title"],
       additionalProperties: false,
@@ -132,12 +178,16 @@ export const WRITE_TOOLS: ToolDefinition[] = [
       "Step types: check (do something and confirm it), ask (a question; save_as names the answer), say (something to tell someone), " +
       "decide (branch on an input or answer), call (an HTTP request; save_as names the response) and finish (ends the run with an outcome). " +
       "Use {{name}} in text to insert an input or answer (inputs are named from their label: “Order number” → order_number). " +
-      "go_to targets are a section title, \"next\" or \"finish\". The playbook is checked before it's created: problems come back as an error to fix.",
+      'go_to targets are a section title, "next" or "finish". The playbook is checked before it\'s created: problems come back as an error to fix.',
     inputSchema: {
       type: "object",
       properties: {
         title: { type: "string", maxLength: TITLE_MAX },
-        when_to_use: { type: "string", description: "When someone should run it, e.g. “A customer asks for a refund.”", maxLength: 500 },
+        when_to_use: {
+          type: "string",
+          description: "When someone should run it, e.g. “A customer asks for a refund.”",
+          maxLength: 500,
+        },
         parent_page_id: parentProp,
         inputs: {
           type: "array",
@@ -154,7 +204,11 @@ export const WRITE_TOOLS: ToolDefinition[] = [
             additionalProperties: false,
           },
         },
-        guidelines: { type: "array", items: { type: "string" }, description: "Short rules to keep in mind during every run." },
+        guidelines: {
+          type: "array",
+          items: { type: "string" },
+          description: "Short rules to keep in mind during every run.",
+        },
         sections: {
           type: "array",
           minItems: 1,
@@ -171,16 +225,25 @@ export const WRITE_TOOLS: ToolDefinition[] = [
                   type: "object",
                   properties: {
                     type: { type: "string", enum: [...STEP_KINDS] },
-                    text: { type: "string", description: "What to do, ask or say; for finish, the outcome; for decide, an optional note." },
+                    text: {
+                      type: "string",
+                      description: "What to do, ask or say; for finish, the outcome; for decide, an optional note.",
+                    },
                     expect: { type: "string", description: "check: what you should see when it worked." },
                     answer: { type: "string", enum: ANSWERS, description: "ask: the kind of answer (default text)." },
                     choices: { type: "array", items: { type: "string" }, description: "ask with answer “choice”." },
-                    save_as: { type: "string", description: "ask, call: the name later steps use, e.g. accepts_credit." },
+                    save_as: {
+                      type: "string",
+                      description: "ask, call: the name later steps use, e.g. accepts_credit.",
+                    },
                     value: { type: "string", description: "decide: the input or answer to check (its name)." },
                     is: { type: "string", enum: OPS, description: "decide: the comparison (default is)." },
                     compare_to: { type: "string", description: "decide: what to compare with." },
                     then_go_to: { type: "string", description: "decide: where to go when it holds (default next)." },
-                    otherwise_go_to: { type: "string", description: "decide: where to go otherwise. check, call: where to go if it fails." },
+                    otherwise_go_to: {
+                      type: "string",
+                      description: "decide: where to go otherwise. check, call: where to go if it fails.",
+                    },
                     method: { type: "string", enum: METHODS },
                     url: { type: "string" },
                     headers: { type: "string", description: "call: one “Name: value” per line." },
@@ -215,7 +278,8 @@ export const text = (value: unknown, what: string, max: number, required = false
   if (typeof value !== "string") throw new ToolError(`${capital(what)} must be text.`);
   const trimmed = value.trim();
   if (required && !trimmed) throw new ToolError(`Add ${what}.`);
-  if (trimmed.length > max) throw new ToolError(`${capital(what)} is too long (at most ${max.toLocaleString("en")} characters).`);
+  if (trimmed.length > max)
+    throw new ToolError(`${capital(what)} is too long (at most ${max.toLocaleString("en")} characters).`);
   return trimmed;
 };
 export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -225,7 +289,8 @@ export const list = (value: unknown, what: string): unknown[] => {
   return value;
 };
 export const record = (value: unknown, what: string): Record<string, unknown> => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new ToolError(`Each of ${what} must be an object.`);
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new ToolError(`Each of ${what} must be an object.`);
   return value as Record<string, unknown>;
 };
 
@@ -252,7 +317,11 @@ function placement({ state }: Context, parentId: unknown) {
   if (parentId === undefined || parentId === null || parentId === "") {
     const workspace = state.active_workspace_id || state.workspaces[0]?.id;
     if (!workspace) throw new ToolError("This account has no workspace to add to.");
-    return { parent: null, workspace, position: live.filter((p) => p.workspace_id === workspace && !p.parent_id).length };
+    return {
+      parent: null,
+      workspace,
+      position: live.filter((p) => p.workspace_id === workspace && !p.parent_id).length,
+    };
   }
   if (typeof parentId !== "string") throw new ToolError("parent_page_id must be a page id.");
   const parent = live.find((p) => p.id === parentId);
@@ -264,13 +333,29 @@ function placement({ state }: Context, parentId: unknown) {
   return { parent, workspace: parent.workspace_id, position: live.filter((p) => p.parent_id === parent.id).length };
 }
 
-const emptyCreation = (): Creation => ({ pages: [], documents: [], databases: [], properties: [], views: [], records: [], appends: [] });
+const emptyCreation = (): Creation => ({
+  pages: [],
+  documents: [],
+  databases: [],
+  properties: [],
+  views: [],
+  records: [],
+  appends: [],
+});
 
 /** The page itself and its text (inside a parent, it's listed under the parent's "Pages inside"). */
 function addPage(
   creation: Creation,
   where: ReturnType<typeof placement>,
-  page: { id: string; title: string; kind: Page["kind"]; database_id?: string; description?: string; icon?: string; markdown: string },
+  page: {
+    id: string;
+    title: string;
+    kind: Page["kind"];
+    database_id?: string;
+    description?: string;
+    icon?: string;
+    markdown: string;
+  },
 ) {
   creation.pages.push({
     id: page.id,
@@ -288,7 +373,8 @@ function addPage(
   // left exactly as it is.
 }
 
-const placeText = (where: ReturnType<typeof placement>) => (where.parent ? `inside “${where.parent.title}”` : "at the top level");
+const placeText = (where: ReturnType<typeof placement>) =>
+  where.parent ? `inside “${where.parent.title}”` : "at the top level";
 
 /* ---------- create_page ---------- */
 
@@ -302,7 +388,10 @@ function createPage(context: Context, args: Record<string, unknown>): Planned {
   return {
     creation,
     pageId: id,
-    result: { data: { page_id: id, title, parent_page_id: where.parent?.id ?? null }, text: `Created the page “${title}” ${placeText(where)}.` },
+    result: {
+      data: { page_id: id, title, parent_page_id: where.parent?.id ?? null },
+      text: `Created the page “${title}” ${placeText(where)}.`,
+    },
   };
 }
 
@@ -327,7 +416,8 @@ export function cell(type: PropertyType, raw: unknown, column: string, row: numb
       throw new ToolError(`${capital(where)} must be a date like 2026-12-01.`);
     case "multi_select": {
       const values = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(",") : null;
-      if (!values || values.some((v) => typeof v !== "string")) throw new ToolError(`${capital(where)} must be a list of choices.`);
+      if (!values || values.some((v) => typeof v !== "string"))
+        throw new ToolError(`${capital(where)} must be a list of choices.`);
       return [...new Set(values.map((v) => v.trim()).filter(Boolean))];
     }
     default:
@@ -341,7 +431,8 @@ function createDatabase(context: Context, args: Record<string, unknown>): Planne
   const description = text(args.description, "the description", 2000);
   const titleName = text(args.title_property, "the title property", 100) || "Name";
   const view = args.view === undefined ? "table" : args.view;
-  if (view !== "table" && view !== "board" && view !== "list") throw new ToolError("view must be table, board or list.");
+  if (view !== "table" && view !== "board" && view !== "list")
+    throw new ToolError("view must be table, board or list.");
   const where = placement(context, args.parent_page_id);
   const { newId } = context;
   const pageId = newId();
@@ -353,11 +444,15 @@ function createDatabase(context: Context, args: Record<string, unknown>): Planne
     const type = column.type as AgentPropertyType;
     if (!AGENT_PROPERTY_TYPES.includes(type))
       throw new ToolError(`“${name}” needs a type: one of ${AGENT_PROPERTY_TYPES.join(", ")}.`);
-    const options = list(column.options, `the options for “${name}”`).map((o) => String(o).trim()).filter(Boolean);
+    const options = list(column.options, `the options for “${name}”`)
+      .map((o) => String(o).trim())
+      .filter(Boolean);
     return { name, type, options };
   });
-  if (!args.properties) columns.push({ name: "Status", type: "status", options: ["Not started", "In progress", "Done"] });
-  if (columns.length > MAX_PROPERTIES) throw new ToolError(`A database can have at most ${MAX_PROPERTIES} properties here.`);
+  if (!args.properties)
+    columns.push({ name: "Status", type: "status", options: ["Not started", "In progress", "Done"] });
+  if (columns.length > MAX_PROPERTIES)
+    throw new ToolError(`A database can have at most ${MAX_PROPERTIES} properties here.`);
   const names = [titleName, ...columns.map((c) => c.name)].map((n) => n.toLowerCase());
   const duplicate = names.find((n, i) => names.indexOf(n) !== i);
   if (duplicate) throw new ToolError(`Two properties are called “${duplicate}”; give each its own name.`);
@@ -388,14 +483,17 @@ function createDatabase(context: Context, args: Record<string, unknown>): Planne
     for (const [key, value] of Object.entries(row)) {
       const property = byName.get(key.trim().toLowerCase());
       if (!property)
-        throw new ToolError(`Row ${index + 1} has “${key}”, which isn't a property. The properties are: ${properties.map((p) => p.name).join(", ")}.`);
+        throw new ToolError(
+          `Row ${index + 1} has “${key}”, which isn't a property. The properties are: ${properties.map((p) => p.name).join(", ")}.`,
+        );
       const parsed = cell(property.type, value, property.name, index);
       if (parsed === null) continue;
       values[property.id] = parsed;
       // A choice that isn't listed yet becomes one.
       if (["select", "multi_select", "status"].includes(property.type)) {
         const options = (property.config.options ||= []);
-        for (const choice of Array.isArray(parsed) ? parsed : [String(parsed)]) if (!options.includes(choice)) options.push(choice);
+        for (const choice of Array.isArray(parsed) ? parsed : [String(parsed)])
+          if (!options.includes(choice)) options.push(choice);
       }
     }
     const rowTitle = typeof values[properties[0].id] === "string" ? String(values[properties[0].id]) : "";
@@ -425,7 +523,11 @@ function createDatabase(context: Context, args: Record<string, unknown>): Planne
         page_id: pageId,
         database_id: databaseId,
         title,
-        properties: properties.map((p) => ({ name: p.name, type: p.type, ...(p.config.options ? { options: p.config.options } : {}) })),
+        properties: properties.map((p) => ({
+          name: p.name,
+          type: p.type,
+          ...(p.config.options ? { options: p.config.options } : {}),
+        })),
         rows: rows.length,
       },
       text: `Created the database “${title}” ${placeText(where)}, with ${properties.length} properties and ${rows.length} row${rows.length === 1 ? "" : "s"}.`,
@@ -455,24 +557,42 @@ export interface BuiltPlaybook {
   stepCount: number;
 }
 
-export function buildPlaybook(args: Record<string, unknown>, newId: () => string, verb: "created" | "changed"): BuiltPlaybook {
-
+export function buildPlaybook(
+  args: Record<string, unknown>,
+  newId: () => string,
+  verb: "created" | "changed",
+): BuiltPlaybook {
   const params: Param[] = list(args.inputs, "inputs").map((raw, index) => {
     const input = record(raw, "the inputs");
     const label = text(input.label, `a label for input ${index + 1}`, 100, true);
     const type = (input.type ?? "text") as ParamType;
-    if (!INPUT_TYPES.includes(type)) throw new ToolError(`Input “${label}” needs a type: one of ${INPUT_TYPES.join(", ")}.`);
-    const options = list(input.options, `the options for “${label}”`).map((o) => String(o).trim()).filter(Boolean);
+    if (!INPUT_TYPES.includes(type))
+      throw new ToolError(`Input “${label}” needs a type: one of ${INPUT_TYPES.join(", ")}.`);
+    const options = list(input.options, `the options for “${label}”`)
+      .map((o) => String(o).trim())
+      .filter(Boolean);
     if (type === "choice" && !options.length) throw new ToolError(`Input “${label}” is a choice: add its options.`);
-    return { name: keyFor(label), label, type, required: input.required !== false, ...(type === "choice" ? { options } : {}) };
+    return {
+      name: keyFor(label),
+      label,
+      type,
+      required: input.required !== false,
+      ...(type === "choice" ? { options } : {}),
+    };
   });
-  const guidelines = list(args.guidelines, "guidelines").map((g) => String(g).trim()).filter(Boolean);
+  const guidelines = list(args.guidelines, "guidelines")
+    .map((g) => String(g).trim())
+    .filter(Boolean);
 
   const rawSections = list(args.sections, "sections");
   if (!rawSections.length) throw new ToolError("Add at least one section with steps.");
   if (rawSections.length > MAX_SECTIONS) throw new ToolError(`At most ${MAX_SECTIONS} sections.`);
-  const sectionTitles = rawSections.map((raw, i) => text(record(raw, "the sections").title, `a title for section ${i + 1}`, 200, true));
-  const repeated = sectionTitles.find((t, i) => sectionTitles.findIndex((u) => u.toLowerCase() === t.toLowerCase()) !== i);
+  const sectionTitles = rawSections.map((raw, i) =>
+    text(record(raw, "the sections").title, `a title for section ${i + 1}`, 200, true),
+  );
+  const repeated = sectionTitles.find(
+    (t, i) => sectionTitles.findIndex((u) => u.toLowerCase() === t.toLowerCase()) !== i,
+  );
   if (repeated) throw new ToolError(`Two sections are called “${repeated}”; jumps need each title to be different.`);
 
   let count = 0;
@@ -489,7 +609,8 @@ export function buildPlaybook(args: Record<string, unknown>, newId: () => string
         const step = record(rawStep, "the steps");
         const label = `step ${i + 1} of “${sectionTitles[si]}”`;
         const kind = step.type as (typeof STEP_KINDS)[number];
-        if (!STEP_KINDS.includes(kind)) throw new ToolError(`${capital(label)} needs a type: one of ${STEP_KINDS.join(", ")}.`);
+        if (!STEP_KINDS.includes(kind))
+          throw new ToolError(`${capital(label)} needs a type: one of ${STEP_KINDS.join(", ")}.`);
         const attrs: Record<string, unknown> = { step: STEP_TYPE[kind] };
         if (kind === "check") {
           attrs.expected = text(step.expect, "expect", 1000);
@@ -497,10 +618,15 @@ export function buildPlaybook(args: Record<string, unknown>, newId: () => string
         }
         if (kind === "ask") {
           const answer = (step.answer ?? "text") as AnswerType;
-          if (!ANSWERS.includes(answer)) throw new ToolError(`${capital(label)}: answer must be one of ${ANSWERS.join(", ")}.`);
+          if (!ANSWERS.includes(answer))
+            throw new ToolError(`${capital(label)}: answer must be one of ${ANSWERS.join(", ")}.`);
           attrs.answer = answer;
           attrs.variable = keyFor(text(step.save_as, "save_as", 100) || `answer_${count}`);
-          if (answer === "choice") attrs.options = list(step.choices, "choices").map((c) => String(c).trim()).filter(Boolean).join(", ");
+          if (answer === "choice")
+            attrs.options = list(step.choices, "choices")
+              .map((c) => String(c).trim())
+              .filter(Boolean)
+              .join(", ");
         }
         if (kind === "decide") {
           // A label works too: "Days since delivery" → days_since_delivery (fields after a dot stay).
@@ -515,7 +641,8 @@ export function buildPlaybook(args: Record<string, unknown>, newId: () => string
         }
         if (kind === "call") {
           const method = (step.method ?? "GET") as HttpMethod;
-          if (!METHODS.includes(method)) throw new ToolError(`${capital(label)}: method must be one of ${METHODS.join(", ")}.`);
+          if (!METHODS.includes(method))
+            throw new ToolError(`${capital(label)}: method must be one of ${METHODS.join(", ")}.`);
           Object.assign(attrs, {
             method,
             url: text(step.url, `the URL for ${label}`, 2000, true),
@@ -525,8 +652,17 @@ export function buildPlaybook(args: Record<string, unknown>, newId: () => string
             else: target(step.otherwise_go_to, sectionTitles, label),
           });
         }
-        const words = text(step.text, `the text of ${label}`, 4000, kind === "check" || kind === "ask" || kind === "say");
-        return { id: newId(), attrs: attrs as BuilderStep["attrs"], content: words ? [{ type: "text", text: words }] : [] };
+        const words = text(
+          step.text,
+          `the text of ${label}`,
+          4000,
+          kind === "check" || kind === "ask" || kind === "say",
+        );
+        return {
+          id: newId(),
+          attrs: attrs as BuilderStep["attrs"],
+          content: words ? [{ type: "text", text: words }] : [],
+        };
       }),
     };
   });
@@ -558,7 +694,8 @@ export function buildPlaybook(args: Record<string, unknown>, newId: () => string
 }
 
 /** The "When to use" line, as the builder writes it. */
-export const whenToUseLine = (value: string) => (value ? (/^when to use/i.test(value) ? value : `When to use: ${value}`) : "");
+export const whenToUseLine = (value: string) =>
+  value ? (/^when to use/i.test(value) ? value : `When to use: ${value}`) : "";
 
 function createPlaybook(context: Context, args: Record<string, unknown>): Planned {
   const title = text(args.title, "a title", TITLE_MAX, true);
@@ -581,7 +718,14 @@ function createPlaybook(context: Context, args: Record<string, unknown>): Planne
     creation,
     pageId: id,
     result: {
-      data: { page_id: id, title, inputs: params.map((p) => p.name), sections: sections.map((s) => s.title), steps: stepCount, tips },
+      data: {
+        page_id: id,
+        title,
+        inputs: params.map((p) => p.name),
+        sections: sections.map((s) => s.title),
+        steps: stepCount,
+        tips,
+      },
       text:
         `Created the playbook “${title}” ${placeText(where)}: ${sections.length} section${sections.length === 1 ? "" : "s"}, ${stepCount} step${stepCount === 1 ? "" : "s"}.` +
         (tips.length ? `\nTips:\n${tips.map((t) => `- ${t}`).join("\n")}` : ""),

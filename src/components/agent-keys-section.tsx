@@ -75,7 +75,9 @@ export function AgentKeysSection({
 
   const client = async () => (await import("@/lib/supabase/client")).getSupabaseClient();
   const refresh = useCallback(async () => {
-    const { data, error } = await (await client())
+    const { data, error } = await (
+      await client()
+    )
       .from("agent_keys")
       .select("id,name,key_prefix,created_at,last_used_at,scope,workspace_id,client_id")
       .is("revoked_at", null)
@@ -93,15 +95,13 @@ export function AgentKeysSection({
     if (!name.trim() || busy) return;
     setBusy(true);
     const key = generateAgentKey();
-    const { error } = await (await client())
-      .from("agent_keys")
-      .insert({
-        name: name.trim(),
-        key_hash: await hashAgentKey(key),
-        key_prefix: agentKeyPrefix(key),
-        scope,
-        workspace_id: workspace.id,
-      });
+    const { error } = await (await client()).from("agent_keys").insert({
+      name: name.trim(),
+      key_hash: await hashAgentKey(key),
+      key_prefix: agentKeyPrefix(key),
+      scope,
+      workspace_id: workspace.id,
+    });
     setBusy(false);
     if (error) {
       // A workspace made a moment ago may not have reached the server yet.
@@ -118,12 +118,21 @@ export function AgentKeysSection({
     void refresh();
   };
   const revoke = async (id: string) => {
-    const { error } = await (await client()).from("agent_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await (
+      await client()
+    )
+      .from("agent_keys")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", id);
     setConfirming(null);
     const app = allKeys?.find((key) => key.id === id)?.client_id;
     if (error) toast.error(app ? "Couldn't disconnect the app. Try again." : "Couldn't revoke the key. Try again.");
     else {
-      toast(app ? `Disconnected — it can no longer use ${workspaceName}` : `Key revoked — agents using it can no longer use ${workspaceName}`);
+      toast(
+        app
+          ? `Disconnected — it can no longer use ${workspaceName}`
+          : `Key revoked — agents using it can no longer use ${workspaceName}`,
+      );
       void refresh();
     }
   };
@@ -136,10 +145,10 @@ export function AgentKeysSection({
         <div>
           <strong>Let an AI agent use {workspaceCount > 1 ? `“${workspaceName}”` : "this workspace"}</strong>
           <p>
-            Agents like Claude can search your pages, read them, query your databases and look up playbooks. If you allow
-            it, they can also create new ones, or edit what&apos;s there; nothing is ever deleted for good. Connect an
-            app by adding <code className="agent-url">{endpoint}</code> to it and signing in, or create a key for apps that
-            need one. Revoke either at any time.
+            Agents like Claude can search your pages, read them, query your databases and look up playbooks. If you
+            allow it, they can also create new ones, or edit what&apos;s there; nothing is ever deleted for good.
+            Connect an app by adding <code className="agent-url">{endpoint}</code> to it and signing in, or create a key
+            for apps that need one. Revoke either at any time.
           </p>
           <p className="agent-boundary">
             <Lock size={13} aria-hidden />
@@ -154,101 +163,111 @@ export function AgentKeysSection({
         </div>
       </div>
       <>
-          {created && (
-            <div className="agent-created" role="status">
-              <strong>
-                <KeyRound size={15} /> “{created.name}” key for {workspaceName} — copy it now, it won&apos;t be shown again
-              </strong>
-              <CopyField label="Key" value={created.key} />
-              <CopyField label="Endpoint (MCP)" value={endpoint} />
-              <CopyField
-                label="Add to Claude Code"
-                value={`claude mcp add --transport http slate ${endpoint} --header "Authorization: Bearer ${created.key}"`}
+        {created && (
+          <div className="agent-created" role="status">
+            <strong>
+              <KeyRound size={15} /> “{created.name}” key for {workspaceName} — copy it now, it won&apos;t be shown
+              again
+            </strong>
+            <CopyField label="Key" value={created.key} />
+            <CopyField label="Endpoint (MCP)" value={endpoint} />
+            <CopyField
+              label="Add to Claude Code"
+              value={`claude mcp add --transport http slate ${endpoint} --header "Authorization: Bearer ${created.key}"`}
+            />
+            <a className="agent-guide" href="/docs/mcp#setup" target="_blank" rel="noreferrer">
+              Using another app? See the setup guide
+              <ArrowUpRight size={13} />
+            </a>
+            <button type="button" className="agent-dismiss" onClick={() => setCreated(null)}>
+              I&apos;ve copied it
+            </button>
+          </div>
+        )}
+        <form
+          className="settings-name"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void create();
+          }}
+        >
+          <label className="field-label">
+            New key for
+            <span className="settings-inline">
+              <input
+                value={name}
+                maxLength={80}
+                placeholder="e.g. Claude on my laptop"
+                onChange={(event) => setName(event.target.value)}
               />
-              <a className="agent-guide" href="/docs/mcp#setup" target="_blank" rel="noreferrer">
-                Using another app? See the setup guide
-                <ArrowUpRight size={13} />
-              </a>
-              <button type="button" className="agent-dismiss" onClick={() => setCreated(null)}>
-                I&apos;ve copied it
-              </button>
-            </div>
-          )}
-          <form
-            className="settings-name"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void create();
-            }}
-          >
-            <label className="field-label">
-              New key for
-              <span className="settings-inline">
+              <Button disabled={!name.trim() || busy}>Create key</Button>
+            </span>
+          </label>
+          <fieldset className="agent-scope">
+            <legend>What it can do</legend>
+            {AGENT_SCOPES.map((option) => (
+              <label key={option.value} className={scope === option.value ? "is-on" : undefined}>
                 <input
-                  value={name}
-                  maxLength={80}
-                  placeholder="e.g. Claude on my laptop"
-                  onChange={(event) => setName(event.target.value)}
+                  type="radio"
+                  name="agent-scope"
+                  value={option.value}
+                  checked={scope === option.value}
+                  onChange={() => setScope(option.value)}
                 />
-                <Button disabled={!name.trim() || busy}>Create key</Button>
-              </span>
-            </label>
-            <fieldset className="agent-scope">
-              <legend>What it can do</legend>
-              {AGENT_SCOPES.map((option) => (
-                <label key={option.value} className={scope === option.value ? "is-on" : undefined}>
-                  <input type="radio" name="agent-scope" value={option.value} checked={scope === option.value} onChange={() => setScope(option.value)} />
-                  <span>
-                    <strong>{option.label}</strong>
-                    <small>{option.hint}</small>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-          </form>
-          {keys && keys.length > 0 && (
-            <ul className="agent-keys" aria-label="Connected apps and agent keys">
-              {keys.map((key) => (
-                <li key={key.id}>
-                  <div>
-                    <strong>
-                      {key.name}
-                      <span className={`agent-scope-badge ${key.scope === "write" || key.scope === "edit" ? "is-write" : ""} ${key.scope === "edit" ? "is-edit" : ""}`}>
-                        {scopeLabel(key.scope)}
-                      </span>
-                    </strong>
-                    <small>
-                      {key.client_id ? "Connected by signing in" : <code>{key.key_prefix}…</code>} ·{" "}
-                      {key.client_id ? "connected" : "created"} {when(key.created_at)} · last used {when(key.last_used_at)}
-                    </small>
-                  </div>
-                  {confirming === key.id ? (
-                    <span className="agent-confirm">
-                      <button type="button" className="danger-text" onClick={() => void revoke(key.id)}>
-                        {key.client_id ? "Disconnect" : "Revoke"}
-                      </button>
-                      <button type="button" onClick={() => setConfirming(null)}>
-                        Keep
-                      </button>
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.hint}</small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        </form>
+        {keys && keys.length > 0 && (
+          <ul className="agent-keys" aria-label="Connected apps and agent keys">
+            {keys.map((key) => (
+              <li key={key.id}>
+                <div>
+                  <strong>
+                    {key.name}
+                    <span
+                      className={`agent-scope-badge ${key.scope === "write" || key.scope === "edit" ? "is-write" : ""} ${key.scope === "edit" ? "is-edit" : ""}`}
+                    >
+                      {scopeLabel(key.scope)}
                     </span>
-                  ) : (
-                    <button type="button" className="secondary-button" onClick={() => setConfirming(key.id)}>
+                  </strong>
+                  <small>
+                    {key.client_id ? "Connected by signing in" : <code>{key.key_prefix}…</code>} ·{" "}
+                    {key.client_id ? "connected" : "created"} {when(key.created_at)} · last used{" "}
+                    {when(key.last_used_at)}
+                  </small>
+                </div>
+                {confirming === key.id ? (
+                  <span className="agent-confirm">
+                    <button type="button" className="danger-text" onClick={() => void revoke(key.id)}>
                       {key.client_id ? "Disconnect" : "Revoke"}
                     </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          {keys && keys.length === 0 && !created && (
-            <p className="settings-muted">No apps or agent keys for this workspace yet.</p>
-          )}
-          {elsewhere > 0 && (
-            <p className="settings-muted">
-              {elsewhere === 1 ? "1 app or key belongs" : `${elsewhere} apps and keys belong`} to your other workspaces.
-              Switch to a workspace to see and revoke them.
-            </p>
-          )}
+                    <button type="button" onClick={() => setConfirming(null)}>
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" className="secondary-button" onClick={() => setConfirming(key.id)}>
+                    {key.client_id ? "Disconnect" : "Revoke"}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {keys && keys.length === 0 && !created && (
+          <p className="settings-muted">No apps or agent keys for this workspace yet.</p>
+        )}
+        {elsewhere > 0 && (
+          <p className="settings-muted">
+            {elsewhere === 1 ? "1 app or key belongs" : `${elsewhere} apps and keys belong`} to your other workspaces.
+            Switch to a workspace to see and revoke them.
+          </p>
+        )}
       </>
     </section>
   );

@@ -1,10 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createExampleAccount, deleteAccount, mockApi, signIn, type TestAccount } from "./support";
 async function createPage(page: Page, name: string) {
-  await page
-    .getByRole("button", { name: "New page", exact: true })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "New page", exact: true }).first().click();
   // New pages open immediately with the cursor in an empty title, like Notion.
   const title = page.getByLabel("Page title", { exact: true });
   await expect(title).toBeFocused();
@@ -36,21 +33,15 @@ test.beforeEach(async ({ page }) => {
   account = await createExampleAccount();
   await signIn(page, account);
   await page.goto(`/p/${account.ids.ledger}`);
-  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue(
-    "Rent Ledger",
-  );
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
 });
 test.afterEach(async () => {
   await deleteAccount(account);
   account = undefined;
 });
-test("reference ledger supports live filters and shared board views", async ({
-  page,
-}) => {
+test("reference ledger supports live filters and shared board views", async ({ page }) => {
   await expect(page.getByRole("table")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "2026-04 — Basement", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "2026-04 — Basement", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Follow Up", exact: true }).click();
   await expect(page.getByText("No records match your view.")).toBeVisible();
   await page.getByRole("tab", { name: "Paid", exact: true }).click();
@@ -60,16 +51,12 @@ test("reference ledger supports live filters and shared board views", async ({
   await expect(page.locator(".db-board")).toBeVisible();
   await expect(page.locator(".db-board-card")).toHaveCount(9);
 });
-test("Markdown shortcuts, code fences, inline database and refresh are lossless", async ({
-  page,
-}) => {
+test("Markdown shortcuts, code fences, inline database and refresh are lossless", async ({ page }) => {
   await createPage(page, "Round trip verification");
   const editor = page.getByLabel("Page content", { exact: true });
   await editor.pressSequentially("## ");
   await editor.pressSequentially("Persistent heading");
-  await expect(
-    editor.getByRole("heading", { name: "Persistent heading", level: 2 }),
-  ).toBeVisible();
+  await expect(editor.getByRole("heading", { name: "Persistent heading", level: 2 })).toBeVisible();
   await editor.press("Enter");
   await editor.pressSequentially("```");
   await editor.pressSequentially("const answer = 42;");
@@ -79,58 +66,36 @@ test("Markdown shortcuts, code fences, inline database and refresh are lossless"
   await editor.press("Enter");
   await expect(editor.getByRole("table")).toBeVisible();
   await page.getByRole("button", { name: "Markdown", exact: true }).click();
-  await expect(page.locator(".cm-content")).toContainText(
-    "## Persistent heading",
-  );
-  await expect(page.locator(".cm-content")).toContainText(
-    ':::slate {"kind":"database"',
-  );
+  await expect(page.locator(".cm-content")).toContainText("## Persistent heading");
+  await expect(page.locator(".cm-content")).toContainText(':::slate {"kind":"database"');
   await page.getByRole("button", { name: "Interactive", exact: true }).click();
   await expect(editor.locator("pre")).toContainText("const answer = 42;");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Persistent heading", level: 2 }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Persistent heading", level: 2 })).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
 });
-test("records have private persistent URLs and editable page content", async ({
-  page,
-}) => {
+test("records have private persistent URLs and editable page content", async ({ page }) => {
   // Clicking a name renames it; the "Open" button opens the record.
-  await page
-    .getByRole("button", { name: "Open 2026-04 — Basement", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]+$/);
   // An existing record opens to be read: the panel has focus, no field is being edited.
   await expect(page.getByRole("dialog")).toBeFocused();
   await expect(page.getByRole("textbox", { name: "Record title", exact: true })).not.toBeFocused();
-  await page
-    .getByRole("textbox", { name: "Record title", exact: true })
-    .fill("Updated April rent");
-  await page
-    .getByLabel("Page content", { exact: true })
-    .pressSequentially("Payment receipt received.");
+  await page.getByRole("textbox", { name: "Record title", exact: true }).fill("Updated April rent");
+  await page.getByLabel("Page content", { exact: true }).pressSequentially("Payment receipt received.");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(
-    page.getByRole("textbox", { name: "Record title", exact: true }),
-  ).toHaveValue("Updated April rent");
-  await expect(page.getByLabel("Page content", { exact: true })).toContainText(
-    "Payment receipt received.",
-  );
+  await expect(page.getByRole("textbox", { name: "Record title", exact: true })).toHaveValue("Updated April rent");
+  await expect(page.getByLabel("Page content", { exact: true })).toContainText("Payment receipt received.");
   await page.getByRole("button", { name: "Close", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Updated April rent", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Updated April rent", exact: true })).toBeVisible();
 });
 test("deleted page trees can be restored from Trash", async ({ page }) => {
   await createPage(page, "Recoverable note");
   await page.getByRole("button", { name: "Page options", exact: true }).click();
-  await page
-    .getByRole("menuitem", { name: "Move to trash", exact: true })
-    .click();
+  await page.getByRole("menuitem", { name: "Move to trash", exact: true }).click();
   await page.getByRole("button", { name: "Trash", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("Recoverable note");
   await page.getByRole("button", { name: "Restore", exact: true }).click();
@@ -140,9 +105,7 @@ test("deleted page trees can be restored from Trash", async ({ page }) => {
     .getByRole("complementary", { name: "Workspace navigation" })
     .getByRole("button", { name: "Recoverable note", exact: true })
     .click();
-  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue(
-    "Recoverable note",
-  );
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Recoverable note");
 });
 test("a new page can start as a database instead", async ({ page }) => {
   await createPage(page, "Reading list");
@@ -211,7 +174,10 @@ test("subpages are listed in their parent, can become blocks, and follow moves",
   await childRow.hover();
   await childRow.getByRole("button", { name: /^Actions for/ }).click();
   await page.getByRole("menuitem", { name: "Move to", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: /Private pages/ }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Private pages/ })
+    .click();
   await parentRow.locator(".tree-page").click();
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Trip plans");
   await expect(page.locator(".page-body .editor-page-reference", { hasText: "Packing list" })).toHaveCount(0);
@@ -499,7 +465,9 @@ test("a database can open its records as full pages", async ({ page }) => {
   await page.getByRole("button", { name: "View settings" }).click();
   await page.getByRole("radiogroup", { name: "Open records in" }).getByRole("radio", { name: "Side panel" }).click();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Open 2026-05 — Basement", exact: true }).click({ modifiers: ["ControlOrMeta"] });
+  await page
+    .getByRole("button", { name: "Open 2026-05 — Basement", exact: true })
+    .click({ modifiers: ["ControlOrMeta"] });
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(title).toHaveValue("2026-05 — Basement");
   await page.goBack();
@@ -508,11 +476,17 @@ test("a database can open its records as full pages", async ({ page }) => {
 });
 test("pages can be dragged above, below or inside others in the sidebar", async ({ page }) => {
   const tree = page.locator('section[aria-label="Private"]');
-  const row = (title: string) => tree.locator(".tree-row", { has: page.locator(".tree-title", { hasText: new RegExp(`^${title}$`) }) });
+  const row = (title: string) =>
+    tree.locator(".tree-row", { has: page.locator(".tree-title", { hasText: new RegExp(`^${title}$`) }) });
   const outline = () =>
-    tree.locator(".tree-row").evaluateAll((rows) =>
-      rows.map((r) => `${(r as HTMLElement).style.getPropertyValue("--depth")}:${r.querySelector(".tree-title")?.textContent}`),
-    );
+    tree
+      .locator(".tree-row")
+      .evaluateAll((rows) =>
+        rows.map(
+          (r) =>
+            `${(r as HTMLElement).style.getPropertyValue("--depth")}:${r.querySelector(".tree-title")?.textContent}`,
+        ),
+      );
   const drag = async (from: string, to: string, at: number) => {
     const a = (await row(from).boundingBox())!;
     const b = (await row(to).boundingBox())!;
@@ -525,9 +499,9 @@ test("pages can be dragged above, below or inside others in the sidebar", async 
   };
   // Above: "Workspace notes" moves before "Getting started" (an insert, not a swap).
   await drag("Workspace notes", "Getting started", 0.1);
-  await expect.poll(async () => (await outline()).filter((r) => r.startsWith("0:"))).toEqual([
-    "0:Rental Property Finance Hub", "0:Workspace notes", "0:Getting started",
-  ]);
+  await expect
+    .poll(async () => (await outline()).filter((r) => r.startsWith("0:")))
+    .toEqual(["0:Rental Property Finance Hub", "0:Workspace notes", "0:Getting started"]);
   // Inside: "Getting started" nests under "Workspace notes", with an Undo toast.
   await drag("Getting started", "Workspace notes", 0.5);
   await expect.poll(outline).toContain("1:Getting started");
@@ -564,7 +538,9 @@ test("databases made in a page: name them inline, pick a view, delete with undo"
   await page.keyboard.press("Escape");
   await expect(page.locator(".db-compact .db-board")).toHaveCount(1);
   // Deleting the block moves the database to the Trash, with Undo.
-  const block = page.locator(".slate-prose .react-renderer", { has: page.locator(".db-inline-title", { hasText: "Reading list" }) });
+  const block = page.locator(".slate-prose .react-renderer", {
+    has: page.locator(".db-inline-title", { hasText: "Reading list" }),
+  });
   const box = (await block.boundingBox())!;
   await page.mouse.move(box.x + 40, box.y + 14);
   await page.getByRole("button", { name: "Block actions" }).click();
@@ -593,7 +569,11 @@ test("a linked database's views belong to the page it's linked in", async ({ pag
   // The rows are shared…
   await expect(linked.getByText("Alex Morgan")).toBeVisible();
   // …but the original database still shows its own table.
-  await page.getByRole("complementary").locator(".tree-row", { hasText: /^Tenants/ }).locator(".tree-page").click();
+  await page
+    .getByRole("complementary")
+    .locator(".tree-row", { hasText: /^Tenants/ })
+    .locator(".tree-page")
+    .click();
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Tenants");
   await expect(page.locator(".database-page .db-table")).toBeVisible();
   await expect(page.locator(".database-page .db-board")).toHaveCount(0);
@@ -613,7 +593,8 @@ test("a database dragged out of its page leaves a linked view with its own views
   await expect(embedded.locator(".db-linked-badge")).toHaveCount(0);
   // Drag "Books" out of "Planning" to the top level of the sidebar.
   const tree = page.locator('section[aria-label="Private"]');
-  const row = (title: string) => tree.locator(".tree-row", { has: page.locator(".tree-title", { hasText: new RegExp(`^${title}$`) }) });
+  const row = (title: string) =>
+    tree.locator(".tree-row", { has: page.locator(".tree-title", { hasText: new RegExp(`^${title}$`) }) });
   const a = (await row("Books").boundingBox())!;
   const b = (await row("Getting started").boundingBox())!;
   await page.mouse.move(a.x + 80, a.y + a.height / 2);
@@ -654,7 +635,13 @@ test("a new page can start from a playbook template", async ({ page }) => {
   await page.keyboard.press("ArrowDown");
   await expect(gallery.getByRole("region", { name: "Monthly rent check preview" })).toContainText("Chase late rent");
   await gallery.getByRole("button", { name: /^More templates — support, operations, notes & automations/ }).click();
-  await expect(gallery.locator(".procedure-group")).toHaveText(["Start fresh", "Home & property", "Support", "Operations", "Notes & automations"]);
+  await expect(gallery.locator(".procedure-group")).toHaveText([
+    "Start fresh",
+    "Home & property",
+    "Support",
+    "Operations",
+    "Notes & automations",
+  ]);
   await gallery.getByRole("option", { name: /Refund request/ }).click();
   await expect(gallery.getByRole("region", { name: "Refund request preview" })).toContainText("Check eligibility");
   await gallery.getByRole("button", { name: "Use template" }).click();
@@ -683,7 +670,10 @@ test("a new page can start from a playbook template", async ({ page }) => {
   await expect(page.getByLabel("Section name").last()).toHaveValue("Roll back");
 });
 test("/runbook in a page creates a runbook page and links it there", async ({ page }) => {
-  await page.getByRole("complementary").locator(".tree-title", { hasText: /^Getting started$/ }).click();
+  await page
+    .getByRole("complementary")
+    .locator(".tree-title", { hasText: /^Getting started$/ })
+    .click();
   const editor = page.getByLabel("Page content", { exact: true });
   // On the empty line at the end of the page.
   await page.locator(".slate-prose > p").last().click();
@@ -848,12 +838,34 @@ test("an API step calls an endpoint, saves the response and branches on it", asy
   const source = [
     node({ type: "procedureParams", attrs: { params: [{ name: "order_number", type: "text", required: true }] } }),
     "## Look up",
-    node({ type: "procedureStep", attrs: { step: "api", method: "GET", url: "https://api.example.test/orders/{{order_number}}", headers: "Authorization: Bearer sk_test_abcdef123456", variable: "order", else: "Not found" }, content: [{ type: "text", text: "Look up the order" }] }),
-    node({ type: "procedureStep", attrs: { step: "if", variable: "order.status", op: "is", value: "shipped", then: "Shipped", else: "@end" } }),
+    node({
+      type: "procedureStep",
+      attrs: {
+        step: "api",
+        method: "GET",
+        url: "https://api.example.test/orders/{{order_number}}",
+        headers: "Authorization: Bearer sk_test_abcdef123456",
+        variable: "order",
+        else: "Not found",
+      },
+      content: [{ type: "text", text: "Look up the order" }],
+    }),
+    node({
+      type: "procedureStep",
+      attrs: { step: "if", variable: "order.status", op: "is", value: "shipped", then: "Shipped", else: "@end" },
+    }),
     "## Shipped",
-    node({ type: "procedureStep", attrs: { step: "end" }, content: [{ type: "text", text: "Shipped by {{order.carrier.name}}" }] }),
+    node({
+      type: "procedureStep",
+      attrs: { step: "end" },
+      content: [{ type: "text", text: "Shipped by {{order.carrier.name}}" }],
+    }),
     "## Not found",
-    node({ type: "procedureStep", attrs: { step: "end" }, content: [{ type: "text", text: "No order {{order_number}}" }] }),
+    node({
+      type: "procedureStep",
+      attrs: { step: "end" },
+      content: [{ type: "text", text: "No order {{order_number}}" }],
+    }),
   ].join("\n\n");
   await createPage(page, "Order lookup");
   await page.getByRole("button", { name: "Markdown", exact: true }).click();
@@ -912,18 +924,29 @@ test("sections are cards: fold, rename with links following, reorder, run from h
   await expect(failTarget).toHaveValue("Undo the restore");
   await expect(failTarget.locator("option:checked")).toHaveText("Jump to “Undo the restore”");
   // Sections can be moved; the numbers follow.
-  await section("Verify").getByRole("button", { name: /Section \d options/ }).click();
+  await section("Verify")
+    .getByRole("button", { name: /Section \d options/ })
+    .click();
   await page.getByRole("menuitem", { name: "Move up" }).click();
-  await expect(page.locator(".pb-outline-title")).toHaveText(["Before you start", "Verify", "Restore", "Undo the restore"]);
+  await expect(page.locator(".pb-outline-title")).toHaveText([
+    "Before you start",
+    "Verify",
+    "Restore",
+    "Undo the restore",
+  ]);
   // Run from here starts the run at that section.
-  await section("Undo the restore").getByRole("button", { name: /Section \d options/ }).click();
+  await section("Undo the restore")
+    .getByRole("button", { name: /Section \d options/ })
+    .click();
   await page.getByRole("menuitem", { name: "Run from here" }).click();
   const form = page.getByRole("dialog", { name: /^Run / });
   await expect(form).toContainText("Starts at “Undo the restore”");
   await form.getByLabel("Database").fill("orders");
   await form.getByLabel("Restore point").fill("2026-11-01");
   await form.getByRole("button", { name: "Start run" }).click();
-  await expect(page.locator(".run-card-text")).toHaveText("Point the app back at the original orders and tell the team.");
+  await expect(page.locator(".run-card-text")).toHaveText(
+    "Point the app back at the original orders and tell the team.",
+  );
 });
 test("steps can be reordered, moved between sections, duplicated and deleted with undo", async ({ page }) => {
   await startFromTemplate(page, "Runbook", /Restore from backup/);
@@ -941,7 +964,10 @@ test("steps can be reordered, moved between sections, duplicated and deleted wit
   await expect(section("Verify").locator(".pb-step")).toHaveCount(3);
   // Drag a step by its handle to the top of its section.
   await section("Verify").locator(".pb-step").last().hover();
-  const handle = section("Verify").locator(".pb-step").last().getByRole("button", { name: /Move step/ });
+  const handle = section("Verify")
+    .locator(".pb-step")
+    .last()
+    .getByRole("button", { name: /Move step/ });
   await expect(handle).toBeVisible();
   const target = section("Verify").locator(".pb-step").first();
   const from = (await handle.boundingBox())!;
@@ -953,10 +979,18 @@ test("steps can be reordered, moved between sections, duplicated and deleted wit
   await page.mouse.up();
   await expect(texts("Verify").first()).toContainText("Restore it to a separate copy");
   // Duplicate, then delete with Undo.
-  await section("Roll back").locator(".pb-step").first().getByRole("button", { name: /options/ }).click();
+  await section("Roll back")
+    .locator(".pb-step")
+    .first()
+    .getByRole("button", { name: /options/ })
+    .click();
   await page.getByRole("menuitem", { name: "Duplicate" }).click();
   await expect(section("Roll back").locator(".pb-step")).toHaveCount(3);
-  await section("Roll back").locator(".pb-step").first().getByRole("button", { name: /options/ }).click();
+  await section("Roll back")
+    .locator(".pb-step")
+    .first()
+    .getByRole("button", { name: /options/ })
+    .click();
   await page.getByRole("menuitem", { name: "Delete step" }).click();
   await expect(section("Roll back").locator(".pb-step")).toHaveCount(2);
   await page.locator("[data-sonner-toast]", { hasText: "Deleted step" }).getByRole("button", { name: "Undo" }).click();
@@ -1049,7 +1083,9 @@ test("the builder checks the playbook and says what to fix", async ({ page }) =>
   await escalate.getByRole("button", { name: /Section \d options/ }).click();
   await page.getByRole("menuitem", { name: "Delete section" }).click();
   await expect(outline.getByRole("button", { name: "2 to fix" })).toBeVisible();
-  await expect(page.locator(".pb-issues .is-warning", { hasText: "It jumps to “Escalate”, which isn't a section any more." })).toHaveCount(2);
+  await expect(
+    page.locator(".pb-issues .is-warning", { hasText: "It jumps to “Escalate”, which isn't a section any more." }),
+  ).toHaveCount(2);
   await expect(page.locator(".pb-step.has-warning")).toHaveCount(2);
   // Undo brings it back, and everything is fine again.
   await page.locator("[data-sonner-toast]", { hasText: "Deleted" }).getByRole("button", { name: "Undo" }).click();
@@ -1075,11 +1111,12 @@ test("the builder scrolls as one page, with inputs as one-line summaries", async
   await inputs.getByRole("button", { name: "Done" }).click();
   await expect(inputs.getByLabel("Input name")).toHaveCount(0);
   // No box inside the builder scrolls on its own; the outline stays in view.
-  const scrollers = await page.evaluate(() =>
-    [...document.querySelectorAll(".pb *")].filter((el) => {
-      const style = getComputedStyle(el);
-      return /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1;
-    }).length,
+  const scrollers = await page.evaluate(
+    () =>
+      [...document.querySelectorAll(".pb *")].filter((el) => {
+        const style = getComputedStyle(el);
+        return /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1;
+      }).length,
   );
   expect(scrollers).toBe(0);
   await page.evaluate(() => (document.querySelector(".page-scroll")!.scrollTop = 1500));
@@ -1114,7 +1151,9 @@ test("automation templates call other apps and keep secrets out of run history",
   await expect(run.locator(".run-request-line")).toContainText("https://hooks.example.test/T1/B2");
   await page.keyboard.press("Enter");
   await expect(run.locator(".run-response")).toContainText("200 OK");
-  expect(JSON.parse(posted)).toEqual({ text: "Sam: yesterday Fixed the invoice bug · today Release notes · blockers None" });
+  expect(JSON.parse(posted)).toEqual({
+    text: "Sam: yesterday Fixed the invoice bug · today Release notes · blockers None",
+  });
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
   await expect(run.getByRole("heading", { name: "Run complete" })).toBeVisible();
@@ -1151,7 +1190,10 @@ test("a playbook opened directly (hard reload) has its styles", async ({ page })
   await expect(badge).toBeAttached();
   // The type menu sits invisibly over its short label, and steps have their card look.
   await expect.poll(() => badge.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
-  const radius = await page.locator(".pb-step").first().evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
+  const radius = await page
+    .locator(".pb-step")
+    .first()
+    .evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
   expect(radius).not.toBe("0px");
 });
 test("settings explain AI agent access and offer agent keys", async ({ page }) => {
@@ -1187,7 +1229,11 @@ test("run-request and MCP turn away callers over their limit", async ({ page, pl
   await page.getByRole("region", { name: "AI agents" }).getByRole("button", { name: "Create key" }).click();
   const key = (await page.locator(".agent-created code").first().textContent())!.trim();
   const agent = await playwright.request.newContext({ baseURL });
-  const ping = () => agent.post("/api/mcp", { headers: { Authorization: `Bearer ${key}` }, data: { jsonrpc: "2.0", id: 1, method: "ping" } });
+  const ping = () =>
+    agent.post("/api/mcp", {
+      headers: { Authorization: `Bearer ${key}` },
+      data: { jsonrpc: "2.0", id: 1, method: "ping" },
+    });
   for (let i = 0; i < 5; i++) expect((await ping()).status()).toBe(200);
   const tooMany = await ping();
   expect(tooMany.status()).toBe(429);
@@ -1205,10 +1251,16 @@ test("an agent key reads the workspace over MCP without a session", async ({ pag
   const agent = await playwright.request.newContext({ baseURL });
   const rpc = (body: object, token = key) =>
     agent.post("/api/mcp", { headers: { Authorization: `Bearer ${token}` }, data: { jsonrpc: "2.0", id: 1, ...body } });
-  const hello = await rpc({ method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "e2e", version: "1" } } });
+  const hello = await rpc({
+    method: "initialize",
+    params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "e2e", version: "1" } },
+  });
   expect(hello.status()).toBe(200);
   expect((await hello.json()).result.serverInfo.name).toBe("slate");
-  const search = await rpc({ method: "tools/call", params: { name: "search_workspace", arguments: { query: "Rent Ledger" } } });
+  const search = await rpc({
+    method: "tools/call",
+    params: { name: "search_workspace", arguments: { query: "Rent Ledger" } },
+  });
   expect(search.status()).toBe(200);
   expect(JSON.stringify(await search.json())).toContain("Rent Ledger");
   // A made-up key is turned away by the endpoint itself.
@@ -1217,7 +1269,9 @@ test("an agent key reads the workspace over MCP without a session", async ({ pag
   expect((await wrong.json()).error.message).toContain("not valid");
   await agent.dispose();
 });
-test("checklists first: a plain list, advanced steps on request, and to-do lists that become runnable", async ({ page }) => {
+test("checklists first: a plain list, advanced steps on request, and to-do lists that become runnable", async ({
+  page,
+}) => {
   await startFromTemplate(page, "Playbook", /Blank checklist/);
   // A blank checklist is just steps: no inputs or guidelines panels, they're offered instead.
   await expect(page.getByRole("region", { name: "Inputs" })).toHaveCount(0);
@@ -1357,7 +1411,11 @@ test("shortcuts are shown the way each computer names them", async ({ page }) =>
     await page.keyboard.press("Escape");
   }
 });
-test("an agent with a 'Read and create' key adds a page, a database and a playbook", async ({ page, playwright, baseURL }) => {
+test("an agent with a 'Read and create' key adds a page, a database and a playbook", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
   // Two keys: one read-only (the default), one that may create.
   const makeKey = async (name: string, scope?: "Read and create") => {
     await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -1374,7 +1432,14 @@ test("an agent with a 'Read and create' key adds a page, a database and a playbo
   const maker = await makeKey("Maker", "Read and create");
   const agent = await playwright.request.newContext({ baseURL });
   const call = async (key: string, method: string, params: object = {}) =>
-    (await (await agent.post("/api/mcp", { headers: { Authorization: `Bearer ${key}` }, data: { jsonrpc: "2.0", id: 1, method, params } })).json()).result;
+    (
+      await (
+        await agent.post("/api/mcp", {
+          headers: { Authorization: `Bearer ${key}` },
+          data: { jsonrpc: "2.0", id: 1, method, params },
+        })
+      ).json()
+    ).result;
   const tools = async (key: string) => (await call(key, "tools/list")).tools.map((t: { name: string }) => t.name);
 
   expect(await tools(reader)).not.toContain("create_page");
@@ -1385,7 +1450,11 @@ test("an agent with a 'Read and create' key adds a page, a database and a playbo
   // A page inside the hub: the open tab shows it without a reload.
   const made = await call(maker, "tools/call", {
     name: "create_page",
-    arguments: { title: "Agent notes", content: "## From Claude\n\n- [ ] Check the gutters", parent_page_id: account!.ids.hub },
+    arguments: {
+      title: "Agent notes",
+      content: "## From Claude\n\n- [ ] Check the gutters",
+      parent_page_id: account!.ids.hub,
+    },
   });
   expect(made.isError).toBe(false);
   expect(made.structuredContent.url).toBe(`${baseURL}/p/${made.structuredContent.page_id}`);
@@ -1401,8 +1470,14 @@ test("an agent with a 'Read and create' key adds a page, a database and a playbo
     name: "create_database",
     arguments: {
       title: "Repairs",
-      properties: [{ name: "Cost", type: "currency" }, { name: "Done", type: "checkbox" }],
-      rows: [{ Name: "Fix the gate", Cost: 120, Done: false }, { Name: "Paint the fence", Cost: 300 }],
+      properties: [
+        { name: "Cost", type: "currency" },
+        { name: "Done", type: "checkbox" },
+      ],
+      rows: [
+        { Name: "Fix the gate", Cost: 120, Done: false },
+        { Name: "Paint the fence", Cost: 300 },
+      ],
     },
   });
   expect(db.isError).toBe(false);
@@ -1417,7 +1492,15 @@ test("an agent with a 'Read and create' key adds a page, a database and a playbo
       title: "Move-out check",
       when_to_use: "A tenant moves out.",
       inputs: [{ label: "Unit" }],
-      sections: [{ title: "Walkthrough", steps: [{ type: "check", text: "Inspect {{unit}} for damage." }, { type: "finish", text: "Done" }] }],
+      sections: [
+        {
+          title: "Walkthrough",
+          steps: [
+            { type: "check", text: "Inspect {{unit}} for damage." },
+            { type: "finish", text: "Done" },
+          ],
+        },
+      ],
     },
   });
   expect(playbook.isError).toBe(false);
@@ -1446,7 +1529,12 @@ test("an agent key opens only the workspace it was made in", async ({ page, play
   await page.getByRole("button", { name: "Create workspace" }).click();
   await page.getByRole("button", { name: "New page", exact: true }).first().click();
   const start = page.getByLabel("Start this page");
-  if (await start.count()) await start.getByRole("button", { name: /^(Empty|Blank|Page)/ }).first().click().catch(() => {});
+  if (await start.count())
+    await start
+      .getByRole("button", { name: /^(Empty|Blank|Page)/ })
+      .first()
+      .click()
+      .catch(() => {});
   await page.getByLabel("Page title", { exact: true }).fill("Secret plans");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   // Settings here are this workspace's: none of its keys yet, and a word about the other's.
@@ -1465,7 +1553,12 @@ test("an agent key opens only the workspace it was made in", async ({ page, play
       await (
         await agent.post("/api/mcp", {
           headers: { Authorization: `Bearer ${key}` },
-          data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "search_workspace", arguments: { query } } },
+          data: {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name: "search_workspace", arguments: { query } },
+          },
         })
       ).json()
     ).result.structuredContent.total as number;
@@ -1491,10 +1584,17 @@ test("each workspace lists only its own playbooks", async ({ page }) => {
   await expect(page.locator(".playbook-row")).toHaveCount(0);
   // Back in the first workspace, it's still there.
   await page.getByRole("button", { name: /^Workspace: / }).click();
-  await page.getByRole("menuitem", { name: /Home|My workspace|Rental/ }).first().click();
+  await page
+    .getByRole("menuitem", { name: /Home|My workspace|Rental/ })
+    .first()
+    .click();
   await expect(sidebar.getByRole("button", { name: /^Playbooks/ })).toContainText("1");
 });
-test("an agent allowed to edit changes pages and rows, without losing what you're typing", async ({ page, playwright, baseURL }) => {
+test("an agent allowed to edit changes pages and rows, without losing what you're typing", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const agents = page.getByRole("region", { name: "AI agents" });
   await agents.getByRole("textbox").fill("Editor");
@@ -1529,7 +1629,10 @@ test("an agent allowed to edit changes pages and rows, without losing what you'r
   expect(edited.isError).toBe(false);
   const rows = await call("query_database", { database: "Rent Ledger", limit: 1 });
   const row = rows.structuredContent.rows[0];
-  const changed = await call("update_database", { database: "Rent Ledger", update_rows: [{ row_id: row.id, values: { Status: "Overdue" } }] });
+  const changed = await call("update_database", {
+    database: "Rent Ledger",
+    update_rows: [{ row_id: row.id, values: { Status: "Overdue" } }],
+  });
   expect(changed.isError).toBe(false);
   // Your save merges with the agent's changes instead of failing.
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
@@ -1570,7 +1673,12 @@ test("going to the front page and back returns to the page you were on, in each 
   await page.getByRole("button", { name: "Create workspace" }).click();
   await sidebar.getByRole("button", { name: "New page", exact: true }).first().click();
   const start = page.getByLabel("Start this page");
-  if (await start.count()) await start.getByRole("button", { name: /^(Empty|Blank|Page)/ }).first().click().catch(() => {});
+  if (await start.count())
+    await start
+      .getByRole("button", { name: /^(Empty|Blank|Page)/ })
+      .first()
+      .click()
+      .catch(() => {});
   await title.fill("Side notes");
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^Workspace: / }).click();
@@ -1643,7 +1751,9 @@ test("menus fade away when they close, and spinners keep turning for reduced mot
   });
   expect(spinning).toEqual({ duration: "1.6s", count: "infinite" });
 });
-test("a page added inside another is listed under Pages inside, leaving the parent's text as it was", async ({ page }) => {
+test("a page added inside another is listed under Pages inside, leaving the parent's text as it was", async ({
+  page,
+}) => {
   await page.goto(`/p/${account!.ids.guide}`);
   const title = page.getByLabel("Page title", { exact: true });
   await expect(title).toHaveValue("Getting started");
@@ -1668,7 +1778,9 @@ test("a page added inside another is listed under Pages inside, leaving the pare
   await expect(inside).toHaveCount(0);
   await expect(page.getByLabel("Page content", { exact: true }).locator(".editor-page-reference")).toHaveCount(2);
 });
-test("relation cells: one record replaces, any number adds, linked ones can be unlinked, and new ones created", async ({ page }) => {
+test("relation cells: one record replaces, any number adds, linked ones can be unlinked, and new ones created", async ({
+  page,
+}) => {
   // The ledger's Tenant column links to the Tenants database (Alex Morgan on every row).
   // A cell's text is its linked records; the empty part of the cell opens the picker.
   const cell = (row: number) => page.locator("tbody tr").nth(row).locator(".db-cell-anchor");
@@ -1747,7 +1859,9 @@ test("linked records open in the side panel over the table, with back and close 
   await expect(page).toHaveURL(ledger);
   await expect(title).toHaveValue("Rent Ledger");
 });
-test("code blocks: colored syntax, a searchable language picker that detects the language, Tab to indent", async ({ page }) => {
+test("code blocks: colored syntax, a searchable language picker that detects the language, Tab to indent", async ({
+  page,
+}) => {
   await createPage(page, "Snippets");
   await page.getByLabel("Page title", { exact: true }).press("Enter");
   await page.keyboard.type("```");
@@ -1781,5 +1895,7 @@ test("the phone's keyboard toolbar never shows with a mouse and keyboard (Tab ne
   await page.keyboard.type("Milk");
   await expect(page.getByRole("toolbar", { name: "Editing" })).toHaveCount(0);
   await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Page content", { exact: true }).locator('ul[data-type="taskList"] ul[data-type="taskList"] > li')).toHaveCount(1);
+  await expect(
+    page.getByLabel("Page content", { exact: true }).locator('ul[data-type="taskList"] ul[data-type="taskList"] > li'),
+  ).toHaveCount(1);
 });

@@ -28,8 +28,16 @@ describe("playbook builder model", () => {
   });
 
   it("keeps anything that isn't structure as notes, and section descriptions", () => {
-    const step = (text: string) => `:::slate-node ${JSON.stringify({ type: "procedureStep", attrs: { step: "send" }, content: [{ type: "text", text }] })}`;
-    const markdown = ["Intro paragraph.", "## Prepare", "Get everything ready first.", step("Open the app"), "> A quote that was here", "```\ncode\n```"].join("\n\n");
+    const step = (text: string) =>
+      `:::slate-node ${JSON.stringify({ type: "procedureStep", attrs: { step: "send" }, content: [{ type: "text", text }] })}`;
+    const markdown = [
+      "Intro paragraph.",
+      "## Prepare",
+      "Get everything ready first.",
+      step("Open the app"),
+      "> A quote that was here",
+      "```\ncode\n```",
+    ].join("\n\n");
     const model = parsePlaybook(markdown);
     expect(model.sections[0]).toMatchObject({ title: "Prepare", description: "Get everything ready first." });
     expect(model.notes).toContain("Intro paragraph.");
@@ -42,7 +50,11 @@ describe("playbook builder model", () => {
   it("renames values and sections everywhere they're used", () => {
     let model = parsePlaybook(templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-refund")!));
     // The input itself is renamed by the caller; everything that uses it follows.
-    model = renameInModel({ ...model, params: model.params.map((p) => (p.name === "order_total" ? { ...p, name: "amount" } : p)) }, "order_total", "amount");
+    model = renameInModel(
+      { ...model, params: model.params.map((p) => (p.name === "order_total" ? { ...p, name: "amount" } : p)) },
+      "order_total",
+      "amount",
+    );
     const md = serializePlaybook(model);
     expect(md).not.toContain("order_total");
     expect(md).toContain("{{amount}}");

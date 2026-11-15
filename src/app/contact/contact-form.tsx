@@ -2,7 +2,14 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowRight, CircleCheck, LoaderCircle, LogIn } from "lucide-react";
-import { CONTACT_TOPICS, MESSAGE_MAX, MESSAGE_MIN, validateContact, type ContactErrors, type ContactTopic } from "@/lib/contact";
+import {
+  CONTACT_TOPICS,
+  MESSAGE_MAX,
+  MESSAGE_MIN,
+  validateContact,
+  type ContactErrors,
+  type ContactTopic,
+} from "@/lib/contact";
 
 const DRAFT_KEY = "slate-contact-draft";
 
@@ -61,7 +68,11 @@ export function ContactForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, email, message, website }),
       });
-      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; errors?: ContactErrors };
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        errors?: ContactErrors;
+      };
       if (response.ok && data.ok) {
         try {
           sessionStorage.removeItem(DRAFT_KEY);
@@ -71,7 +82,9 @@ export function ContactForm({
         return;
       }
       if (data.errors) setErrors(data.errors);
-      setProblem(data.error || (data.errors ? "" : "Your message couldn’t be sent just now. Please try again in a moment."));
+      setProblem(
+        data.error || (data.errors ? "" : "Your message couldn’t be sent just now. Please try again in a moment."),
+      );
     } catch {
       setProblem("Couldn’t reach Slate. Check your connection and try again.");
     } finally {
@@ -85,7 +98,8 @@ export function ContactForm({
         <CircleCheck size={28} />
         <h2>Thanks, your message is in.</h2>
         <p>
-          You&apos;ll get a reply at <strong>{sent.email}</strong>. Slate is run by one person, so it can take a few days.
+          You&apos;ll get a reply at <strong>{sent.email}</strong>. Slate is run by one person, so it can take a few
+          days.
         </p>
         <div className="contact-sent-actions">
           <button type="button" className="landing-button small outline" onClick={() => setSent(null)}>
@@ -129,15 +143,19 @@ export function ContactForm({
             </label>
           ))}
         </div>
-        {errors.topic && <p className="contact-error" id="contact-topic-error">{errors.topic}</p>}
+        {errors.topic && (
+          <p className="contact-error" id="contact-topic-error">
+            {errors.topic}
+          </p>
+        )}
       </fieldset>
 
       {topic === "delete" && !signedInEmail && (
         <p className="contact-callout">
           <LogIn size={16} />
           <span>
-            <Link href="/auth/login?next=%2Fcontact%3Ftopic%3Ddelete">Log in first</Link> and send this from your account, so
-            we know the request really comes from you. That makes it quicker.
+            <Link href="/auth/login?next=%2Fcontact%3Ftopic%3Ddelete">Log in first</Link> and send this from your
+            account, so we know the request really comes from you. That makes it quicker.
           </span>
         </p>
       )}
@@ -158,9 +176,15 @@ export function ContactForm({
           {...field("email")}
         />
         {errors.email ? (
-          <span className="contact-error" id="contact-email-error">{errors.email}</span>
+          <span className="contact-error" id="contact-email-error">
+            {errors.email}
+          </span>
         ) : (
-          <span className="contact-hint" id="contact-email-hint">{signedInEmail ? "Your account’s email. Change it if you’d like the reply elsewhere." : "Only used to reply to you."}</span>
+          <span className="contact-hint" id="contact-email-hint">
+            {signedInEmail
+              ? "Your account’s email. Change it if you’d like the reply elsewhere."
+              : "Only used to reply to you."}
+          </span>
         )}
       </div>
 
@@ -173,7 +197,8 @@ export function ContactForm({
           maxLength={MESSAGE_MAX}
           onChange={(e) => {
             setMessage(e.target.value);
-            if (errors.message && e.target.value.trim().length >= MESSAGE_MIN) setErrors((x) => ({ ...x, message: undefined }));
+            if (errors.message && e.target.value.trim().length >= MESSAGE_MIN)
+              setErrors((x) => ({ ...x, message: undefined }));
           }}
           placeholder={chosen?.placeholder ?? "How can we help?"}
           data-field="message"
@@ -181,11 +206,18 @@ export function ContactForm({
         />
         <span className="contact-meta">
           {errors.message ? (
-            <span className="contact-error" id="contact-message-error">{errors.message}</span>
+            <span className="contact-error" id="contact-message-error">
+              {errors.message}
+            </span>
           ) : (
-            <span className="contact-hint" id="contact-message-hint">Please leave out passwords, agent keys and card numbers.</span>
+            <span className="contact-hint" id="contact-message-hint">
+              Please leave out passwords, agent keys and card numbers.
+            </span>
           )}
-          <span className={message.length > MESSAGE_MAX * 0.9 ? "contact-count is-near" : "contact-count"} aria-live="polite">
+          <span
+            className={message.length > MESSAGE_MAX * 0.9 ? "contact-count is-near" : "contact-count"}
+            aria-live="polite"
+          >
             {message.length > MESSAGE_MAX * 0.9 ? `${MESSAGE_MAX - message.length} left` : ""}
           </span>
         </span>
@@ -194,10 +226,20 @@ export function ContactForm({
       {/* Hidden from people (and screen readers); bots fill it in. */}
       <label className="contact-trap" aria-hidden="true">
         Website
-        <input type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+        />
       </label>
 
-      {problem && <p className="contact-problem" role="alert">{problem}</p>}
+      {problem && (
+        <p className="contact-problem" role="alert">
+          {problem}
+        </p>
+      )}
 
       <div className="contact-actions">
         <button className="landing-button" disabled={busy} aria-busy={busy}>

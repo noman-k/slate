@@ -19,7 +19,10 @@ export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 export const ACCESS_TOKEN_SECONDS = 3600;
 
 /** Random secrets: same alphabet and length as agent keys, with a telling prefix. */
-const secret = (kind: "at" | "rt" | "code") => generateAgentKey().replace(/^slate_/, `slate_${kind}_`).slice(0, 52);
+const secret = (kind: "at" | "rt" | "code") =>
+  generateAgentKey()
+    .replace(/^slate_/, `slate_${kind}_`)
+    .slice(0, 52);
 export const newAccessToken = () => secret("at");
 export const newRefreshToken = () => secret("rt");
 export const newAuthorizationCode = () => secret("code");

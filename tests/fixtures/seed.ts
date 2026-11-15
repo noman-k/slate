@@ -1,13 +1,6 @@
-import type {
-  WorkspaceState,
-  Page,
-  Property,
-  DbRecord,
-  DatabaseView,
-} from "../../src/lib/types";
+import type { WorkspaceState, Page, Property, DbRecord, DatabaseView } from "../../src/lib/types";
 const stamp = "2026-11-11T22:00:00.000Z";
-const uid = (n: number) =>
-  `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const SEED_IDS = {
   workspace: uid(1),
   hub: uid(2),
@@ -54,8 +47,7 @@ export function createSeedState(): WorkspaceState {
   pages.find((p) => p.id === uid(4))!.description =
     "Private rent collection register — one record per tenant/unit/rent month. Financial amounts are in CAD. Track amounts due and collected, overdue balances, proof of payment, and annual reconciliations.";
   for (const p of pages.filter((p) => p.kind === "database"))
-    p.database_id =
-      p.id === uid(4) ? uid(5) : uid(100 + Number(p.id.slice(-3)));
+    p.database_id = p.id === uid(4) ? uid(5) : uid(100 + Number(p.id.slice(-3)));
   const properties: Property[] = [
     {
       id: uid(20),
@@ -128,8 +120,7 @@ export function createSeedState(): WorkspaceState {
       position: 7,
       width: 160,
       config: {
-        expression:
-          'prop("Amount Due") - prop("Amount Received") - prop("Credit Brought Forward")',
+        expression: 'prop("Amount Due") - prop("Amount Received") - prop("Credit Brought Forward")',
       },
     },
   ];
@@ -188,9 +179,7 @@ export function createSeedState(): WorkspaceState {
       database_id: uid(5),
       name: "Follow Up",
       type: "table",
-      filters: [
-        { property_id: uid(24), operator: "not_equals", value: "Paid" },
-      ],
+      filters: [{ property_id: uid(24), operator: "not_equals", value: "Paid" }],
       sorts: [],
       hidden_properties: [],
     },
@@ -223,19 +212,12 @@ export function createSeedState(): WorkspaceState {
       hidden_properties: [],
     },
   ];
-  for (const p of pages.filter(
-    (p) => p.kind === "database" && p.id !== uid(4),
-  )) {
+  for (const p of pages.filter((p) => p.kind === "database" && p.id !== uid(4))) {
     properties.push(
       {
         id: uid(200 + Number(p.id.slice(-3))),
         database_id: p.database_id!,
-        name:
-          p.id === uid(6)
-            ? "Tenant name"
-            : p.id === uid(7)
-              ? "Property name"
-              : "Deposit",
+        name: p.id === uid(6) ? "Tenant name" : p.id === uid(7) ? "Property name" : "Deposit",
         type: "title",
         position: 0,
         width: 320,
@@ -307,8 +289,7 @@ export function createSeedState(): WorkspaceState {
       },
       {
         page_id: uid(10),
-        markdown:
-          "## A fresh start\n\nA place for the things you don’t want to forget.\n\n- [ ] Add your first idea\n",
+        markdown: "## A fresh start\n\nA place for the things you don’t want to forget.\n\n- [ ] Add your first idea\n",
         updated_at: stamp,
       },
     ],

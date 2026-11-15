@@ -45,7 +45,11 @@ async function call<T>(path: string, init: { method?: string; token?: string; ad
   const auth = init.admin ? adminKey : init.token || key;
   const response = await fetch(`${url}${path}`, {
     method: init.method || "GET",
-    headers: { apikey: init.admin ? adminKey : key, Authorization: `Bearer ${auth}`, "Content-Type": "application/json" },
+    headers: {
+      apikey: init.admin ? adminKey : key,
+      Authorization: `Bearer ${auth}`,
+      "Content-Type": "application/json",
+    },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const text = await response.text();
@@ -74,7 +78,11 @@ export async function createExampleAccount(): Promise<TestAccount> {
     method: "POST",
     body: { email, password },
   });
-  const { revision } = await call<{ revision: number }>("/rest/v1/rpc/load_workspace_state", { method: "POST", token, body: {} });
+  const { revision } = await call<{ revision: number }>("/rest/v1/rpc/load_workspace_state", {
+    method: "POST",
+    token,
+    body: {},
+  });
   // Every example id shares one prefix; a fresh one per account keeps accounts apart.
   const prefix = randomUUID().slice(0, 8);
   const remap = (text: string) => text.replaceAll("00000000-0000-4000-8000-", `${prefix}-0000-4000-8000-`);
@@ -129,7 +137,12 @@ export async function mockApi(
   handler: (request: { method: string; url: string; headers: Record<string, string>; body?: string }) => MockAnswer,
 ) {
   await page.route("**/api/run-request", async (route) => {
-    const sent = route.request().postDataJSON() as { method: string; url: string; headers: [string, string][]; body?: string };
+    const sent = route.request().postDataJSON() as {
+      method: string;
+      url: string;
+      headers: [string, string][];
+      body?: string;
+    };
     if (!sent?.url?.startsWith(urlPrefix)) return route.fallback();
     const headers = Object.fromEntries(sent.headers.map(([name, value]) => [name.toLowerCase(), value]));
     const { status, body = "" } = handler({ method: sent.method, url: sent.url, headers, body: sent.body });
@@ -143,11 +156,14 @@ export async function mockApi(
 
 /** A real one-time email link token, as Supabase would put in an email (hashed_token). */
 export async function emailLinkToken(type: "signup" | "recovery", email: string, password?: string) {
-  const link = await call<{ hashed_token?: string; properties?: { hashed_token: string } }>("/auth/v1/admin/generate_link", {
-    method: "POST",
-    admin: true,
-    body: { type, email, ...(password ? { password } : {}) },
-  });
+  const link = await call<{ hashed_token?: string; properties?: { hashed_token: string } }>(
+    "/auth/v1/admin/generate_link",
+    {
+      method: "POST",
+      admin: true,
+      body: { type, email, ...(password ? { password } : {}) },
+    },
+  );
   const token = link.properties?.hashed_token || link.hashed_token;
   if (!token) throw new Error("Supabase did not return an email link token.");
   return token;
@@ -161,5 +177,8 @@ export async function contactMessages(email: string) {
   );
 }
 export async function deleteContactMessages(email: string) {
-  await call(`/rest/v1/contact_messages?email=eq.${encodeURIComponent(email.toLowerCase())}`, { method: "DELETE", admin: true }).catch(() => {});
+  await call(`/rest/v1/contact_messages?email=eq.${encodeURIComponent(email.toLowerCase())}`, {
+    method: "DELETE",
+    admin: true,
+  }).catch(() => {});
 }

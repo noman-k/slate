@@ -145,7 +145,8 @@ function StepText({
     },
     onUpdate: ({ editor: current }) => {
       const paragraph = current.getJSON().content?.[0];
-      const next = (chipsToText({ type: "procedureStep", content: paragraph?.content || [] }).content || []) as StepContent;
+      const next = (chipsToText({ type: "procedureStep", content: paragraph?.content || [] }).content ||
+        []) as StepContent;
       shown.current = JSON.stringify(next);
       changeRef.current(next);
     },
@@ -192,14 +193,14 @@ function ValuePickerFor({ editor }: { editor: Editor | null }) {
       {(values) =>
         // Nothing to insert yet (no inputs or answers): no button, less clutter.
         !values?.length ? null : (
-        <ValuePicker
-          values={values || []}
-          onPick={(key) =>
-            window.requestAnimationFrame(() =>
-              editor?.chain().focus().insertContent({ type: "valueRef", attrs: { key } }).run(),
-            )
-          }
-        />
+          <ValuePicker
+            values={values || []}
+            onPick={(key) =>
+              window.requestAnimationFrame(() =>
+                editor?.chain().focus().insertContent({ type: "valueRef", attrs: { key } }).run(),
+              )
+            }
+          />
         )
       }
     </ProcedureValuesContext.Consumer>
@@ -508,9 +509,10 @@ export function PlaybookBuilder({
   const checks = useMemo(() => checkPlaybook(model), [model]);
   /** Warnings in a section, counting its steps. */
   const warningsIn = (section: BuilderSection) =>
-    [...(checks.sections.get(section.id) || []), ...section.steps.flatMap((step) => checks.steps.get(step.id) || [])].filter(
-      (issue) => issue.level === "warning",
-    ).length;
+    [
+      ...(checks.sections.get(section.id) || []),
+      ...section.steps.flatMap((step) => checks.steps.get(step.id) || []),
+    ].filter((issue) => issue.level === "warning").length;
   /** Scrolls to the first thing to fix. */
   const showFirstIssue = () => {
     const el = document.querySelector(".pb-step.has-warning, .pb-section-head + .pb-issues");
@@ -598,7 +600,9 @@ export function PlaybookBuilder({
     if (from >= 0 && to >= 0) update((m) => ({ ...m, sections: arrayMove(m.sections, from, to) }));
   };
   const jumpTo = (sectionId: string) =>
-    document.querySelector(`[data-section-id="${sectionId}"]`)?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+    document
+      .querySelector(`[data-section-id="${sectionId}"]`)
+      ?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
 
   return (
     <ProcedureValuesContext.Provider value={values}>
@@ -621,7 +625,9 @@ export function PlaybookBuilder({
                       type={key === "lastReviewed" ? "date" : "text"}
                       placeholder={placeholder}
                       value={model.details![key] === "—" ? "" : model.details![key]}
-                      onChange={(event) => update((m) => ({ ...m, details: { ...m.details!, [key]: event.target.value } }))}
+                      onChange={(event) =>
+                        update((m) => ({ ...m, details: { ...m.details!, [key]: event.target.value } }))
+                      }
                     />
                   </label>
                 ))}
@@ -629,29 +635,29 @@ export function PlaybookBuilder({
             </Panel>
           ) : null}
           {(model.params.length > 0 || openPanels.has("inputs")) && (
-          <Panel title="Inputs">
-            <div className="proc-params pb-inputs">
-              <InputsEditor
-                compact
-                params={model.params}
-                values={values}
-                onChange={(params) => update((m) => ({ ...m, params }))}
-                onRenameKey={(from, to) => update((m) => renameInModel(m, from, to))}
-              />
-            </div>
-          </Panel>
+            <Panel title="Inputs">
+              <div className="proc-params pb-inputs">
+                <InputsEditor
+                  compact
+                  params={model.params}
+                  values={values}
+                  onChange={(params) => update((m) => ({ ...m, params }))}
+                  onRenameKey={(from, to) => update((m) => renameInModel(m, from, to))}
+                />
+              </div>
+            </Panel>
           )}
           {(model.guidelines.some((g) => g.trim()) || openPanels.has("guidelines")) && (
-          <Panel title="Guidelines">
-            <GrowingText
-              aria-label="Guidelines"
-              rows={Math.max(3, model.guidelines.length + 1)}
-              placeholder={"Rules for every step, one per line — e.g.\nKeep a friendly tone"}
-              value={model.guidelines.join("\n")}
-              autoFocus={openPanels.has("guidelines") && !model.guidelines.some((g) => g.trim())}
-              onChange={(event) => update((m) => ({ ...m, guidelines: event.target.value.split("\n") }))}
-            />
-          </Panel>
+            <Panel title="Guidelines">
+              <GrowingText
+                aria-label="Guidelines"
+                rows={Math.max(3, model.guidelines.length + 1)}
+                placeholder={"Rules for every step, one per line — e.g.\nKeep a friendly tone"}
+                value={model.guidelines.join("\n")}
+                autoFocus={openPanels.has("guidelines") && !model.guidelines.some((g) => g.trim())}
+                onChange={(event) => update((m) => ({ ...m, guidelines: event.target.value.split("\n") }))}
+              />
+            </Panel>
           )}
           {/* More, only when it's wanted: a plain checklist needs none of it. */}
           {(!model.params.length && !openPanels.has("inputs")) ||
@@ -672,7 +678,10 @@ export function PlaybookBuilder({
                 <button
                   className="pb-link"
                   onClick={() =>
-                    update((m) => ({ ...m, details: { owner: "", time: "", lastReviewed: localDate(), reviewEvery: "90 days" } }))
+                    update((m) => ({
+                      ...m,
+                      details: { owner: "", time: "", lastReviewed: localDate(), reviewEvery: "90 days" },
+                    }))
                   }
                 >
                   <Plus size={13} /> Add owner and review dates
@@ -706,7 +715,10 @@ export function PlaybookBuilder({
               }
             >
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onOutlineDragEnd}>
-                <SortableContext items={model.sections.map((s) => `outline:${s.id}`)} strategy={verticalListSortingStrategy}>
+                <SortableContext
+                  items={model.sections.map((s) => `outline:${s.id}`)}
+                  strategy={verticalListSortingStrategy}
+                >
                   <ol className="pb-outline">
                     {model.sections.map((section, index) => (
                       <OutlineItem
@@ -724,11 +736,21 @@ export function PlaybookBuilder({
           </div>
         </aside>
         <div className="pb-main">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={onStepDragOver} onDragEnd={onStepDragEnd}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragOver={onStepDragOver}
+            onDragEnd={onStepDragEnd}
+          >
             {model.sections.map((section, sectionIndex) => {
               const folded = collapsed.has(section.id);
               return (
-                <section key={section.id} className="pb-section" data-section-id={section.id} aria-label={section.title || "Untitled section"}>
+                <section
+                  key={section.id}
+                  className="pb-section"
+                  data-section-id={section.id}
+                  aria-label={section.title || "Untitled section"}
+                >
                   <header className="pb-section-head">
                     <span className="pb-section-number">{sectionIndex + 1}</span>
                     <div className="pb-section-names">
@@ -744,7 +766,9 @@ export function PlaybookBuilder({
                         aria-label="Section description"
                         placeholder="Add a description"
                         value={section.description}
-                        onChange={(event) => editSection(section.id, (s) => ({ ...s, description: event.target.value }))}
+                        onChange={(event) =>
+                          editSection(section.id, (s) => ({ ...s, description: event.target.value }))
+                        }
                       />
                     </div>
                     <button
@@ -782,14 +806,18 @@ export function PlaybookBuilder({
                       )}
                       <MenuItem
                         disabled={sectionIndex === 0}
-                        onClick={() => update((m) => ({ ...m, sections: arrayMove(m.sections, sectionIndex, sectionIndex - 1) }))}
+                        onClick={() =>
+                          update((m) => ({ ...m, sections: arrayMove(m.sections, sectionIndex, sectionIndex - 1) }))
+                        }
                       >
                         <ArrowUp />
                         Move up
                       </MenuItem>
                       <MenuItem
                         disabled={sectionIndex === model.sections.length - 1}
-                        onClick={() => update((m) => ({ ...m, sections: arrayMove(m.sections, sectionIndex, sectionIndex + 1) }))}
+                        onClick={() =>
+                          update((m) => ({ ...m, sections: arrayMove(m.sections, sectionIndex, sectionIndex + 1) }))
+                        }
                       >
                         <ArrowDown />
                         Move down
@@ -831,12 +859,17 @@ export function PlaybookBuilder({
                             onAddAfter={() =>
                               addStep(
                                 section.id,
-                                BASIC_STEPS.includes(step.attrs.step as StepType) ? (step.attrs.step as StepType) : "check",
+                                BASIC_STEPS.includes(step.attrs.step as StepType)
+                                  ? (step.attrs.step as StepType)
+                                  : "check",
                                 step.id,
                               )
                             }
                             onMove={(by) =>
-                              editSection(section.id, (s) => ({ ...s, steps: arrayMove(s.steps, stepIndex, stepIndex + by) }))
+                              editSection(section.id, (s) => ({
+                                ...s,
+                                steps: arrayMove(s.steps, stepIndex, stepIndex + by),
+                              }))
                             }
                             onMoveTo={(target) =>
                               update((m) => ({

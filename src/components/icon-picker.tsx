@@ -17,8 +17,7 @@ const RECENT_KEY = "slate-recent-icons";
 const COLOR_KEY = "slate-icon-color";
 const ALL_ICONS = PAGE_ICON_GROUPS.flatMap((group) => group.icons.map((icon) => icon.name));
 
-const pretty = (name: string) =>
-  name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ");
+const pretty = (name: string) => name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ");
 
 function readRecent(): string[] {
   try {
@@ -33,9 +32,7 @@ function readRecent(): string[] {
 function readColor(): PageIconColor {
   try {
     const value = localStorage.getItem(COLOR_KEY);
-    return (PAGE_ICON_COLORS as readonly string[]).includes(value || "")
-      ? (value as PageIconColor)
-      : "gray";
+    return (PAGE_ICON_COLORS as readonly string[]).includes(value || "") ? (value as PageIconColor) : "gray";
   } catch {
     return "gray";
   }
@@ -100,9 +97,7 @@ export function IconPicker({
 }) {
   const current = parsePageIcon(value);
   const [query, setQuery] = useState("");
-  const [color, setColor] = useState<PageIconColor>(() =>
-    current.kind === "icon" ? current.color : readColor(),
-  );
+  const [color, setColor] = useState<PageIconColor>(() => (current.kind === "icon" ? current.color : readColor()));
   const [recent] = useState(readRecent);
   const [preview, setPreview] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -158,10 +153,7 @@ export function IconPicker({
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") {
                 event.preventDefault();
-                event.currentTarget
-                  .closest(".icon-picker")
-                  ?.querySelector<HTMLElement>("[data-cell]")
-                  ?.focus();
+                event.currentTarget.closest(".icon-picker")?.querySelector<HTMLElement>("[data-cell]")?.focus();
               }
               if (event.key === "Enter" && results?.[0]) {
                 event.preventDefault();
@@ -193,7 +185,14 @@ export function IconPicker({
           <Shuffle size={16} />
         </button>
         {current.kind === "icon" && (
-          <button type="button" className="icon-tool icon-remove" onClick={() => { onChange(""); onClose(); }}>
+          <button
+            type="button"
+            className="icon-tool icon-remove"
+            onClick={() => {
+              onChange("");
+              onClose();
+            }}
+          >
             Remove
           </button>
         )}
@@ -261,9 +260,7 @@ export function IconPicker({
             </span>
           </span>
         ) : (
-          <span className="icon-preview icon-preview-empty">
-            Pick a color, then an icon
-          </span>
+          <span className="icon-preview icon-preview-empty">Pick a color, then an icon</span>
         )}
         <span className="icon-keys">
           <kbd>↑</kbd>
@@ -292,7 +289,9 @@ export function IconPickerPopover({
   const opener = useRef<HTMLElement | null>(null);
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Anchor asChild ref={anchorRef}>{children}</Popover.Anchor>
+      <Popover.Anchor asChild ref={anchorRef}>
+        {children}
+      </Popover.Anchor>
       <Popover.Portal>
         <Popover.Content
           className="icon-popover"

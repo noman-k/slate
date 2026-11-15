@@ -47,13 +47,7 @@ import { Menu, MenuItem, MenuSeparator } from "./ui/menu";
 import { ShortcutsPopover } from "./shortcuts";
 import { PageIcon } from "./page-icon";
 import { Keys, useKeys, useTouchOnly } from "./keys";
-export type PageAction =
-  | "rename"
-  | "duplicate"
-  | "trash"
-  | "move"
-  | "favorite"
-  | "icon";
+export type PageAction = "rename" | "duplicate" | "trash" | "move" | "favorite" | "icon";
 interface Props {
   state: WorkspaceState;
   activeId: string;
@@ -82,13 +76,7 @@ interface Props {
   /** Folds every page in the tree. */
   onCollapseAll?: () => void;
 }
-export function PageActions({
-  page,
-  onAction,
-}: {
-  page: Page;
-  onAction: Props["onPageAction"];
-}) {
+export function PageActions({ page, onAction }: { page: Page; onAction: Props["onPageAction"] }) {
   return (
     <>
       <MenuItem onClick={() => onAction("rename", page)}>
@@ -171,12 +159,7 @@ function TreeRow({
       className={`tree-row ${active ? "selected" : ""} ${menuOpen ? "menu-open" : ""} ${isDragging ? "is-dragging" : ""} ${drop ? `drop-${drop}` : ""}`}
       data-page-row={page.id}
     >
-      <button
-        className="tree-drag"
-        aria-label={`Drag ${page.title}`}
-        {...attributes}
-        {...listeners}
-      >
+      <button className="tree-drag" aria-label={`Drag ${page.title}`} {...attributes} {...listeners}>
         <GripVertical size={12} />
       </button>
       {/* Indent by depth; icons and titles line up whether or not a page has subpages. */}
@@ -207,9 +190,7 @@ function TreeRow({
         }
       >
         <PageGlyph page={page} />
-        <span className={`tree-title ${page.title ? "" : "is-untitled"}`}>
-          {name}
-        </span>
+        <span className={`tree-title ${page.title ? "" : "is-untitled"}`}>{name}</span>
         {recordCount !== undefined && recordCount > 0 && (
           <span className="tree-count" aria-hidden>
             {recordCount}
@@ -218,12 +199,7 @@ function TreeRow({
       </button>
       <span className="tree-actions">
         {onRun && (
-          <button
-            className="icon-button"
-            aria-label={`Run ${page.title || "Untitled"}`}
-            title="Run"
-            onClick={onRun}
-          >
+          <button className="icon-button" aria-label={`Run ${page.title || "Untitled"}`} title="Run" onClick={onRun}>
             <Play size={14} />
           </button>
         )}
@@ -232,10 +208,7 @@ function TreeRow({
           align="start"
           onOpenChange={setMenuOpen}
           trigger={
-            <button
-              className="icon-button"
-              aria-label={`Actions for ${page.title}`}
-            >
+            <button className="icon-button" aria-label={`Actions for ${page.title}`}>
               <MoreHorizontal size={16} />
             </button>
           }
@@ -318,8 +291,7 @@ export function Sidebar(p: Props) {
     try {
       const saved = JSON.parse(localStorage.getItem(SECTIONS_KEY) || "[]");
       // Read after mount so server and client render the same first frame.
-      if (Array.isArray(saved) && saved.length)
-        queueMicrotask(() => setFolded(new Set(saved)));
+      if (Array.isArray(saved) && saved.length) queueMicrotask(() => setFolded(new Set(saved)));
     } catch {}
   }, []);
   /**
@@ -350,19 +322,14 @@ export function Sidebar(p: Props) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ id: string; zone: DropZone } | null>(null);
   const expandTimer = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
-  const workspace = p.state.workspaces.find(
-    (w) => w.id === p.state.active_workspace_id,
-  );
+  const workspace = p.state.workspaces.find((w) => w.id === p.state.active_workspace_id);
   const recordPages = new Set(p.state.records.map((r) => r.page_id));
-  const live = p.state.pages.filter(
-    (x) => x.workspace_id === workspace?.id && !x.deleted_at,
-  );
+  const live = p.state.pages.filter((x) => x.workspace_id === workspace?.id && !x.deleted_at);
   const pages = live.filter((x) => !recordPages.has(x.id));
   const byId = new Map(live.map((x) => [x.id, x]));
   const recordCounts = new Map<string, number>();
   for (const r of p.state.records)
-    if (byId.has(r.page_id))
-      recordCounts.set(r.database_id, (recordCounts.get(r.database_id) || 0) + 1);
+    if (byId.has(r.page_id)) recordCounts.set(r.database_id, (recordCounts.get(r.database_id) || 0) + 1);
   // A database record isn't in the tree; its database stands in for it there.
   const openRecord = p.state.records.find((r) => r.page_id === p.activeId);
   const treeActiveId = openRecord
@@ -374,13 +341,9 @@ export function Sidebar(p: Props) {
     .map((id) => byId.get(id))
     .filter((x): x is Page => Boolean(x))
     .slice(0, 5);
-  const home = pages
-    .filter((x) => x.parent_id === null)
-    .sort((a, b) => a.position - b.position)[0];
+  const home = pages.filter((x) => x.parent_id === null).sort((a, b) => a.position - b.position)[0];
   const sorted = (parent: string | null) =>
-    pages
-      .filter((x) => x.parent_id === parent)
-      .sort((a, b) => a.position - b.position);
+    pages.filter((x) => x.parent_id === parent).sort((a, b) => a.position - b.position);
   const visible: Page[] = [];
   const render = (parent: string | null, depth = 0): React.ReactNode =>
     sorted(parent).map((page) => {
@@ -399,13 +362,13 @@ export function Sidebar(p: Props) {
             onPageAction={p.onPageAction}
             onRun={p.playbookIds?.has(page.id) && p.onRunPlaybook ? () => p.onRunPlaybook!(page.id) : undefined}
             recordCount={
-              page.kind === "database" && page.database_id
-                ? recordCounts.get(page.database_id) || 0
-                : undefined
+              page.kind === "database" && page.database_id ? recordCounts.get(page.database_id) || 0 : undefined
             }
             drop={
               drop?.id === page.id
-                ? drop.zone === "after" && p.expanded.has(page.id) && pages.some((x) => x.parent_id === page.id && x.id !== dragId)
+                ? drop.zone === "after" &&
+                  p.expanded.has(page.id) &&
+                  pages.some((x) => x.parent_id === page.id && x.id !== dragId)
                   ? "inside-first"
                   : drop.zone
                 : undefined
@@ -428,8 +391,7 @@ export function Sidebar(p: Props) {
     revealPending.current = null;
     const box = row.getBoundingClientRect();
     const view = scroller.getBoundingClientRect();
-    if (box.top < view.top || box.bottom > view.bottom)
-      row.scrollIntoView({ block: "center" });
+    if (box.top < view.top || box.bottom > view.bottom) row.scrollIntoView({ block: "center" });
   });
   // Rows under the pointer win; the keyboard (no pointer) falls back to the nearest row.
   const collision: CollisionDetection = (args) => {
@@ -460,7 +422,8 @@ export function Sidebar(p: Props) {
           : rect.top + rect.height / 2;
     const at = (y - rect.top) / rect.height;
     const canNest = !!dropPlacement(pages, activeId, overId, "inside");
-    const zone: DropZone = at < 0.28 ? "before" : at > 0.72 ? "after" : canNest ? "inside" : at < 0.5 ? "before" : "after";
+    const zone: DropZone =
+      at < 0.28 ? "before" : at > 0.72 ? "after" : canNest ? "inside" : at < 0.5 ? "before" : "after";
     if (!dropPlacement(pages, activeId, overId, zone, p.expanded)) {
       // e.g. hovering its own subpage: no valid place here.
       setDrop(null);
@@ -512,12 +475,7 @@ export function Sidebar(p: Props) {
             <Brand size={22} />
           </Link>
           <span className="sidebar-top-actions">
-            <button
-              className="sidebar-icon"
-              title="New page"
-              aria-label="Create a page"
-              onClick={() => p.onNew(null)}
-            >
+            <button className="sidebar-icon" title="New page" aria-label="Create a page" onClick={() => p.onNew(null)}>
               <SquarePen size={17} />
             </button>
             <button
@@ -563,12 +521,7 @@ export function Sidebar(p: Props) {
         </nav>
         <div className="sidebar-scroll" ref={scrollRef}>
           {pages.some((x) => x.favorite) && (
-            <SidebarSection
-              id="favorites"
-              label="Favorites"
-              folded={folded.has("favorites")}
-              onFold={fold}
-            >
+            <SidebarSection id="favorites" label="Favorites" folded={folded.has("favorites")} onFold={fold}>
               {pages
                 .filter((x) => x.favorite)
                 .map((page) => (
@@ -585,12 +538,7 @@ export function Sidebar(p: Props) {
             </SidebarSection>
           )}
           {recents.length > 0 && (
-            <SidebarSection
-              id="recents"
-              label="Recents"
-              folded={folded.has("recents")}
-              onFold={fold}
-            >
+            <SidebarSection id="recents" label="Recents" folded={folded.has("recents")} onFold={fold}>
               {recents.map((page) => (
                 <button
                   className="nav-row page-row"
@@ -614,17 +562,16 @@ export function Sidebar(p: Props) {
             action={
               <span className="section-actions">
                 {/* Only when something is open: collapsing an already-flat tree does nothing. */}
-                {p.onCollapseAll &&
-                  [...p.expanded].some((id) => pages.some((x) => x.parent_id === id)) && (
-                    <button
-                      className="icon-button"
-                      aria-label="Collapse all pages"
-                      title="Collapse all"
-                      onClick={p.onCollapseAll}
-                    >
-                      <ChevronsDownUp size={14} />
-                    </button>
-                  )}
+                {p.onCollapseAll && [...p.expanded].some((id) => pages.some((x) => x.parent_id === id)) && (
+                  <button
+                    className="icon-button"
+                    aria-label="Collapse all pages"
+                    title="Collapse all"
+                    onClick={p.onCollapseAll}
+                  >
+                    <ChevronsDownUp size={14} />
+                  </button>
+                )}
                 <button
                   className="icon-button"
                   aria-label="Add a private page"
@@ -657,9 +604,7 @@ export function Sidebar(p: Props) {
                 ) : null}
               </DragOverlay>
             </DndContext>
-            {!pages.length && (
-              <p className="sidebar-empty">No pages yet.</p>
-            )}
+            {!pages.length && <p className="sidebar-empty">No pages yet.</p>}
           </SidebarSection>
         </div>
         <nav className="sidebar-footer-nav" aria-label="More">
@@ -672,10 +617,7 @@ export function Sidebar(p: Props) {
           <Menu
             side="top"
             trigger={
-              <button
-                className="workspace-switch"
-                aria-label={`Workspace: ${workspace?.name || "Your workspace"}`}
-              >
+              <button className="workspace-switch" aria-label={`Workspace: ${workspace?.name || "Your workspace"}`}>
                 <span className="workspace-avatar">{initial}</span>
                 <span>{workspace?.name || "Your workspace"}</span>
                 <ChevronDown size={16} />
@@ -685,13 +627,9 @@ export function Sidebar(p: Props) {
             <div className="menu-label">Your private workspaces</div>
             {p.state.workspaces.map((w) => (
               <MenuItem key={w.id} onClick={() => p.onWorkspace(w.id)}>
-                <span className="workspace-avatar small">
-                  {w.name.trim().charAt(0).toUpperCase()}
-                </span>
+                <span className="workspace-avatar small">{w.name.trim().charAt(0).toUpperCase()}</span>
                 {w.name}
-                {w.id === workspace?.id && (
-                  <Check size={14} className="ml-auto" />
-                )}
+                {w.id === workspace?.id && <Check size={14} className="ml-auto" />}
               </MenuItem>
             ))}
             <MenuSeparator />
@@ -706,21 +644,12 @@ export function Sidebar(p: Props) {
           </Menu>
           <ShortcutsPopover
             trigger={
-              <button
-                className="sidebar-icon"
-                aria-label="Help and keyboard shortcuts"
-                title="Help"
-              >
+              <button className="sidebar-icon" aria-label="Help and keyboard shortcuts" title="Help">
                 <CircleHelp size={18} />
               </button>
             }
           />
-          <button
-            className="sidebar-icon"
-            aria-label="Settings"
-            title="Settings"
-            onClick={p.onSettings}
-          >
+          <button className="sidebar-icon" aria-label="Settings" title="Settings" onClick={p.onSettings}>
             <Settings size={18} />
           </button>
         </div>

@@ -1,0 +1,166 @@
+/* Playbooks on a phone. (Part of globals.css; the parts load in order.) */
+/* ---------- Playbooks on a phone ----------
+ * The list: titles and descriptions get the full width, with a light round Run button
+ * beside each title. The builder: no card around each section (more room for steps), and
+ * a step's settings stack, each label above a full-width field. Running: the step's
+ * buttons sit at the bottom of the screen, within reach of a thumb.
+ */
+@media (max-width: 760px) {
+  .playbooks-head {
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .playbooks-head h1 {
+    font-size: 28px;
+  }
+  .playbooks-head .primary-button {
+    margin-top: 0;
+  }
+  .playbook-row {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 0;
+  }
+  .playbook-main {
+    gap: 12px;
+    padding: 14px 6px 14px 10px;
+  }
+  .playbook-main .page-icon {
+    margin-top: 0;
+  }
+  .playbook-when {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 1px;
+  }
+  .playbook-text small {
+    margin-top: 3px;
+  }
+  .playbook-actions {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    padding-top: 8px;
+  }
+  .playbook-actions .run-button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    box-shadow: none;
+  }
+  .playbook-actions .run-button svg {
+    width: 16px;
+    height: 16px;
+    margin-left: 2px;
+    fill: currentColor;
+  }
+  .playbook-actions .is-resume {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .playbook-actions .is-resume svg {
+    width: 16px;
+    height: 16px;
+  }
+  .playbook-actions .run-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  /* Builder */
+  .pb-section {
+    padding: 14px 0 6px;
+    border-radius: 0;
+    box-shadow: none;
+    border-top: 1px solid var(--divider);
+  }
+  .proc-step-config {
+    margin-left: 0;
+  }
+  /* `html` outweighs the editor's own (later) rules for these. */
+  html .proc-step-config label {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+    text-align: left;
+  }
+  html .proc-step-config .proc-grow {
+    min-width: 0;
+  }
+  html .proc-step-config label .proc-config-word {
+    min-width: 0;
+    font-size: 12px;
+  }
+  .proc-config-line > .proc-config-word {
+    flex-basis: 100%;
+    min-width: 0;
+    margin-top: 2px;
+    font-size: 12px;
+    text-align: left;
+  }
+  .proc-step-config select,
+  .proc-step-config input:not([type="checkbox"]),
+  .proc-config-line > select,
+  .proc-config-line > input {
+    width: 100%;
+    max-width: none;
+    min-height: 40px;
+  }
+
+  /* Running: the step fills the screen and its buttons sit at the bottom, with Back
+     just under them. */
+  .run-main {
+    align-items: stretch;
+    padding: 24px 20px 0;
+  }
+  .run-card:not(.is-summary) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .run-card:not(.is-summary) > .run-card-actions,
+  .run-card:not(.is-summary) .run-card-actions:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: auto;
+    padding: 16px 0 6px;
+    background: linear-gradient(to bottom, transparent, var(--bg) 12px);
+  }
+  .run-card-actions > button,
+  .run-card-actions .run-check-actions > button {
+    flex: 1;
+    justify-content: center;
+    min-height: 46px;
+    font-size: 15px;
+  }
+  .run-card-actions .run-check-actions {
+    flex: 1;
+  }
+  .run-footer {
+    max-width: none;
+    margin-top: 0;
+    padding: 2px 0 calc(8px + env(safe-area-inset-bottom));
+    border-top: 0;
+  }
+}
+@media (hover: none) {
+  .key-hint {
+    display: none;
+  }
+}

@@ -56,7 +56,10 @@ export interface PlannedEdit {
 const EDITS = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const MAX_REPLACEMENTS = 50;
 
-const pageIdProp = { type: "string", description: "The page's id (from search_workspace, read_page or query_database)." };
+const pageIdProp = {
+  type: "string",
+  description: "The page's id (from search_workspace, read_page or query_database).",
+};
 
 export const EDIT_TOOLS: ToolDefinition[] = [
   {
@@ -121,7 +124,12 @@ export const EDIT_TOOLS: ToolDefinition[] = [
             additionalProperties: false,
           },
         },
-        add_rows: { type: "array", maxItems: MAX_RECORDS, items: { type: "object" }, description: "New rows, keyed by property name." },
+        add_rows: {
+          type: "array",
+          maxItems: MAX_RECORDS,
+          items: { type: "object" },
+          description: "New rows, keyed by property name.",
+        },
         update_rows: {
           type: "array",
           maxItems: MAX_RECORDS,
@@ -221,7 +229,11 @@ function updatePage(state: WorkspaceState, args: Record<string, unknown>): Plann
   const title = args.title === undefined ? undefined : text(args.title, "a title", TITLE_MAX, true);
   const description = args.description === undefined ? undefined : text(args.description, "the description", 2000);
   if (title !== undefined || description !== undefined) {
-    edit.pages.push({ id: page.id, ...(title !== undefined ? { title } : {}), ...(description !== undefined ? { description } : {}) });
+    edit.pages.push({
+      id: page.id,
+      ...(title !== undefined ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+    });
     if (title !== undefined) changes.push("title");
     if (description !== undefined) changes.push("description");
   }
@@ -240,14 +252,17 @@ function updatePage(state: WorkspaceState, args: Record<string, unknown>): Plann
   const wantsText = args.content !== undefined || args.append !== undefined || args.replace !== undefined;
   if (wantsText) {
     if (page.kind === "database")
-      throw new ToolError(`“${page.title}” is a database; its text can't be edited. Use update_database for its rows and columns.`);
+      throw new ToolError(
+        `“${page.title}” is a database; its text can't be edited. Use update_database for its rows and columns.`,
+      );
     if (isPlaybook(state, page.id))
       throw new ToolError(`“${page.title}” is a playbook; change it with update_playbook so its steps stay valid.`);
     const document = documentOf(state, page.id);
     const before = document?.markdown || "";
     let after = before;
     if (args.content !== undefined) {
-      if (args.append !== undefined || args.replace !== undefined) throw new ToolError("Send content on its own, or use replace and append.");
+      if (args.append !== undefined || args.replace !== undefined)
+        throw new ToolError("Send content on its own, or use replace and append.");
       if (structureOf(before).length)
         throw new ToolError(
           `“${page.title}” has embedded subpages or databases, which rewriting it would remove. Use replace for the passages to change, or append.`,
@@ -257,18 +272,23 @@ function updatePage(state: WorkspaceState, args: Record<string, unknown>): Plann
       changes.push("text");
     }
     const replacements = list(args.replace, "replace");
-    if (replacements.length > MAX_REPLACEMENTS) throw new ToolError(`At most ${MAX_REPLACEMENTS} replacements at once.`);
+    if (replacements.length > MAX_REPLACEMENTS)
+      throw new ToolError(`At most ${MAX_REPLACEMENTS} replacements at once.`);
     replacements.forEach((raw, index) => {
       const item = record(raw, "replace");
-      if (typeof item.find !== "string" || !item.find) throw new ToolError(`Replacement ${index + 1} needs the exact text to find.`);
-      if (typeof item.replace_with !== "string") throw new ToolError(`Replacement ${index + 1} needs replace_with (text; empty removes it).`);
+      if (typeof item.find !== "string" || !item.find)
+        throw new ToolError(`Replacement ${index + 1} needs the exact text to find.`);
+      if (typeof item.replace_with !== "string")
+        throw new ToolError(`Replacement ${index + 1} needs replace_with (text; empty removes it).`);
       const found = after.split(item.find).length - 1;
       if (found === 0)
         throw new ToolError(
           `Replacement ${index + 1}: “${item.find.slice(0, 80)}” isn't in the page's text. Read the page again and copy the passage exactly.`,
         );
       if (found > 1)
-        throw new ToolError(`Replacement ${index + 1}: “${item.find.slice(0, 80)}” appears ${found} times; include more around it so it's unique.`);
+        throw new ToolError(
+          `Replacement ${index + 1}: “${item.find.slice(0, 80)}” appears ${found} times; include more around it so it's unique.`,
+        );
       after = after.replace(item.find, () => item.replace_with as string);
     });
     if (replacements.length) changes.push(`${replacements.length} passage${replacements.length === 1 ? "" : "s"}`);
@@ -278,15 +298,22 @@ function updatePage(state: WorkspaceState, args: Record<string, unknown>): Plann
       changes.push("added text");
     }
     if (structureOf(after).join("\n") !== structureOf(before).join("\n"))
-      throw new ToolError("That change would add or remove an embedded block (a subpage, database or playbook step). Change only the text around them.");
+      throw new ToolError(
+        "That change would add or remove an embedded block (a subpage, database or playbook step). Change only the text around them.",
+      );
     if (after.length > TEXT_MAX * 2) throw new ToolError("The page would be too long.");
-    if (after !== before) edit.documents.push({ page_id: page.id, markdown: after, expected_updated_at: document?.updated_at ?? null });
+    if (after !== before)
+      edit.documents.push({ page_id: page.id, markdown: after, expected_updated_at: document?.updated_at ?? null });
   }
-  if (!edit.pages.length && !edit.documents.length) throw new ToolError("Nothing to change: send a title, description, replace, append or content.");
+  if (!edit.pages.length && !edit.documents.length)
+    throw new ToolError("Nothing to change: send a title, description, replace, append or content.");
   return {
     edit,
     pageId: page.id,
-    result: { data: { page_id: page.id, changed: changes }, text: `Updated “${title ?? page.title}”: ${changes.join(", ")}.` },
+    result: {
+      data: { page_id: page.id, changed: changes },
+      text: `Updated “${title ?? page.title}”: ${changes.join(", ")}.`,
+    },
   };
 }
 
@@ -300,7 +327,8 @@ function findDatabase(state: WorkspaceState, raw: unknown) {
     live.find((d) => d.id === key || d.page_id === key) ??
     (() => {
       const named = live.filter((d) => d.name.toLowerCase() === key.toLowerCase());
-      if (named.length > 1) throw new ToolError(`More than one database is called “${key}”; use its id (from list_databases).`);
+      if (named.length > 1)
+        throw new ToolError(`More than one database is called “${key}”; use its id (from list_databases).`);
       return named[0];
     })();
   if (!database) throw new ToolError(`There's no database “${key}”. Use list_databases to see them.`);
@@ -308,7 +336,8 @@ function findDatabase(state: WorkspaceState, raw: unknown) {
 }
 
 const CHOICE_TYPES: PropertyType[] = ["select", "multi_select", "status"];
-const SETTABLE = (type: PropertyType) => !["relation", "rollup", "formula", "created_time", "updated_time"].includes(type);
+const SETTABLE = (type: PropertyType) =>
+  !["relation", "rollup", "formula", "created_time", "updated_time"].includes(type);
 
 function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, newId: () => string): PlannedEdit {
   const database = findDatabase(state, args.database);
@@ -319,7 +348,11 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
   const title = args.title === undefined ? undefined : text(args.title, "a name", TITLE_MAX, true);
   const description = args.description === undefined ? undefined : text(args.description, "the description", 2000);
   if (title !== undefined || description !== undefined) {
-    edit.pages.push({ id: page.id, ...(title !== undefined ? { title } : {}), ...(description !== undefined ? { description } : {}) });
+    edit.pages.push({
+      id: page.id,
+      ...(title !== undefined ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+    });
     if (title !== undefined) {
       edit.databases.push({ id: database.id, name: title });
       changes.push("renamed");
@@ -338,9 +371,13 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
     const column = record(raw, "add_properties");
     const name = text(column.name, `a name for new property ${index + 1}`, 100, true);
     const type = column.type as AgentPropertyType;
-    if (!AGENT_PROPERTY_TYPES.includes(type)) throw new ToolError(`“${name}” needs a type: one of ${AGENT_PROPERTY_TYPES.join(", ")}.`);
-    if (columns.some((p) => p.name.toLowerCase() === name.toLowerCase())) throw new ToolError(`There's already a property called “${name}”.`);
-    const options = list(column.options, `the options for “${name}”`).map((o) => String(o).trim()).filter(Boolean);
+    if (!AGENT_PROPERTY_TYPES.includes(type))
+      throw new ToolError(`“${name}” needs a type: one of ${AGENT_PROPERTY_TYPES.join(", ")}.`);
+    if (columns.some((p) => p.name.toLowerCase() === name.toLowerCase()))
+      throw new ToolError(`There's already a property called “${name}”.`);
+    const options = list(column.options, `the options for “${name}”`)
+      .map((o) => String(o).trim())
+      .filter(Boolean);
     const property: Property = {
       id: newId(),
       database_id: database.id,
@@ -363,13 +400,18 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
     const parsed: { property: Property; value: CellValue }[] = [];
     for (const [key, value] of Object.entries(values)) {
       const property = byName.get(key.trim().toLowerCase());
-      if (!property) throw new ToolError(`${capital(where)} has “${key}”, which isn't a property. The properties are: ${columns.map((p) => p.name).join(", ")}.`);
-      if (!SETTABLE(property.type)) throw new ToolError(`“${property.name}” is a ${property.type} property; it can't be set here.`);
+      if (!property)
+        throw new ToolError(
+          `${capital(where)} has “${key}”, which isn't a property. The properties are: ${columns.map((p) => p.name).join(", ")}.`,
+        );
+      if (!SETTABLE(property.type))
+        throw new ToolError(`“${property.name}” is a ${property.type} property; it can't be set here.`);
       const result = cell(property.type, value, property.name, row);
       parsed.push({ property, value: result });
       if (result !== null && CHOICE_TYPES.includes(property.type)) {
         const options = (property.config.options ||= []);
-        for (const choice of Array.isArray(result) ? result : [String(result)]) if (!options.includes(choice)) options.push(choice);
+        for (const choice of Array.isArray(result) ? result : [String(result)])
+          if (!options.includes(choice)) options.push(choice);
       }
     }
     return parsed;
@@ -377,16 +419,23 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
 
   const newRows = list(args.add_rows, "add_rows");
   if (newRows.length > MAX_RECORDS) throw new ToolError(`At most ${MAX_RECORDS} rows at once.`);
-  let rowPosition = Math.max(-1, ...state.records.filter((r) => r.database_id === database.id).map((r) => r.position)) + 1;
+  let rowPosition =
+    Math.max(-1, ...state.records.filter((r) => r.database_id === database.id).map((r) => r.position)) + 1;
   newRows.forEach((raw, index) => {
     const values = parseValues(raw, `new row ${index + 1}`, index);
     const titleValue = values.find((v) => v.property.type === "title")?.value;
     const recordId = newId();
     const pageId = newId();
-    edit.new_pages.push({ id: pageId, parent_id: page.id, title: typeof titleValue === "string" && titleValue ? titleValue : "Untitled", position: rowPosition });
+    edit.new_pages.push({
+      id: pageId,
+      parent_id: page.id,
+      title: typeof titleValue === "string" && titleValue ? titleValue : "Untitled",
+      position: rowPosition,
+    });
     edit.new_documents.push({ page_id: pageId, markdown: "" });
     edit.new_records.push({ id: recordId, database_id: database.id, page_id: pageId, position: rowPosition++ });
-    for (const { property, value } of values) if (value !== null) edit.values.push({ record_id: recordId, property_id: property.id, value });
+    for (const { property, value } of values)
+      if (value !== null) edit.values.push({ record_id: recordId, property_id: property.id, value });
   });
   if (newRows.length) changes.push(`${newRows.length} new row${newRows.length === 1 ? "" : "s"}`);
 
@@ -397,27 +446,39 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
     const key = typeof item.row_id === "string" ? item.row_id.trim() : "";
     const row = state.records.find((r) => r.database_id === database.id && (r.id === key || r.page_id === key));
     if (!row || state.pages.find((p) => p.id === row.page_id)?.deleted_at)
-      throw new ToolError(`Row ${index + 1} of update_rows: there's no row “${key}” in ${database.name}. Use query_database to find its id.`);
+      throw new ToolError(
+        `Row ${index + 1} of update_rows: there's no row “${key}” in ${database.name}. Use query_database to find its id.`,
+      );
     for (const { property, value } of parseValues(item.values, `update_rows item ${index + 1}`, index)) {
       edit.values.push({ record_id: row.id, property_id: property.id, value });
       // The title column is also the row's page title.
-      if (property.type === "title") edit.pages.push({ id: row.page_id, title: typeof value === "string" && value ? value : "Untitled" });
+      if (property.type === "title")
+        edit.pages.push({ id: row.page_id, title: typeof value === "string" && value ? value : "Untitled" });
     }
   });
   if (updates.length) changes.push(`${updates.length} row${updates.length === 1 ? "" : "s"} changed`);
 
   for (const column of columns)
-    if (originalOptions.has(column.id) && JSON.stringify(column.config.options ?? null) !== originalOptions.get(column.id))
+    if (
+      originalOptions.has(column.id) &&
+      JSON.stringify(column.config.options ?? null) !== originalOptions.get(column.id)
+    )
       edit.property_configs.push({ id: column.id, config: column.config });
   // New columns carry their final choices.
   for (const property of edit.new_properties) property.config = columns.find((c) => c.id === property.id)!.config;
 
-  if (!changes.length) throw new ToolError("Nothing to change: send a title, description, add_properties, add_rows or update_rows.");
+  if (!changes.length)
+    throw new ToolError("Nothing to change: send a title, description, add_properties, add_rows or update_rows.");
   return {
     edit,
     pageId: page.id,
     result: {
-      data: { database_id: database.id, page_id: page.id, changed: changes, new_rows: edit.new_records.map((r) => ({ id: r.id, page_id: r.page_id })) },
+      data: {
+        database_id: database.id,
+        page_id: page.id,
+        changed: changes,
+        new_rows: edit.new_records.map((r) => ({ id: r.id, page_id: r.page_id })),
+      },
       text: `Updated the database “${title ?? database.name}”: ${changes.join(", ")}.`,
     },
   };
@@ -427,9 +488,12 @@ function updateDatabase(state: WorkspaceState, args: Record<string, unknown>, ne
 
 function updatePlaybook(state: WorkspaceState, args: Record<string, unknown>, newId: () => string): PlannedEdit {
   const page = livePage(state, args.page_id);
-  if (!isPlaybook(state, page.id)) throw new ToolError(`“${page.title}” isn't a playbook. Use update_page to change a page.`);
+  if (!isPlaybook(state, page.id))
+    throw new ToolError(`“${page.title}” isn't a playbook. Use update_page to change a page.`);
   if (runsOf(state, page.id).runs.some((r) => r.run.status === "running"))
-    throw new ToolError(`A run of “${page.title}” is in progress. Finish or stop it in Slate first, so it isn't left on steps that changed.`);
+    throw new ToolError(
+      `A run of “${page.title}” is in progress. Finish or stop it in Slate first, so it isn't left on steps that changed.`,
+    );
   const document = documentOf(state, page.id);
   const { model, sections, tips, stepCount } = buildPlaybook(args, newId, "changed");
   // What the builder keeps that agents don't send: the details table and the notes.
@@ -445,9 +509,14 @@ function updatePlaybook(state: WorkspaceState, args: Record<string, unknown>, ne
 
   const edit = emptyEdit();
   const title = args.title === undefined ? undefined : text(args.title, "a title", TITLE_MAX, true);
-  const whenToUse = args.when_to_use === undefined ? undefined : whenToUseLine(text(args.when_to_use, "when_to_use", 500));
+  const whenToUse =
+    args.when_to_use === undefined ? undefined : whenToUseLine(text(args.when_to_use, "when_to_use", 500));
   if (title !== undefined || whenToUse !== undefined)
-    edit.pages.push({ id: page.id, ...(title !== undefined ? { title } : {}), ...(whenToUse !== undefined ? { description: whenToUse } : {}) });
+    edit.pages.push({
+      id: page.id,
+      ...(title !== undefined ? { title } : {}),
+      ...(whenToUse !== undefined ? { description: whenToUse } : {}),
+    });
   edit.documents.push({ page_id: page.id, markdown, expected_updated_at: document?.updated_at ?? null });
   return {
     edit,

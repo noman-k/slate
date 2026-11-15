@@ -1,0 +1,175 @@
+/* Settings › AI agents. (Part of globals.css; the parts load in order.) */
+/* Settings › AI agents */
+.settings-muted {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.agent-created {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--icon-green) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--icon-green) 35%, transparent);
+}
+.agent-created > strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.agent-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.agent-copy > span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.agent-copy > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.agent-copy code {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--divider);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.agent-copy button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--icon);
+}
+@media (hover: hover) {
+  .agent-copy button:hover {
+    background: var(--hover-strong);
+    color: var(--text);
+  }
+}
+/* Link from Settings › AI agents to the public setup guide (/docs/mcp). */
+/* The MCP address, in the AI agents intro: allowed to wrap on narrow screens. */
+.agent-url {
+  font-size: 12px;
+  word-break: break-all;
+}
+/* Which workspace a key reaches, under the AI agents intro. */
+.settings-note p.agent-boundary {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+}
+.agent-boundary svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.agent-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .agent-guide:hover {
+    text-decoration: underline;
+  }
+}
+.agent-dismiss {
+  align-self: flex-end;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+@media (hover: hover) {
+  .agent-dismiss:hover {
+    background: var(--hover);
+  }
+}
+.agent-keys {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agent-keys li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--divider);
+}
+.agent-keys li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.agent-keys strong {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.agent-keys small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.agent-keys code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.agent-confirm {
+  display: inline-flex;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.procedure-more {
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+@media (hover: hover) {
+  .procedure-more:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+
+.run-bar-when {
+  margin-left: 4px;
+  color: var(--text-tertiary);
+}

@@ -5,5 +5,5 @@
  * A relative Location is resolved by the browser against the page it is on.
  */
 export function redirectTo(path: string, status: 302 | 303 = 303) {
-  return new Response(null, { status, headers: { Location: path, 'Cache-Control': 'private, no-store' } });
+  return new Response(null, { status, headers: { Location: path, "Cache-Control": "private, no-store" } });
 }

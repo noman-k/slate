@@ -6,12 +6,16 @@ import { REPOSITORY_URL } from "@/lib/project";
 /** Header for the public pages around the app (docs, privacy, contact). Needs landing.css. */
 export function SiteHeader({ current }: { current?: "/docs/mcp" | "/privacy" | "/contact" }) {
   const link = (href: NonNullable<typeof current>, label: string) => (
-    <Link href={href} aria-current={current === href ? "page" : undefined}>{label}</Link>
+    <Link href={href} aria-current={current === href ? "page" : undefined}>
+      {label}
+    </Link>
   );
   return (
     <header className="landing-header">
       <div className="landing-nav">
-        <Link href="/" className="landing-brand" aria-label="Slate home"><Brand size={26} /></Link>
+        <Link href="/" className="landing-brand" aria-label="Slate home">
+          <Brand size={26} />
+        </Link>
         <nav className="landing-sections" aria-label="Site">
           <Link href="/">Product</Link>
           {link("/docs/mcp", "AI agents (MCP)")}
@@ -19,7 +23,9 @@ export function SiteHeader({ current }: { current?: "/docs/mcp" | "/privacy" | "
           {link("/contact", "Contact")}
         </nav>
         <div className="landing-account">
-          <Link href="/app" className="landing-button small outline">Open Slate</Link>
+          <Link href="/app" className="landing-button small outline">
+            Open Slate
+          </Link>
         </div>
       </div>
     </header>
@@ -39,7 +45,9 @@ export function SiteFooter() {
         <h2>Product</h2>
         <Link href="/">Home</Link>
         <Link href="/docs/mcp">AI agents (MCP)</Link>
-        <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">Source code (GitHub)</a>
+        <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">
+          Source code (GitHub)
+        </a>
       </nav>
       <nav aria-label="Account">
         <h2>Workspace</h2>

@@ -39,28 +39,50 @@ describe("Cloudflare rate limiting (production)", () => {
   it("asks the binding, keyed by the caller", async () => {
     const limit = vi.fn(async ({ key }: { key: string }) => ({ success: key !== "over" }));
     cloudflare.env = { RUN_REQUEST_LIMITER: { limit } };
-    expect(await rateLimit("RUN_REQUEST_LIMITER", "user-b")).toEqual({ ok: true, limit: 30, retryAfter: PERIOD_SECONDS });
-    expect(await rateLimit("RUN_REQUEST_LIMITER", "over")).toEqual({ ok: false, limit: 30, retryAfter: PERIOD_SECONDS });
+    expect(await rateLimit("RUN_REQUEST_LIMITER", "user-b")).toEqual({
+      ok: true,
+      limit: 30,
+      retryAfter: PERIOD_SECONDS,
+    });
+    expect(await rateLimit("RUN_REQUEST_LIMITER", "over")).toEqual({
+      ok: false,
+      limit: 30,
+      retryAfter: PERIOD_SECONDS,
+    });
     expect(limit).toHaveBeenCalledWith({ key: "user-b" });
   });
   it("lets requests through if the limiter itself fails", async () => {
-    cloudflare.env = { MCP_KEY_LIMITER: { limit: async () => { throw new Error("unavailable"); } } };
+    cloudflare.env = {
+      MCP_KEY_LIMITER: {
+        limit: async () => {
+          throw new Error("unavailable");
+        },
+      },
+    };
     expect((await rateLimit("MCP_KEY_LIMITER", "key")).ok).toBe(true);
   });
   it("matches the limits declared in wrangler.jsonc", () => {
     const { experimental_readRawConfig } = createRequire(import.meta.url)("wrangler") as {
-      experimental_readRawConfig: (a: { config: string }, b: object) => { rawConfig: { ratelimits?: { name: string; simple: { limit: number; period: number } }[] } };
+      experimental_readRawConfig: (
+        a: { config: string },
+        b: object,
+      ) => { rawConfig: { ratelimits?: { name: string; simple: { limit: number; period: number } }[] } };
     };
     const { rawConfig } = experimental_readRawConfig({ config: "wrangler.jsonc" }, { useRedirectIfAvailable: false });
     const declared = Object.fromEntries((rawConfig.ratelimits || []).map((r) => [r.name, r.simple]));
-    for (const [name, limit] of Object.entries(LIMITS)) expect(declared[name]).toEqual({ limit, period: PERIOD_SECONDS });
+    for (const [name, limit] of Object.entries(LIMITS))
+      expect(declared[name]).toEqual({ limit, period: PERIOD_SECONDS });
   });
 });
 
 describe("caller address", () => {
   it("prefers Cloudflare's header", () => {
-    const request = new Request("https://x", { headers: { "cf-connecting-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.1, 10.0.0.1" } });
+    const request = new Request("https://x", {
+      headers: { "cf-connecting-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.1, 10.0.0.1" },
+    });
     expect(clientAddress(request)).toBe("203.0.113.7");
-    expect(clientAddress(new Request("https://x", { headers: { "x-forwarded-for": "198.51.100.1, 10.0.0.1" } }))).toBe("198.51.100.1");
+    expect(clientAddress(new Request("https://x", { headers: { "x-forwarded-for": "198.51.100.1, 10.0.0.1" } }))).toBe(
+      "198.51.100.1",
+    );
   });
 });

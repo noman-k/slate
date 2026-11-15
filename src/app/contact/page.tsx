@@ -26,31 +26,46 @@ async function memberEmail() {
   }
 }
 
-export default async function Contact({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function Contact({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const query = await searchParams;
   const topic = isTopic(query.topic) ? query.topic : null;
   const email = await memberEmail();
   return (
     <div className="landing docs">
-      <a className="skip-link" href="#main">Skip to content</a>
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <SiteHeader current="/contact" />
       <main id="main" className="docs-main docs-single contact-page">
         <p className="landing-kicker">Contact</p>
         <h1>How can we help?</h1>
         <p className="docs-lede">
-          Questions about your account, deleting your data, or privacy: send a message and you&apos;ll get a reply by email.
+          Questions about your account, deleting your data, or privacy: send a message and you&apos;ll get a reply by
+          email.
         </p>
         <ul className="contact-elsewhere" aria-label="Other ways to reach us">
           <li>
             <Bug size={16} />
             <span>
-              Found a bug or have an idea? <a href={`${REPOSITORY_URL}/issues/new/choose`} target="_blank" rel="noreferrer">Open a GitHub issue</a>, so others can follow along.
+              Found a bug or have an idea?{" "}
+              <a href={`${REPOSITORY_URL}/issues/new/choose`} target="_blank" rel="noreferrer">
+                Open a GitHub issue
+              </a>
+              , so others can follow along.
             </span>
           </li>
           <li>
             <ShieldAlert size={16} />
             <span>
-              A security problem? Please <a href={`${REPOSITORY_URL}/security/advisories/new`} target="_blank" rel="noreferrer">report it privately</a>, never in public.
+              A security problem? Please{" "}
+              <a href={`${REPOSITORY_URL}/security/advisories/new`} target="_blank" rel="noreferrer">
+                report it privately
+              </a>
+              , never in public.
             </span>
           </li>
         </ul>

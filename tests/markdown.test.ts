@@ -34,14 +34,10 @@ describe("lossless Markdown source representation", () => {
     const source =
       "Before\n\n:::future\nsome content\n:::\n\n:::slate {bad json}\n\n<div>unsafe HTML is preserved as source</div>\n\n[^1]: Footnote\n\nAfter";
     expect(joinMarkdown(splitMarkdown(source))).toBe(source);
-    expect(
-      splitMarkdown(source).filter((part) => part.kind === "preserved"),
-    ).toHaveLength(4);
+    expect(splitMarkdown(source).filter((part) => part.kind === "preserved")).toHaveLength(4);
   });
   it("uses a longer code fence when a code sample contains backtick fences", () => {
-    expect(fencedCode("```markdown\nexample\n```", "md")).toBe(
-      "````md\n```markdown\nexample\n```\n````",
-    );
+    expect(fencedCode("```markdown\nexample\n```", "md")).toBe("````md\n```markdown\nexample\n```\n````");
   });
   it("preserves nested callout and toggle document nodes", () => {
     const node = {
@@ -61,9 +57,7 @@ describe("lossless Markdown source representation", () => {
     };
     const source = `Before\n\n:::slate-node ${JSON.stringify(node)}\n\nAfter`;
     expect(joinMarkdown(splitMarkdown(source))).toBe(source);
-    expect(
-      splitMarkdown(source).find((part) => part.kind === "rich"),
-    ).toMatchObject({ kind: "rich", node });
+    expect(splitMarkdown(source).find((part) => part.kind === "rich")).toMatchObject({ kind: "rich", node });
   });
   it("preserves YAML frontmatter explicitly rather than changing it into headings", () => {
     const source = "---\ntitle: My page\ntags: [one, two]\n---\n\n# Hello";
@@ -89,8 +83,6 @@ describe("lossless Markdown source representation", () => {
   it("rejects unsafe image URLs", () => {
     expect(safeImageUrl("javascript:alert(1)")).toBeNull();
     expect(safeImageUrl("data:text/html,test")).toBeNull();
-    expect(safeImageUrl("https://example.com/image.png")).toBe(
-      "https://example.com/image.png",
-    );
+    expect(safeImageUrl("https://example.com/image.png")).toBe("https://example.com/image.png");
   });
 });

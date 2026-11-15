@@ -6,7 +6,11 @@ export type AgentScope = "read" | "write" | "edit";
 
 export const AGENT_SCOPES: { value: AgentScope; label: string; hint: string }[] = [
   { value: "read", label: "Read only", hint: "Search and read pages, databases and playbooks." },
-  { value: "write", label: "Read and create", hint: "Also add new pages, databases and playbooks. Never changes what’s there." },
+  {
+    value: "write",
+    label: "Read and create",
+    hint: "Also add new pages, databases and playbooks. Never changes what’s there.",
+  },
   {
     value: "edit",
     label: "Read, create and edit",

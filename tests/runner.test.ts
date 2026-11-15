@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { PROCEDURE_TEMPLATES, templateMarkdown } from "../src/lib/procedures";
-import { advance, back, evaluate, interpolate, parseProcedure, runLogMarkdown, startRun, variablesOf } from "../src/lib/runner";
+import {
+  advance,
+  back,
+  evaluate,
+  interpolate,
+  parseProcedure,
+  runLogMarkdown,
+  startRun,
+  variablesOf,
+} from "../src/lib/runner";
 
 const refund = parseProcedure(templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "playbook-refund")!));
 const deploy = parseProcedure(templateMarkdown(PROCEDURE_TEMPLATES.find((t) => t.id === "runbook-deploy")!));
@@ -9,7 +18,13 @@ describe("running a playbook", () => {
   it("reads parameters, sections and steps from the Markdown", () => {
     expect(refund.params.map((p) => p.name)).toEqual(["order_number", "order_total", "days_since_delivery", "reason"]);
     expect(refund.sections).toEqual(["Guidelines", "Check eligibility", "Refund", "Offer store credit", "Escalate"]);
-    expect(refund.steps[0]).toMatchObject({ step: "if", variable: "days_since_delivery", op: "lt", value: "31", section: 1 });
+    expect(refund.steps[0]).toMatchObject({
+      step: "if",
+      variable: "days_since_delivery",
+      op: "lt",
+      value: "31",
+      section: 1,
+    });
     expect(variablesOf(refund)).toContain("accepts_credit");
   });
 

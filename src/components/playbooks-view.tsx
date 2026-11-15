@@ -22,9 +22,7 @@ export function isPlaybookPage(state: WorkspaceState, page: Page) {
 
 /** The open workspace's playbooks (never another workspace's). */
 export function playbookPages(state: WorkspaceState) {
-  return state.pages.filter(
-    (page) => page.workspace_id === state.active_workspace_id && isPlaybookPage(state, page),
-  );
+  return state.pages.filter((page) => page.workspace_id === state.active_workspace_id && isPlaybookPage(state, page));
 }
 
 export const PLAYBOOKS_VIEW = "playbooks";
@@ -65,13 +63,18 @@ export function PlaybooksView({
       };
     })
     // Most recently run first; never-run ones after, by name.
-    .sort((a, b) => (b.last || "").localeCompare(a.last || "") || (a.page.title || "").localeCompare(b.page.title || ""));
+    .sort(
+      (a, b) => (b.last || "").localeCompare(a.last || "") || (a.page.title || "").localeCompare(b.page.title || ""),
+    );
   return (
     <div className="playbooks-view">
       <header className="playbooks-head">
         <div>
           <h1>Playbooks</h1>
-          <p>Checklists and guides you can run. They stay in the pages they belong to — this is where to find and run them all.</p>
+          <p>
+            Checklists and guides you can run. They stay in the pages they belong to — this is where to find and run
+            them all.
+          </p>
         </div>
         <button className="primary-button" onClick={onNew}>
           <Plus size={15} />
@@ -92,7 +95,11 @@ export function PlaybooksView({
         <ul className="playbooks-list" aria-label="Playbooks">
           {rows.map((row) => (
             <li key={row.page.id} className="playbook-row">
-              <button className="playbook-main" onClick={() => onOpen(row.page.id)} title={`Open ${row.page.title || "Untitled"}`}>
+              <button
+                className="playbook-main"
+                onClick={() => onOpen(row.page.id)}
+                title={`Open ${row.page.title || "Untitled"}`}
+              >
                 <PageIcon page={row.page} size={22} />
                 <span className="playbook-text">
                   <strong>{row.page.title || "Untitled"}</strong>
@@ -118,7 +125,11 @@ export function PlaybooksView({
                     <span className="run-label">Resume</span>
                   </button>
                 )}
-                <button className="run-button" onClick={() => onRun(row.page.id)} aria-label={`Run ${row.page.title || "Untitled"}`}>
+                <button
+                  className="run-button"
+                  onClick={() => onRun(row.page.id)}
+                  aria-label={`Run ${row.page.title || "Untitled"}`}
+                >
                   <Play size={13} />
                   <span className="run-label">Run</span>
                 </button>

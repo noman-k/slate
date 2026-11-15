@@ -51,7 +51,9 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--text-tertiary);
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
 }
 @media (hover: hover) {
   .editor-mode-options button:hover {
@@ -471,7 +473,10 @@
   border-radius: var(--radius-sm);
   font: 500 12px var(--font);
   color: var(--text-secondary);
-  transition: background-color var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
+  transition:
+    background-color var(--motion-fast),
+    color var(--motion-fast),
+    opacity var(--motion-fast);
 }
 .code-lang svg {
   color: var(--text-tertiary);
@@ -1274,7 +1279,9 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
   border-radius: var(--radius);
   color: var(--icon);
 }
@@ -1491,7 +1498,9 @@
   flex-shrink: 0;
 }
 .editor-db-picker-search:focus-within {
-  box-shadow: inset 0 0 0 1px var(--accent-border), 0 0 0 2px var(--accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--accent-border),
+    0 0 0 2px var(--accent-soft);
 }
 .editor-db-picker-search input {
   flex: 1;
@@ -1578,10 +1587,18 @@
   background: color-mix(in srgb, var(--step-color) 7%, transparent);
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--step-color) 70%, transparent);
 }
-.proc-step.is-ask { --step-color: var(--icon-purple); }
-.proc-step.is-check { --step-color: var(--icon-green); }
-.proc-step.is-if { --step-color: var(--icon-orange); }
-.proc-step.is-end { --step-color: var(--icon-gray); }
+.proc-step.is-ask {
+  --step-color: var(--icon-purple);
+}
+.proc-step.is-check {
+  --step-color: var(--icon-green);
+}
+.proc-step.is-if {
+  --step-color: var(--icon-orange);
+}
+.proc-step.is-end {
+  --step-color: var(--icon-gray);
+}
 .proc-step-row {
   display: flex;
   align-items: flex-start;
@@ -1627,7 +1644,9 @@
   }
 }
 .proc-step-badge:has(select:focus-visible) .proc-step-badge-label {
-  box-shadow: 0 0 0 2px var(--accent-soft), inset 0 0 0 1px var(--accent-border);
+  box-shadow:
+    0 0 0 2px var(--accent-soft),
+    inset 0 0 0 1px var(--accent-border);
 }
 .proc-step-body {
   position: relative;
@@ -1836,7 +1855,9 @@
     display: none;
   }
 }
-.proc-step.is-api { --step-color: var(--icon-pink); }
+.proc-step.is-api {
+  --step-color: var(--icon-pink);
+}
 .proc-step-config .proc-method {
   width: 92px;
   font-family: var(--mono);
@@ -2086,11 +2107,21 @@
   border-radius: 7px;
   text-align: left;
 }
-.proc-add-choice.is-ask { --step-color: var(--icon-purple); }
-.proc-add-choice.is-check { --step-color: var(--icon-green); }
-.proc-add-choice.is-if { --step-color: var(--icon-orange); }
-.proc-add-choice.is-api { --step-color: var(--icon-pink); }
-.proc-add-choice.is-end { --step-color: var(--icon-gray); }
+.proc-add-choice.is-ask {
+  --step-color: var(--icon-purple);
+}
+.proc-add-choice.is-check {
+  --step-color: var(--icon-green);
+}
+.proc-add-choice.is-if {
+  --step-color: var(--icon-orange);
+}
+.proc-add-choice.is-api {
+  --step-color: var(--icon-pink);
+}
+.proc-add-choice.is-end {
+  --step-color: var(--icon-gray);
+}
 .proc-add-choice strong {
   font-size: 12px;
   font-weight: 650;
@@ -2273,7 +2304,9 @@
   box-shadow: var(--shadow-popover);
   white-space: nowrap;
   animation: appear var(--motion-fast) var(--ease);
-  transition: top 120ms var(--ease), left 120ms var(--ease);
+  transition:
+    top 120ms var(--ease),
+    left 120ms var(--ease);
 }
 .keyboard-toolbar button {
   display: flex;

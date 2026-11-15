@@ -1,35 +1,17 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { scrollBehavior } from "@/lib/utils";
 import type { Editor } from "@tiptap/core";
-import {
-  EditorState as ProseMirrorState,
-  TextSelection,
-} from "@tiptap/pm/state";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { EditorState as ProseMirrorState, TextSelection } from "@tiptap/pm/state";
+
 import { closeHistory } from "@tiptap/pm/history";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
-import {
-  markdown as markdownLanguage,
-  markdownLanguage as gfmLanguage,
-} from "@codemirror/lang-markdown";
-import {
-  applyMarkdown,
-  githubMarkdownLook,
-  markdownKeymap,
-  type MarkdownAction,
-} from "./markdown-source";
+import { markdown as markdownLanguage, markdownLanguage as gfmLanguage } from "@codemirror/lang-markdown";
+import { applyMarkdown, githubMarkdownLook, markdownKeymap, type MarkdownAction } from "./markdown-source";
 import { basicSetup } from "codemirror";
 import {
   Bold,
@@ -41,32 +23,18 @@ import {
   Heading2,
   Heading3,
   List,
-  KanbanSquare,
   ListOrdered,
   CheckSquare,
   Quote,
-  Minus,
-  Table2,
-  ImageIcon,
   FileText,
-  Database,
-  ChevronRight,
-  Info,
   GripVertical,
   Plus,
   Copy,
   Trash2,
   ArrowUp,
   ArrowDown,
-  CircleHelp,
   Code2,
-  Compass,
-  Flag,
-  Globe,
   ListChecks,
-  MessageSquare,
-  SlidersHorizontal,
-  Split,
   Undo2,
   Redo2,
   Check,
@@ -75,12 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { safeImageUrl } from "../../lib/markdown";
-import {
-  createDocumentExtensions,
-  parseDocument,
-  EmbedContext,
-  type EmbedOptions,
-} from "./extensions";
+import { createDocumentExtensions, parseDocument, EmbedContext, type EmbedOptions } from "./extensions";
 import { OPEN_PAGE_EVENT, touchTaps } from "./touch-taps";
 import { setRunFrom } from "./procedure-nodes";
 import { EditorUrlPopover } from "./EditorUrlPopover";
@@ -88,7 +51,8 @@ import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
 import { isTouchOnly, useKeys } from "../keys";
 import { KeyboardToolbar, changeIndent } from "./keyboard-toolbar";
-
+import { blockAtY, placeBubble, popoverNearSelection, type TopBlock } from "./editor-layout";
+import { buildSlashItems, filterSlashItems, type DbPicker, type SlashItem, type UrlInput } from "./slash-items";
 export interface DocumentEditorProps {
   pageId: string;
   markdown: string;
@@ -137,8 +101,6 @@ interface SlashState {
 }
 const SLASH_MENU_WIDTH = 300;
 const SLASH_MENU_HEIGHT = 360;
-/** The selection toolbar's width (its buttons are larger on touch screens). */
-const bubbleWidth = () => (isTouchOnly() ? 342 : 304);
 
 /** The Markdown mark, as GitHub shows under its editors. */
 function MarkdownMark() {
@@ -155,11 +117,7 @@ function MarkdownMark() {
  * mode must not be undoable, or ⌘Z right after opening a page would empty it.
  */
 function loadDocument(editor: Editor, source: string) {
-  editor
-    .chain()
-    .setMeta("addToHistory", false)
-    .setContent(parseDocument(editor, source), { emitUpdate: false })
-    .run();
+  editor.chain().setMeta("addToHistory", false).setContent(parseDocument(editor, source), { emitUpdate: false }).run();
   // setContent can leave the selection *on* a block such as a page link. It is
   // invisible until the editor gains focus, then that block lights up in blue.
   // Park a plain text cursor in the first place that takes text instead.
@@ -170,11 +128,8 @@ function loadDocument(editor: Editor, source: string) {
     if (node.isTextblock) textAt = pos + 1;
     return textAt < 0;
   });
-  const selection =
-    textAt >= 0 ? TextSelection.create(doc, textAt) : TextSelection.atEnd(doc);
-  editor.view.dispatch(
-    editor.state.tr.setSelection(selection).setMeta("addToHistory", false),
-  );
+  const selection = textAt >= 0 ? TextSelection.create(doc, textAt) : TextSelection.atEnd(doc);
+  editor.view.dispatch(editor.state.tr.setSelection(selection).setMeta("addToHistory", false));
 }
 
 /** Rebuilds the editor state with the same document and plugins but empty undo history. */
@@ -222,106 +177,6 @@ interface BlockHover {
   /** The block's box, for the highlight shown while it is the menu or drag target. */
   box: { top: number; height: number };
 }
-type SlashItem = {
-  name: string;
-  description: string;
-  icon: typeof FileText;
-  group: "Basic blocks" | "Media & embeds" | "Playbook steps" | "Templates" | "Steps" | "Text";
-  /** Extra search words, so "/todo", "/ul" or "/img" find the right block. */
-  keywords: string;
-  run: (editor: Editor) => void;
-};
-type TopBlock = { el: HTMLElement; pos: number; node: ProseMirrorNode; rect: DOMRect };
-
-/** Top-level blocks with their DOM elements, in document order. */
-function topLevelBlocks(editor: Editor): Omit<TopBlock, "rect">[] {
-  const elements = Array.from(editor.view.dom.children) as HTMLElement[];
-  const blocks: Omit<TopBlock, "rect">[] = [];
-  if (elements.length === editor.state.doc.childCount) {
-    editor.state.doc.forEach((node, offset, index) =>
-      blocks.push({ el: elements[index], pos: offset, node }),
-    );
-    return blocks;
-  }
-  // DOM and document disagree (mid-transaction): resolve each element instead.
-  for (const el of elements)
-    try {
-      const resolved = editor.state.doc.resolve(editor.view.posAtDOM(el, 0));
-      const pos = resolved.depth ? resolved.before(1) : resolved.pos;
-      const node = editor.state.doc.nodeAt(pos);
-      if (node && !blocks.some((block) => block.pos === pos)) blocks.push({ el, pos, node });
-    } catch {
-      /* Detached element. */
-    }
-  return blocks;
-}
-
-/** The top-level block at a vertical position (or the nearest within `reach` px). */
-function blockAtY(editor: Editor, y: number, reach = 12): TopBlock | null {
-  let nearest: TopBlock | null = null;
-  let distance = Infinity;
-  for (const block of topLevelBlocks(editor)) {
-    const rect = block.el.getBoundingClientRect();
-    if (y >= rect.top && y <= rect.bottom) return { ...block, rect };
-    const gap = y < rect.top ? rect.top - y : y - rect.bottom;
-    if (gap < distance) {
-      distance = gap;
-      nearest = { ...block, rect };
-    }
-  }
-  return distance <= reach ? nearest : null;
-}
-
-/** Places the link/image popover under the selection (above it when there's no room). */
-function popoverNearSelection(editor: Editor, height: number) {
-  const rect = editor.view.dom.closest(".document-editor")?.getBoundingClientRect();
-  if (!rect) return undefined;
-  const { from, to } = editor.state.selection;
-  const start = editor.view.coordsAtPos(from);
-  const end = editor.view.coordsAtPos(to);
-  const width = 360;
-  const left = Math.min(Math.max(0, rect.width - width), Math.max(0, start.left - rect.left - 8));
-  // Measure against the visible page (below the top bar), not the whole window, so a
-  // popover never opens up under the top bar or off the bottom of the screen.
-  const view = editor.view.dom.closest(".page-scroll")?.getBoundingClientRect();
-  const top = view?.top ?? 0;
-  const bottom = view?.bottom ?? window.innerHeight;
-  const below = bottom - end.bottom - 16;
-  const above = start.top - top - 16;
-  // Below if it fits (or has more room than above); then shrink to the room there is.
-  if (below >= height || below >= above)
-    return { top: end.bottom - rect.top + 8, left, maxHeight: Math.max(160, Math.min(height, below)) };
-  return { bottom: rect.bottom - start.top + 8, left, maxHeight: Math.max(160, Math.min(height, above)) };
-}
-
-/** Where the selection toolbar goes; null when it should be hidden. */
-function placeBubble(editor: Editor, wrapper: HTMLElement | null) {
-  const { selection } = editor.state;
-  if (
-    !(selection instanceof TextSelection) ||
-    selection.empty ||
-    !editor.isFocused ||
-    editor.isActive("codeBlock") ||
-    !editor.state.doc.textBetween(selection.from, selection.to).trim()
-  )
-    return null;
-  const start = editor.view.coordsAtPos(selection.from);
-  const end = editor.view.coordsAtPos(selection.to);
-  const rect = wrapper?.getBoundingClientRect();
-  const center = (start.left + end.right) / 2 - (rect?.left || 0);
-  const BUBBLE_WIDTH = bubbleWidth();
-  // Near the top of the window there is no room above: show it under the selection.
-  const below = start.top < 96;
-  return {
-    top: below ? end.bottom - (rect?.top || 0) + 8 : start.top - (rect?.top || 0) - 46,
-    // Centred on the selection, kept inside the editor and at least 8px inside the window
-    // (on a phone the editor reaches the screen's edges).
-    left: Math.min(
-      Math.min((rect?.width || 0) - BUBBLE_WIDTH, window.innerWidth - 8 - BUBBLE_WIDTH - (rect?.left || 0)),
-      Math.max(0, 8 - (rect?.left || 0), center - BUBBLE_WIDTH / 2),
-    ),
-  };
-}
 
 export function DocumentEditor(props: DocumentEditorProps) {
   const shortcut = useKeys();
@@ -350,20 +205,11 @@ export function DocumentEditor(props: DocumentEditorProps) {
   const [slashIndex, setSlashIndex] = useState(0);
   const [hover, setHover] = useState<BlockHover | null>(null);
   const [blockMenu, setBlockMenu] = useState(false);
-  const [bubble, setBubble] = useState<{ top: number; left: number } | null>(
-    null,
-  );
+  const [bubble, setBubble] = useState<{ top: number; left: number } | null>(null);
   const [tick, setTick] = useState(0);
-  const [urlInput, setUrlInput] = useState<{
-    kind: "link" | "image";
-    value: string;
-    position?: { top?: number; bottom?: number; left: number; maxHeight?: number };
-  } | null>(null);
+  const [urlInput, setUrlInput] = useState<UrlInput>(null);
   /** "/linked database": choose an existing database (or a new one) to show here. */
-  const [dbPicker, setDbPicker] = useState<{
-    databases: DatabaseChoice[];
-    position?: { top?: number; bottom?: number; left: number; maxHeight?: number };
-  } | null>(null);
+  const [dbPicker, setDbPicker] = useState<DbPicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const sourceHostRef = useRef<HTMLDivElement>(null);
   const [sourceStats, setSourceStats] = useState({ lines: 0, words: 0 });
@@ -377,9 +223,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
   const touchHandlers = useMemo(() => touchTaps(), []);
   /** Whether the pointer that's down is a finger (see the editor's onClick). */
   const tapping = useRef(false);
-  const slashHandlerRef = useRef<(event: KeyboardEvent) => boolean>(
-    () => false,
-  );
+  const slashHandlerRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
   /** Where the "/" was that Escape dismissed: typing on doesn't reopen it. */
   const dismissedSlash = useRef<number | null>(null);
   const draggedBlock = useRef<number | null>(null);
@@ -399,9 +243,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
   useEffect(() => {
     uploadRef.current = onUploadImage;
   }, [onUploadImage]);
-  const insertImageRef = useRef<(file: File, at?: number) => Promise<void>>(
-    async () => {},
-  );
+  const insertImageRef = useRef<(file: File, at?: number) => Promise<void>>(async () => {});
   const extensions = useMemo(() => createDocumentExtensions(), []);
   const editor = useEditor(
     {
@@ -455,9 +297,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
           // Blocks dragged by their handle are moved by the wrapper's drop handler.
           if (event.dataTransfer?.types.includes("application/x-slate-block")) return true;
           if (moved) return false;
-          const file = Array.from(event.dataTransfer?.files || []).find(
-            (item) => item.type.startsWith("image/"),
-          );
+          const file = Array.from(event.dataTransfer?.files || []).find((item) => item.type.startsWith("image/"));
           if (!file) return false;
           event.preventDefault();
           const target = view.posAtCoords({
@@ -468,9 +308,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
           return true;
         },
         handlePaste: (view, event) => {
-          const image = Array.from(event.clipboardData?.files || []).find(
-            (item) => item.type.startsWith("image/"),
-          );
+          const image = Array.from(event.clipboardData?.files || []).find((item) => item.type.startsWith("image/"));
           if (image) {
             event.preventDefault();
             void insertImageRef.current(image);
@@ -485,10 +323,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             return false;
           event.preventDefault();
           const current = editorRef.current;
-          if (current)
-            current.commands.insertContent(
-              parseDocument(current, text).content || [],
-            );
+          if (current) current.commands.insertContent(parseDocument(current, text).content || []);
           return !!view;
         },
       },
@@ -503,29 +338,18 @@ export function DocumentEditor(props: DocumentEditorProps) {
         const match = before.match(/(?:^|\s)\/([^\s/]{0,30})$/);
         const slashAt = match ? $from.pos - match[1].length - 1 : -1;
         if (!match) dismissedSlash.current = null;
-        if (
-          match &&
-          $from.parent.type.name === "paragraph" &&
-          dismissedSlash.current !== slashAt
-        ) {
+        if (match && $from.parent.type.name === "paragraph" && dismissedSlash.current !== slashAt) {
           const rect = wrapperRef.current?.getBoundingClientRect();
           const caret = current.view.coordsAtPos($from.pos);
           // Open upward when the caret is near the bottom of the window.
-          const above =
-            window.innerHeight - caret.bottom < SLASH_MENU_HEIGHT &&
-            caret.top > SLASH_MENU_HEIGHT;
+          const above = window.innerHeight - caret.bottom < SLASH_MENU_HEIGHT && caret.top > SLASH_MENU_HEIGHT;
           const maxLeft = Math.max(0, (rect?.width || 0) - SLASH_MENU_WIDTH);
           setSlash({
             from: slashAt,
             to: $from.pos,
             query: match[1],
-            ...(above
-              ? { bottom: (rect?.bottom || 0) - caret.top + 6 }
-              : { top: caret.bottom - (rect?.top || 0) + 6 }),
-            left: Math.min(
-              maxLeft,
-              Math.max(0, caret.left - (rect?.left || 0) - 10),
-            ),
+            ...(above ? { bottom: (rect?.bottom || 0) - caret.top + 6 } : { top: caret.bottom - (rect?.top || 0) + 6 }),
+            left: Math.min(maxLeft, Math.max(0, caret.left - (rect?.left || 0) - 10)),
           });
           setSlashIndex(0);
         } else setSlash(null);
@@ -564,12 +388,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
           .run();
         toast.success("Image added", { id: pending });
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "The image could not be uploaded.",
-          { id: pending },
-        );
+        toast.error(error instanceof Error ? error.message : "The image could not be uploaded.", { id: pending });
       }
     };
   }, [editor]);
@@ -593,8 +412,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
     const position = Number(match[1]);
     if (position >= editor.state.doc.content.size) return;
     const element = editor.view.nodeDOM(position);
-    if (element instanceof HTMLElement)
-      element.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
+    if (element instanceof HTMLElement) element.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
   }, [editor, pageId]);
 
   useEffect(() => {
@@ -628,9 +446,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             const undoCount = undoDepth(update.state);
             const redoCount = redoDepth(update.state);
             setSourceHistory((current) =>
-              current.undo === undoCount && current.redo === redoCount
-                ? current
-                : { undo: undoCount, redo: redoCount },
+              current.undo === undoCount && current.redo === redoCount ? current : { undo: undoCount, redo: redoCount },
             );
             if (update.docChanged) {
               const value = update.state.doc.toString();
@@ -654,390 +470,22 @@ export function DocumentEditor(props: DocumentEditorProps) {
   }, [mode, pageId]);
 
   const allItems: SlashItem[] = useMemo(
-    () => [
-      {
-        name: "Text",
-        group: "Basic blocks",
-        keywords: "paragraph plain p normal",
-        description: "Start writing with plain text",
-        icon: FileText,
-        run: (e) => {
-          e.chain().focus().setParagraph().run();
-        },
-      },
-      {
-        name: "Heading 1",
-        group: "Basic blocks",
-        keywords: "h1 title big",
-        description: "A large section heading",
-        icon: Heading1,
-        run: (e) => {
-          e.chain().focus().toggleHeading({ level: 1 }).run();
-        },
-      },
-      {
-        name: "Heading 2",
-        group: "Basic blocks",
-        keywords: "h2 subtitle",
-        description: "A medium section heading",
-        icon: Heading2,
-        run: (e) => {
-          e.chain().focus().toggleHeading({ level: 2 }).run();
-        },
-      },
-      {
-        name: "Heading 3",
-        group: "Basic blocks",
-        keywords: "h3 small heading",
-        description: "A small section heading",
-        icon: Heading3,
-        run: (e) => {
-          e.chain().focus().toggleHeading({ level: 3 }).run();
-        },
-      },
-      {
-        name: "Bullet list",
-        group: "Basic blocks",
-        keywords: "ul unordered bullets dash",
-        description: "Create a simple bulleted list",
-        icon: List,
-        run: (e) => {
-          e.chain().focus().toggleBulletList().run();
-        },
-      },
-      {
-        name: "Numbered list",
-        group: "Basic blocks",
-        keywords: "ol ordered 1 numbers",
-        description: "Create a numbered list",
-        icon: ListOrdered,
-        run: (e) => {
-          e.chain().focus().toggleOrderedList().run();
-        },
-      },
-      {
-        name: "To-do list",
-        group: "Basic blocks",
-        keywords: "todo task checkbox check checklist",
-        description: "Track a task with a checkbox",
-        icon: CheckSquare,
-        run: (e) => {
-          e.chain().focus().toggleTaskList().run();
-        },
-      },
-      {
-        name: "Quote",
-        group: "Basic blocks",
-        keywords: "blockquote citation",
-        description: "Capture a quote",
-        icon: Quote,
-        run: (e) => {
-          e.chain().focus().toggleBlockquote().run();
-        },
-      },
-      {
-        name: "Callout",
-        group: "Basic blocks",
-        keywords: "note info tip highlight box",
-        description: "Make something stand out",
-        icon: Info,
-        run: (e) => {
-          e.chain()
-            .focus()
-            .insertContent({
-              type: "callout",
-              content: [
-                {
-                  type: "paragraph",
-                  content: [{ type: "text", text: "Something to remember…" }],
-                },
-              ],
-            })
-            .run();
-        },
-      },
-      {
-        name: "Toggle",
-        group: "Basic blocks",
-        keywords: "collapse expand details fold",
-        description: "Hide and show nested content",
-        icon: ChevronRight,
-        run: (e) => {
-          e.chain()
-            .focus()
-            .insertContent({
-              type: "toggle",
-              attrs: { title: "Toggle", open: true },
-              content: [{ type: "paragraph" }],
-            })
-            .run();
-        },
-      },
-      {
-        name: "Code block",
-        group: "Media & embeds",
-        keywords: "code snippet pre programming",
-        description: "Code with syntax highlighting",
-        icon: Code2,
-        run: (e) => {
-          e.chain().focus().toggleCodeBlock().run();
-        },
-      },
-      {
-        name: "Divider",
-        group: "Basic blocks",
-        keywords: "hr rule line separator",
-        description: "Visually divide your content",
-        icon: Minus,
-        run: (e) => {
-          e.chain().focus().setHorizontalRule().run();
-        },
-      },
-      {
-        name: "Table",
-        group: "Media & embeds",
-        keywords: "grid rows columns",
-        description: "A simple table",
-        icon: Table2,
-        run: (e) => {
-          e.chain()
-            .focus()
-            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-            .run();
-        },
-      },
-      {
-        name: "Page",
-        group: "Media & embeds",
-        keywords: "subpage nested link child",
-        description: "Create a nested page",
-        icon: FileText,
-        run: (e) => {
-          const id = onCreatePage?.();
-          if (id)
-            e.chain()
-              .focus()
-              .insertContent({
-                type: "workspaceEmbed",
-                attrs: { kind: "page", id },
-              })
-              .run();
-        },
-      },
-      {
-        name: "New database",
-        group: "Media & embeds",
-        keywords: "table db inline records",
-        description: "Create a new database here",
-        icon: Database,
-        run: (e) => {
-          const id = onCreateDatabase?.();
-          if (id)
-            e.chain()
-              .focus()
-              .insertContent([
-                { type: "workspaceEmbed", attrs: { kind: "database", id } },
-                { type: "paragraph" },
-              ])
-              .run();
-        },
-      },
-      {
-        name: "Board view",
-        group: "Media & embeds",
-        keywords: "kanban database board columns cards",
-        description: "A new database shown as a board",
-        icon: KanbanSquare,
-        run: (e) => {
-          const id = onCreateDatabase?.("board");
-          if (id)
-            e.chain()
-              .focus()
-              .insertContent([
-                { type: "workspaceEmbed", attrs: { kind: "database", id } },
-                { type: "paragraph" },
-              ])
-              .run();
-        },
-      },
-      {
-        name: "List view",
-        group: "Media & embeds",
-        keywords: "database list rows",
-        description: "A new database shown as a list",
-        icon: List,
-        run: (e) => {
-          const id = onCreateDatabase?.("list");
-          if (id)
-            e.chain()
-              .focus()
-              .insertContent([
-                { type: "workspaceEmbed", attrs: { kind: "database", id } },
-                { type: "paragraph" },
-              ])
-              .run();
-        },
-      },
-      ...(listDatabases
-        ? [
-            {
-              name: "Link existing database",
-              group: "Media & embeds",
-              keywords: "existing link linked view reuse database table",
-              description: "Show an existing database here",
-              icon: Link2,
-              run: (e: Editor) =>
-                setDbPicker({
-                  databases: listDatabases(),
-                  position: popoverNearSelection(e, 380),
-                }),
-            } satisfies SlashItem,
-          ]
-        : []),
-      {
-        name: "Image",
-        group: "Media & embeds",
-        keywords: "img picture photo upload",
-        description: onUploadImage
-          ? "Upload a file or embed a link"
-          : "Embed an image from a link",
-        icon: ImageIcon,
-        run: (e) => {
-          setUrlInput({
-            kind: "image",
-            value: "",
-            position: popoverNearSelection(e, onUploadImage ? 240 : 130),
-          });
-        },
-      },
-      {
-        name: "Inputs",
-        group: "Playbook steps",
-        keywords: "parameters variables params fields form playbook runbook run",
-        description: "What to ask for when someone presses Run",
-        icon: SlidersHorizontal,
-        run: (e) => {
-          e.chain()
-            .focus()
-            .insertContent({
-              type: "procedureParams",
-              attrs: { params: [{ name: "", type: "text", required: true }] },
-            })
-            .run();
-        },
-      },
-      ...(
-        [
-          ["send", "Say something", MessageSquare, "A message to send, or an instruction to follow", "send message tell reply instruction step"],
-          ["ask", "Ask a question", CircleHelp, "Ask, and remember the answer", "question collect input prompt step"],
-          ["check", "Check something", ListChecks, "Do something and confirm it worked", "verify expected test runbook step"],
-          ["if", "Make a decision", Split, "Go a different way depending on a value", "if else condition branch decide when"],
-          ["api", "Call an app (API)", Globe, "Look something up or update another app", "api request http webhook fetch call endpoint get post rest json"],
-          ["end", "Finish", Flag, "End the run here", "end stop done exit step"],
-        ] as const
-      ).map(
-        ([step, name, icon, description, keywords]) =>
-          ({
-            name,
-            group: "Playbook steps",
-            keywords: `step playbook runbook ${keywords}`,
-            description,
-            icon,
-            run: (e: Editor) => {
-              e.chain()
-                .focus()
-                .insertContent({
-                  type: "procedureStep",
-                  attrs: {
-                    step,
-                    ...(step === "ask" ? { answer: "text" } : {}),
-                    ...(step === "if" ? { op: "is" } : {}),
-                    ...(step === "api" ? { method: "GET" } : {}),
-                  },
-                })
-                .run();
-            },
-          }) satisfies SlashItem,
-      ),
-      ...(onInsertProcedure
-        ? [
-            {
-              name: "Playbook",
-              group: "Templates",
-              keywords: "runbook procedure guide checklist sop steps workflow automation support ops incident deploy",
-              description: "A new playbook page from a template, linked here",
-              icon: Compass,
-              run: (e: Editor) => {
-                // A playbook is its own page: it's created from the chosen template and
-                // linked here, on the line where "/" was typed.
-                const at = e.state.selection.from;
-                onInsertProcedure((pageId) => {
-                  e.chain()
-                    .focus()
-                    .setTextSelection(at)
-                    .insertContent({ type: "workspaceEmbed", attrs: { kind: "page", id: pageId } })
-                    .run();
-                });
-              },
-            } satisfies SlashItem,
-          ]
-        : []),
-    ],
+    () =>
+      buildSlashItems({
+        onCreatePage,
+        onCreateDatabase,
+        onUploadImage,
+        listDatabases,
+        onInsertProcedure,
+        setDbPicker,
+        setUrlInput,
+      }),
     [onCreatePage, onCreateDatabase, onUploadImage, listDatabases, onInsertProcedure],
   );
-  const filteredItems = useMemo(() => {
-    const query = (slash?.query || "").toLowerCase();
-    // Steps belong to playbooks, which are built in the playbook builder; on an
-    // ordinary page they'd turn it into one mid-sentence.
-    const items = runnable ? allItems : allItems.filter((item) => item.group !== "Playbook steps");
-    const byGroup = (item: SlashItem) =>
-      runnable ? (item.group === "Playbook steps" ? 0 : 1) : item.group === "Basic blocks" ? 0 : 1;
-    if (!query && runnable) {
-      // A playbook: steps first, then the few text blocks that suit one. Everything
-      // else is still a search away.
-      let hasInputs = false;
-      editor?.state.doc.forEach((node) => {
-        if (node.type.name === "procedureParams") hasInputs = true;
-      });
-      const steps = items
-        .filter((item) => item.group === "Playbook steps" && !(hasInputs && item.name === "Inputs"))
-        .sort((a, b) => Number(a.name === "Inputs") - Number(b.name === "Inputs"))
-        .map((item) => ({ ...item, group: "Steps" as const }));
-      const text = (
-        [
-          ["Text", null, null],
-          ["Heading 2", "Section", "Start a new part (steps can jump to it)"],
-          ["Heading 3", "Sub-heading", "A smaller heading inside a section"],
-          ["Bullet list", null, null],
-          ["Numbered list", null, null],
-          ["To-do list", null, null],
-          ["Callout", null, "A tip or warning people should notice"],
-          ["Divider", null, null],
-        ] as const
-      ).flatMap(([name, rename, describe]) => {
-        const item = items.find((i) => i.name === name);
-        return item
-          ? [{ ...item, group: "Text" as const, name: rename ?? item.name, description: describe ?? item.description }]
-          : [];
-      });
-      return [...steps, ...text];
-    }
-    if (!query) return [...items].sort((a, b) => byGroup(a) - byGroup(b));
-    // Names that start with the query first, then any match in name, keywords or description.
-    const score = (item: SlashItem) => {
-      const name = item.name.toLowerCase();
-      if (name.startsWith(query)) return 0;
-      if (name.includes(query)) return 1;
-      if (item.keywords.split(" ").some((word) => word.startsWith(query))) return 2;
-      return `${item.keywords} ${item.description}`.toLowerCase().includes(query) ? 3 : -1;
-    };
-    return items
-      .map((item) => ({ item, rank: score(item) }))
-      .filter(({ rank }) => rank >= 0)
-      // On a playbook, a step wins a tie with another block.
-      .sort((a, b) => a.rank - b.rank || (runnable ? byGroup(a.item) - byGroup(b.item) : 0))
-      .map(({ item }) => item);
-  }, [allItems, slash?.query, runnable, editor]);
+  const filteredItems = useMemo(
+    () => filterSlashItems(allItems, slash?.query || "", runnable, editor),
+    [allItems, slash?.query, runnable, editor],
+  );
   const runSlash = useCallback(
     (item: SlashItem) => {
       if (!editor || !slash) return;
@@ -1077,10 +525,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
         return true;
       };
       if (event.isComposing) return false;
-      if (event.key === "ArrowDown" || (event.key === "Tab" && !event.shiftKey))
-        return move(slashIndex + 1);
-      if (event.key === "ArrowUp" || (event.key === "Tab" && event.shiftKey))
-        return move(slashIndex - 1);
+      if (event.key === "ArrowDown" || (event.key === "Tab" && !event.shiftKey)) return move(slashIndex + 1);
+      if (event.key === "ArrowUp" || (event.key === "Tab" && event.shiftKey)) return move(slashIndex - 1);
       if (event.key === "Home") return move(0);
       if (event.key === "End") return move(count - 1);
       if (event.key === "Enter" && count) {
@@ -1205,14 +651,8 @@ export function DocumentEditor(props: DocumentEditorProps) {
     } else if (!value) editor.chain().focus().unsetLink().run();
     else {
       try {
-        if (!["http:", "https:", "mailto:"].includes(new URL(value).protocol))
-          throw new Error();
-        editor
-          .chain()
-          .focus()
-          .extendMarkRange("link")
-          .setLink({ href: value })
-          .run();
+        if (!["http:", "https:", "mailto:"].includes(new URL(value).protocol)) throw new Error();
+        editor.chain().focus().extendMarkRange("link").setLink({ href: value }).run();
       } catch {
         toast.error("Enter a valid HTTP, HTTPS, or email link.");
         return;
@@ -1221,11 +661,32 @@ export function DocumentEditor(props: DocumentEditorProps) {
     setUrlInput(null);
   };
   type BlockActionName =
-    | "text" | "heading1" | "heading2" | "heading3" | "bullet" | "numbered" | "todo"
-    | "quote" | "code" | "duplicate" | "copy" | "link" | "up" | "down" | "delete";
+    | "text"
+    | "heading1"
+    | "heading2"
+    | "heading3"
+    | "bullet"
+    | "numbered"
+    | "todo"
+    | "quote"
+    | "code"
+    | "duplicate"
+    | "copy"
+    | "link"
+    | "up"
+    | "down"
+    | "delete";
   /** Paragraphs and headings can be turned into other block types. */
   const TURN_INTO: BlockActionName[] = [
-    "text", "heading1", "heading2", "heading3", "bullet", "numbered", "todo", "quote", "code",
+    "text",
+    "heading1",
+    "heading2",
+    "heading3",
+    "bullet",
+    "numbered",
+    "todo",
+    "quote",
+    "code",
   ];
   /** Block operations are always their own undo step, never merged with typing. */
   const newUndoStep = () => {
@@ -1237,7 +698,10 @@ export function DocumentEditor(props: DocumentEditorProps) {
     if (!node) return;
     newUndoStep();
     const end = at + node.nodeSize;
-    const turn = editor.chain().focus().setTextSelection(at + 1);
+    const turn = editor
+      .chain()
+      .focus()
+      .setTextSelection(at + 1);
     if (TURN_INTO.includes(action) && !node.isTextblock) return;
     if (action === "text") turn.setParagraph().run();
     if (action === "heading1") turn.setHeading({ level: 1 }).run();
@@ -1248,14 +712,11 @@ export function DocumentEditor(props: DocumentEditorProps) {
     if (action === "todo") turn.setParagraph().toggleTaskList().run();
     if (action === "quote") turn.setParagraph().toggleBlockquote().run();
     if (action === "code") turn.setCodeBlock().run();
-    if (action === "delete")
-      editor.chain().focus().deleteRange({ from: at, to: end }).run();
-    if (action === "duplicate")
-      editor.chain().focus().insertContentAt(end, node.toJSON()).run();
+    if (action === "delete") editor.chain().focus().deleteRange({ from: at, to: end }).run();
+    if (action === "duplicate") editor.chain().focus().insertContentAt(end, node.toJSON()).run();
     if (action === "copy") {
       await navigator.clipboard.writeText(
-        editor.markdown?.serialize({ type: "doc", content: [node.toJSON()] }) ||
-          node.textContent,
+        editor.markdown?.serialize({ type: "doc", content: [node.toJSON()] }) || node.textContent,
       );
       toast.success("Block copied");
     }
@@ -1318,7 +779,10 @@ export function DocumentEditor(props: DocumentEditorProps) {
       if (!event.shiftKey && event.key.toLowerCase() === "d") {
         event.preventDefault();
         newUndoStep();
-        editor.chain().insertContentAt(at + node.nodeSize, node.toJSON()).run();
+        editor
+          .chain()
+          .insertContentAt(at + node.nodeSize, node.toJSON())
+          .run();
         return true;
       }
       return false;
@@ -1349,35 +813,29 @@ export function DocumentEditor(props: DocumentEditorProps) {
   }, [onOpenPage]);
   // Keyboard focus starts inside the block menu so arrows and Enter work at once.
   useEffect(() => {
-    if (blockMenu)
-      blockMenuRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    if (blockMenu) blockMenuRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
   }, [blockMenu]);
   /** Handle position for a block: centered on its first line. */
   const handleFor = (block: TopBlock) => {
     const wrapper = wrapperRef.current?.getBoundingClientRect();
     // Embedded blocks: center on their heading row (a database's title, a page link).
-    const heading = block.el.querySelector<HTMLElement>(
-      ".db-inline-title, .editor-page-reference",
-    );
+    const heading = block.el.querySelector<HTMLElement>(".db-inline-title, .editor-page-reference");
     if (heading) {
       const rect = heading.getBoundingClientRect();
       const style = getComputedStyle(heading);
       const top = rect.top + (parseFloat(style.paddingTop) || 0);
-      const height =
-        rect.height - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+      const height = rect.height - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
       return {
         position: block.pos,
         top: top + height / 2 - 12 - (wrapper?.top || 0),
         box: { top: block.rect.top - (wrapper?.top || 0), height: block.rect.height },
       };
     }
-    const line =
-      block.el.matches("ul, ol, blockquote, .editor-callout, [data-type=taskList]")
-        ? block.el.querySelector<HTMLElement>("p") ?? block.el
-        : block.el;
+    const line = block.el.matches("ul, ol, blockquote, .editor-callout, [data-type=taskList]")
+      ? (block.el.querySelector<HTMLElement>("p") ?? block.el)
+      : block.el;
     const style = getComputedStyle(line);
-    const lineHeight =
-      parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5 || 24;
+    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5 || 24;
     const lineTop = line.getBoundingClientRect().top + (parseFloat(style.paddingTop) || 0);
     return {
       position: block.pos,
@@ -1386,8 +844,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
     };
   };
   const hoverBlock = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!editor || mode !== "interactive" || blockMenu || draggedBlock.current !== null)
-      return;
+    if (!editor || mode !== "interactive" || blockMenu || draggedBlock.current !== null) return;
     // Picks the block by height, so the left gutter (where the handles live) counts too.
     const block = blockAtY(editor, event.clientY);
     if (!block) {
@@ -1423,7 +880,12 @@ export function DocumentEditor(props: DocumentEditorProps) {
     if (!node) return;
     // An empty paragraph is reused; otherwise a new one goes below (Alt: above).
     if (node.type.name === "paragraph" && node.content.size === 0) {
-      editor.chain().focus().setTextSelection(hover.position + 1).insertContent("/").run();
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(hover.position + 1)
+        .insertContent("/")
+        .run();
       return;
     }
     const at = above ? hover.position : hover.position + node.nodeSize;
@@ -1464,8 +926,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
         hoverBlock(event);
       }}
       onMouseDown={(event) => {
-        if ((event.target as HTMLElement).closest(".ProseMirror"))
-          selectingRef.current = true;
+        if ((event.target as HTMLElement).closest(".ProseMirror")) selectingRef.current = true;
       }}
       onMouseLeave={() => {
         if (!blockMenu && draggedBlock.current === null) setHover(null);
@@ -1484,9 +945,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
         const size = editor.state.doc.nodeAt(from)?.nodeSize ?? 0;
         const noMove = boundary >= from && boundary <= from + size;
         dropTarget.current = noMove ? null : boundary;
-        const line = noMove
-          ? null
-          : (above ? block.rect.top : block.rect.bottom) - wrapper.top;
+        const line = noMove ? null : (above ? block.rect.top : block.rect.bottom) - wrapper.top;
         setDropLine((current) => (current === line ? current : line));
       }}
       onDrop={(event) => {
@@ -1500,32 +959,28 @@ export function DocumentEditor(props: DocumentEditorProps) {
     >
       <div className={`editor-mode-bar ${showModeSwitch ? "" : "is-compact"}`}>
         {showModeSwitch ? (
-        <div
-          className="editor-mode-options"
-          role="group"
-          aria-label="Editor mode"
-        >
-          <button
-            className={mode === "interactive" ? "is-active" : ""}
-            aria-pressed={mode === "interactive"}
-            title="Edit with blocks and formatting"
-            onClick={() => {
-              if (editSource) onEditSourceChange?.(false);
-              switchMode("interactive");
-            }}
-          >
-            Interactive
-          </button>
-          <button
-            className={mode === "markdown" ? "is-active" : ""}
-            aria-pressed={mode === "markdown"}
-            title="Edit the Markdown source"
-            onClick={() => switchMode("markdown")}
-          >
-            <Code2 size={14} />
-            Markdown
-          </button>
-        </div>
+          <div className="editor-mode-options" role="group" aria-label="Editor mode">
+            <button
+              className={mode === "interactive" ? "is-active" : ""}
+              aria-pressed={mode === "interactive"}
+              title="Edit with blocks and formatting"
+              onClick={() => {
+                if (editSource) onEditSourceChange?.(false);
+                switchMode("interactive");
+              }}
+            >
+              Interactive
+            </button>
+            <button
+              className={mode === "markdown" ? "is-active" : ""}
+              aria-pressed={mode === "markdown"}
+              title="Edit the Markdown source"
+              onClick={() => switchMode("markdown")}
+            >
+              <Code2 size={14} />
+              Markdown
+            </button>
+          </div>
         ) : null}
         <div className="editor-history">
           <button
@@ -1533,9 +988,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             aria-label="Undo"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => runHistory("undo")}
-            disabled={
-              mode === "markdown" ? !sourceHistory.undo : !editor?.can().undo()
-            }
+            disabled={mode === "markdown" ? !sourceHistory.undo : !editor?.can().undo()}
           >
             <Undo2 size={16} />
           </button>
@@ -1544,9 +997,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
             aria-label="Redo"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => runHistory("redo")}
-            disabled={
-              mode === "markdown" ? !sourceHistory.redo : !editor?.can().redo()
-            }
+            disabled={mode === "markdown" ? !sourceHistory.redo : !editor?.can().redo()}
           >
             <Redo2 size={16} />
           </button>
@@ -1559,81 +1010,66 @@ export function DocumentEditor(props: DocumentEditorProps) {
         </EmbedContext.Provider>
       ) : (
         <>
-        {editSource && (
-          <div className="source-warning" role="note">
-            <AlertTriangle size={16} />
-            <span>
-              You&apos;re editing this playbook&apos;s source. Steps and inputs are stored as data
-              here — a small slip can break them, so it&apos;s safer to edit them on the page.
-            </span>
-            <button
-              onClick={() => {
-                onEditSourceChange?.(false);
-                switchMode("interactive");
-              }}
-            >
-              Back to the page
-            </button>
-          </div>
-        )}
-        <div className="md-editor">
-          <div
-            className="md-toolbar"
-            role="toolbar"
-            aria-label="Markdown formatting"
-          >
-            <div className="md-tools">
-              {MARKDOWN_TOOLS.map((group, index) => (
-                <span className="md-tool-group" key={index}>
-                  {group.map((tool) => (
-                    <button
-                      key={tool.action}
-                      type="button"
-                      aria-label={tool.label}
-                      title={tool.keys ? shortcut.withKeys(tool.label, tool.keys) : tool.label}
-                      // Keep the editor's selection while clicking the toolbar.
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => {
-                        if (sourceEditorRef.current)
-                          applyMarkdown(sourceEditorRef.current, tool.action);
-                      }}
-                    >
-                      <tool.icon size={16} />
-                    </button>
-                  ))}
-                </span>
-              ))}
+          {editSource && (
+            <div className="source-warning" role="note">
+              <AlertTriangle size={16} />
+              <span>
+                You&apos;re editing this playbook&apos;s source. Steps and inputs are stored as data here — a small slip
+                can break them, so it&apos;s safer to edit them on the page.
+              </span>
+              <button
+                onClick={() => {
+                  onEditSourceChange?.(false);
+                  switchMode("interactive");
+                }}
+              >
+                Back to the page
+              </button>
+            </div>
+          )}
+          <div className="md-editor">
+            <div className="md-toolbar" role="toolbar" aria-label="Markdown formatting">
+              <div className="md-tools">
+                {MARKDOWN_TOOLS.map((group, index) => (
+                  <span className="md-tool-group" key={index}>
+                    {group.map((tool) => (
+                      <button
+                        key={tool.action}
+                        type="button"
+                        aria-label={tool.label}
+                        title={tool.keys ? shortcut.withKeys(tool.label, tool.keys) : tool.label}
+                        // Keep the editor's selection while clicking the toolbar.
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          if (sourceEditorRef.current) applyMarkdown(sourceEditorRef.current, tool.action);
+                        }}
+                      >
+                        <tool.icon size={16} />
+                      </button>
+                    ))}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="markdown-source-editor" ref={sourceHostRef} aria-label="Markdown source editor" />
+            <div className="md-status">
+              <span>
+                {sourceStats.lines} {sourceStats.lines === 1 ? "line" : "lines"}
+                <span aria-hidden> · </span>
+                {sourceStats.words} {sourceStats.words === 1 ? "word" : "words"}
+              </span>
+              <span className="md-supported">
+                <MarkdownMark />
+                Markdown is supported
+              </span>
             </div>
           </div>
-          <div
-            className="markdown-source-editor"
-            ref={sourceHostRef}
-            aria-label="Markdown source editor"
-          />
-          <div className="md-status">
-            <span>
-              {sourceStats.lines} {sourceStats.lines === 1 ? "line" : "lines"}
-              <span aria-hidden> · </span>
-              {sourceStats.words} {sourceStats.words === 1 ? "word" : "words"}
-            </span>
-            <span className="md-supported">
-              <MarkdownMark />
-              Markdown is supported
-            </span>
-          </div>
-        </div>
         </>
       )}
       {mode === "interactive" && hover && (blockMenu || draggingBlock) && (
-        <div
-          className="block-target"
-          style={{ top: hover.box.top, height: hover.box.height }}
-          aria-hidden
-        />
+        <div className="block-target" style={{ top: hover.box.top, height: hover.box.height }} aria-hidden />
       )}
-      {dropLine !== null && (
-        <div className="block-drop-line" style={{ top: dropLine - 1 }} aria-hidden />
-      )}
+      {dropLine !== null && <div className="block-drop-line" style={{ top: dropLine - 1 }} aria-hidden />}
       {mode === "interactive" && hover && (
         <div
           className="block-controls"
@@ -1641,8 +1077,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
           // Keep the text cursor where it is when clicking "+". Not on the drag handle:
           // cancelling its mousedown would cancel the drag before it starts.
           onMouseDown={(event) => {
-            if (!(event.target as HTMLElement).closest("[draggable='true']"))
-              event.preventDefault();
+            if (!(event.target as HTMLElement).closest("[draggable='true']")) event.preventDefault();
           }}
         >
           <button
@@ -1674,8 +1109,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("application/x-slate-block", String(hover.position));
               // Drag a picture of the block itself, not the tiny handle.
-              if (hoverElement.current)
-                event.dataTransfer.setDragImage(hoverElement.current, 16, 12);
+              if (hoverElement.current) event.dataTransfer.setDragImage(hoverElement.current, 16, 12);
             }}
             onDragEnd={endBlockDrag}
             onClick={() => (blockMenu ? setBlockMenu(false) : openBlockMenu())}
@@ -1684,152 +1118,184 @@ export function DocumentEditor(props: DocumentEditorProps) {
           </div>
         </div>
       )}
-      {blockMenu && hover && (() => {
-        const node = editor?.state.doc.nodeAt(hover.position);
-        const canTurn = !!node?.isTextblock;
-        const current =
-          node?.type.name === "heading"
-            ? `heading${node.attrs.level}`
-            : node?.type.name === "codeBlock"
-              ? "code"
-              : node?.type.name === "paragraph"
-                ? "text"
-                : "";
-        const turnInto: { name: string; action: BlockActionName; icon: typeof FileText }[] = [
-          { name: "Text", action: "text", icon: FileText },
-          { name: "Heading 1", action: "heading1", icon: Heading1 },
-          { name: "Heading 2", action: "heading2", icon: Heading2 },
-          { name: "Heading 3", action: "heading3", icon: Heading3 },
-          { name: "Bulleted list", action: "bullet", icon: List },
-          { name: "Numbered list", action: "numbered", icon: ListOrdered },
-          { name: "To-do list", action: "todo", icon: CheckSquare },
-          { name: "Quote", action: "quote", icon: Quote },
-          { name: "Code", action: "code", icon: Code2 },
-        ];
-        const actions: { name: string; action: BlockActionName; icon: typeof FileText; keys?: string }[] = [
-          { name: "Duplicate", action: "duplicate", icon: Copy, keys: "Mod+D" },
-          { name: "Copy as Markdown", action: "copy", icon: ClipboardCopy },
-          { name: "Copy link to block", action: "link", icon: Link2 },
-          { name: "Move up", action: "up", icon: ArrowUp, keys: "Shift+Mod+ArrowUp" },
-          { name: "Move down", action: "down", icon: ArrowDown, keys: "Shift+Mod+ArrowDown" },
-        ];
-        const close = () => {
-          setBlockMenu(false);
-          // Back to writing, except on a phone, where that would raise the keyboard.
-          if (!isTouchOnly()) editor?.view.focus();
-        };
-        return (
-          <>
-            <button className="editor-menu-scrim" aria-label="Close block options" onClick={close} />
-            <div
-              className="editor-context-menu block-menu"
-              role="menu"
-              aria-label="Block options"
-              ref={blockMenuRef}
-              style={{ ...menuPlacement, left: "var(--editor-gutter)" }}
-              onKeyDown={(event) => {
-                const items = Array.from(
-                  event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)"),
-                );
-                const index = items.indexOf(document.activeElement as HTMLElement);
-                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                  event.preventDefault();
-                  const step = event.key === "ArrowDown" ? 1 : -1;
-                  items[(index + step + items.length) % items.length]?.focus();
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  close();
-                }
-              }}
-            >
-              {/* Only text-like blocks can change type; for others (databases, lists,
+      {blockMenu &&
+        hover &&
+        (() => {
+          const node = editor?.state.doc.nodeAt(hover.position);
+          const canTurn = !!node?.isTextblock;
+          const current =
+            node?.type.name === "heading"
+              ? `heading${node.attrs.level}`
+              : node?.type.name === "codeBlock"
+                ? "code"
+                : node?.type.name === "paragraph"
+                  ? "text"
+                  : "";
+          const turnInto: { name: string; action: BlockActionName; icon: typeof FileText }[] = [
+            { name: "Text", action: "text", icon: FileText },
+            { name: "Heading 1", action: "heading1", icon: Heading1 },
+            { name: "Heading 2", action: "heading2", icon: Heading2 },
+            { name: "Heading 3", action: "heading3", icon: Heading3 },
+            { name: "Bulleted list", action: "bullet", icon: List },
+            { name: "Numbered list", action: "numbered", icon: ListOrdered },
+            { name: "To-do list", action: "todo", icon: CheckSquare },
+            { name: "Quote", action: "quote", icon: Quote },
+            { name: "Code", action: "code", icon: Code2 },
+          ];
+          const actions: { name: string; action: BlockActionName; icon: typeof FileText; keys?: string }[] = [
+            { name: "Duplicate", action: "duplicate", icon: Copy, keys: "Mod+D" },
+            { name: "Copy as Markdown", action: "copy", icon: ClipboardCopy },
+            { name: "Copy link to block", action: "link", icon: Link2 },
+            { name: "Move up", action: "up", icon: ArrowUp, keys: "Shift+Mod+ArrowUp" },
+            { name: "Move down", action: "down", icon: ArrowDown, keys: "Shift+Mod+ArrowDown" },
+          ];
+          const close = () => {
+            setBlockMenu(false);
+            // Back to writing, except on a phone, where that would raise the keyboard.
+            if (!isTouchOnly()) editor?.view.focus();
+          };
+          return (
+            <>
+              <button className="editor-menu-scrim" aria-label="Close block options" onClick={close} />
+              <div
+                className="editor-context-menu block-menu"
+                role="menu"
+                aria-label="Block options"
+                ref={blockMenuRef}
+                style={{ ...menuPlacement, left: "var(--editor-gutter)" }}
+                onKeyDown={(event) => {
+                  const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)"));
+                  const index = items.indexOf(document.activeElement as HTMLElement);
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    const step = event.key === "ArrowDown" ? 1 : -1;
+                    items[(index + step + items.length) % items.length]?.focus();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    close();
+                  }
+                }}
+              >
+                {/* Only text-like blocks can change type; for others (databases, lists,
                   images…) the section would be all disabled rows, so it's left out. */}
-              {canTurn && (
-                <>
-                  <div className="editor-menu-label">Turn into</div>
-                  {turnInto.map((item) => (
+                {canTurn && (
+                  <>
+                    <div className="editor-menu-label">Turn into</div>
+                    {turnInto.map((item) => (
+                      <button role="menuitem" key={item.action} onClick={() => void blockAction(item.action)}>
+                        <item.icon size={16} />
+                        <span>{item.name}</span>
+                        {current === item.action && <Check size={14} className="menu-check" />}
+                      </button>
+                    ))}
+                    <div className="editor-menu-divider" />
+                  </>
+                )}
+                {node?.type.name === "taskList" && onMakeChecklist && (
+                  <>
                     <button
                       role="menuitem"
-                      key={item.action}
-                      onClick={() => void blockAction(item.action)}
+                      onClick={() => {
+                        // Each to-do (its first line) becomes a step; the list itself stays.
+                        const items: string[] = [];
+                        node.forEach((item) => {
+                          const text = (item.firstChild?.textContent || "").trim();
+                          if (text) items.push(text);
+                        });
+                        const pageId = onMakeChecklist(items);
+                        setBlockMenu(false);
+                        if (pageId && editor)
+                          editor
+                            .chain()
+                            .focus()
+                            .insertContentAt(hover.position + node.nodeSize, {
+                              type: "workspaceEmbed",
+                              attrs: { kind: "page", id: pageId },
+                            })
+                            .run();
+                      }}
                     >
-                      <item.icon size={16} />
-                      <span>{item.name}</span>
-                      {current === item.action && <Check size={14} className="menu-check" />}
+                      <ListChecks size={16} />
+                      <span>Make a runnable checklist</span>
                     </button>
-                  ))}
-                  <div className="editor-menu-divider" />
-                </>
-              )}
-              {node?.type.name === "taskList" && onMakeChecklist && (
-                <>
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      // Each to-do (its first line) becomes a step; the list itself stays.
-                      const items: string[] = [];
-                      node.forEach((item) => {
-                        const text = (item.firstChild?.textContent || "").trim();
-                        if (text) items.push(text);
-                      });
-                      const pageId = onMakeChecklist(items);
-                      setBlockMenu(false);
-                      if (pageId && editor)
-                        editor
-                          .chain()
-                          .focus()
-                          .insertContentAt(hover.position + node.nodeSize, {
-                            type: "workspaceEmbed",
-                            attrs: { kind: "page", id: pageId },
-                          })
-                          .run();
-                    }}
-                  >
-                    <ListChecks size={16} />
-                    <span>Make a runnable checklist</span>
+                    <div className="editor-menu-divider" />
+                  </>
+                )}
+                {actions.map((item) => (
+                  <button role="menuitem" key={item.action} onClick={() => void blockAction(item.action)}>
+                    <item.icon size={16} />
+                    <span>{item.name}</span>
+                    {item.keys && <kbd>{shortcut.keys(item.keys)}</kbd>}
                   </button>
-                  <div className="editor-menu-divider" />
-                </>
-              )}
-              {actions.map((item) => (
-                <button role="menuitem" key={item.action} onClick={() => void blockAction(item.action)}>
-                  <item.icon size={16} />
-                  <span>{item.name}</span>
-                  {item.keys && <kbd>{shortcut.keys(item.keys)}</kbd>}
+                ))}
+                <div className="editor-menu-divider" />
+                <button role="menuitem" className="danger" onClick={() => void blockAction("delete")}>
+                  <Trash2 size={16} />
+                  <span>Delete</span>
                 </button>
-              ))}
-              <div className="editor-menu-divider" />
-              <button role="menuitem" className="danger" onClick={() => void blockAction("delete")}>
-                <Trash2 size={16} />
-                <span>Delete</span>
-              </button>
-            </div>
-          </>
-        );
-      })()}
+              </div>
+            </>
+          );
+        })()}
       {bubble && mode === "interactive" && (
-        <div
-          className="editor-bubble"
-          style={bubble}
-          onMouseDown={(event) => event.preventDefault()}
-        >
+        <div className="editor-bubble" style={bubble} onMouseDown={(event) => event.preventDefault()}>
           {[
             [
-              { name: "Heading 1", icon: Heading1, active: editor?.isActive("heading", { level: 1 }), run: () => editor?.chain().focus().toggleHeading({ level: 1 }).run() },
-              { name: "Heading 2", icon: Heading2, active: editor?.isActive("heading", { level: 2 }), run: () => editor?.chain().focus().toggleHeading({ level: 2 }).run() },
-              { name: "Heading 3", icon: Heading3, active: editor?.isActive("heading", { level: 3 }), run: () => editor?.chain().focus().toggleHeading({ level: 3 }).run() },
+              {
+                name: "Heading 1",
+                icon: Heading1,
+                active: editor?.isActive("heading", { level: 1 }),
+                run: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
+              },
+              {
+                name: "Heading 2",
+                icon: Heading2,
+                active: editor?.isActive("heading", { level: 2 }),
+                run: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
+              },
+              {
+                name: "Heading 3",
+                icon: Heading3,
+                active: editor?.isActive("heading", { level: 3 }),
+                run: () => editor?.chain().focus().toggleHeading({ level: 3 }).run(),
+              },
             ],
             [
-              { name: shortcut.withKeys("Bold", "Mod+B"), icon: Bold, active: editor?.isActive("bold"), run: () => editor?.chain().focus().toggleBold().run() },
-              { name: shortcut.withKeys("Italic", "Mod+I"), icon: Italic, active: editor?.isActive("italic"), run: () => editor?.chain().focus().toggleItalic().run() },
-              { name: "Strikethrough", icon: Strikethrough, active: editor?.isActive("strike"), run: () => editor?.chain().focus().toggleStrike().run() },
-              { name: shortcut.withKeys("Inline code", "Mod+E"), icon: Code, active: editor?.isActive("code"), run: () => editor?.chain().focus().toggleCode().run() },
+              {
+                name: shortcut.withKeys("Bold", "Mod+B"),
+                icon: Bold,
+                active: editor?.isActive("bold"),
+                run: () => editor?.chain().focus().toggleBold().run(),
+              },
+              {
+                name: shortcut.withKeys("Italic", "Mod+I"),
+                icon: Italic,
+                active: editor?.isActive("italic"),
+                run: () => editor?.chain().focus().toggleItalic().run(),
+              },
+              {
+                name: "Strikethrough",
+                icon: Strikethrough,
+                active: editor?.isActive("strike"),
+                run: () => editor?.chain().focus().toggleStrike().run(),
+              },
+              {
+                name: shortcut.withKeys("Inline code", "Mod+E"),
+                icon: Code,
+                active: editor?.isActive("code"),
+                run: () => editor?.chain().focus().toggleCode().run(),
+              },
             ],
             [
               { name: shortcut.withKeys("Link", "Mod+K"), icon: Link2, active: editor?.isActive("link"), run: setLink },
-              { name: "Quote", icon: Quote, active: editor?.isActive("blockquote"), run: () => editor?.chain().focus().toggleBlockquote().run() },
+              {
+                name: "Quote",
+                icon: Quote,
+                active: editor?.isActive("blockquote"),
+                run: () => editor?.chain().focus().toggleBlockquote().run(),
+              },
             ],
           ].map((group, index) => (
             <span className="editor-bubble-group" key={index}>
@@ -1857,9 +1323,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
           aria-label="Insert a block"
           style={{ top: slash.top, bottom: slash.bottom, left: slash.left }}
         >
-          {slash.query && filteredItems.length > 0 && (
-            <div className="editor-menu-label">Results</div>
-          )}
+          {slash.query && filteredItems.length > 0 && <div className="editor-menu-label">Results</div>}
           {filteredItems.length ? (
             filteredItems.map((item, index) => [
               !slash.query && item.group !== filteredItems[index - 1]?.group && (
@@ -1894,14 +1358,10 @@ export function DocumentEditor(props: DocumentEditorProps) {
               </button>,
             ])
           ) : (
-            <div className="editor-no-results">
-              No blocks match “{slash.query}”. Press space to keep typing.
-            </div>
+            <div className="editor-no-results">No blocks match “{slash.query}”. Press space to keep typing.</div>
           )}
           <div className="slash-menu-footer">
-            <span>
-              {runnable && !slash.query ? "Type to search all blocks" : "↑↓ to navigate"}
-            </span>
+            <span>{runnable && !slash.query ? "Type to search all blocks" : "↑↓ to navigate"}</span>
             <span>↵ to insert</span>
           </div>
         </div>
@@ -1934,10 +1394,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
               editor
                 .chain()
                 .focus()
-                .insertContent([
-                  { type: "workspaceEmbed", attrs: { kind: "database", id } },
-                  { type: "paragraph" },
-                ])
+                .insertContent([{ type: "workspaceEmbed", attrs: { kind: "database", id } }, { type: "paragraph" }])
                 .run();
           }}
         />

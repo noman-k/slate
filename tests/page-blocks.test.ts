@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { appendPageBlock, databaseIdsIn, hasPageBlock, isShownInPage, relinkPageBlock, removePageBlocks } from "../src/lib/page-blocks";
+import {
+  appendPageBlock,
+  databaseIdsIn,
+  hasPageBlock,
+  isShownInPage,
+  relinkPageBlock,
+  removePageBlocks,
+} from "../src/lib/page-blocks";
 import type { Page, WorkspaceState } from "../src/lib/types";
 
 const block = (id: string) => `:::slate {"kind":"page","id":"${id}"}`;
@@ -25,11 +32,26 @@ describe("page blocks", () => {
 
   it("moves a block between parent documents, skipping databases", () => {
     const page = (id: string, kind: Page["kind"] = "document", parent_id: string | null = null): Page => ({
-      id, workspace_id: "w", parent_id, title: id, icon: "", kind, description: "",
-      position: 0, favorite: false, deleted_at: null, created_at: "", updated_at: "",
+      id,
+      workspace_id: "w",
+      parent_id,
+      title: id,
+      icon: "",
+      kind,
+      description: "",
+      position: 0,
+      favorite: false,
+      deleted_at: null,
+      created_at: "",
+      updated_at: "",
     });
     const state: WorkspaceState = {
-      workspaces: [], databases: [], properties: [], records: [], views: [], active_workspace_id: "w",
+      workspaces: [],
+      databases: [],
+      properties: [],
+      records: [],
+      views: [],
+      active_workspace_id: "w",
       pages: [page("old"), page("new"), page("db", "database"), page("child", "document", "old")],
       documents: [{ page_id: "old", markdown: `Hi\n\n${block("child")}\n`, updated_at: "" }],
     };
@@ -58,12 +80,29 @@ describe("moving a database out of its page", () => {
   it("turns the embed left behind into a linked view with its own views", async () => {
     const { relinkPageBlock: relink } = await import("../src/lib/page-blocks");
     const page = (id: string, kind: Page["kind"], parent_id: string | null, database_id?: string): Page => ({
-      id, workspace_id: "w", parent_id, title: id, icon: "", kind, description: "", database_id,
-      position: 0, favorite: false, deleted_at: null, created_at: "", updated_at: "",
+      id,
+      workspace_id: "w",
+      parent_id,
+      title: id,
+      icon: "",
+      kind,
+      description: "",
+      database_id,
+      position: 0,
+      favorite: false,
+      deleted_at: null,
+      created_at: "",
+      updated_at: "",
     });
     const state: WorkspaceState = {
-      workspaces: [], databases: [], properties: [], records: [], active_workspace_id: "w",
-      views: [{ id: "v1", database_id: "d1", name: "Table", type: "table", filters: [], sorts: [], hidden_properties: [] }],
+      workspaces: [],
+      databases: [],
+      properties: [],
+      records: [],
+      active_workspace_id: "w",
+      views: [
+        { id: "v1", database_id: "d1", name: "Table", type: "table", filters: [], sorts: [], hidden_properties: [] },
+      ],
       pages: [page("host", "document", null), page("other", "document", null), page("dbp", "database", "host", "d1")],
       documents: [{ page_id: "host", markdown: `Hi\n\n:::slate {"kind":"database","id":"d1"}\n`, updated_at: "" }],
     };

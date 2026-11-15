@@ -55,18 +55,9 @@ export function useWorkspaceDialogs(): WorkspaceDialogController {
   return {
     active,
     close: useCallback(() => setActive(null), []),
-    renamePage: useCallback(
-      (page: Page) => setActive({ type: "rename", page }),
-      [],
-    ),
-    movePage: useCallback(
-      (page: Page) => setActive({ type: "move", page }),
-      [],
-    ),
-    pageIcon: useCallback(
-      (page: Page) => setActive({ type: "icon", page }),
-      [],
-    ),
+    renamePage: useCallback((page: Page) => setActive({ type: "rename", page }), []),
+    movePage: useCallback((page: Page) => setActive({ type: "move", page }), []),
+    pageIcon: useCallback((page: Page) => setActive({ type: "icon", page }), []),
     trash: useCallback(() => setActive({ type: "trash" }), []),
     newWorkspace: useCallback(() => setActive({ type: "new-workspace" }), []),
     settings: useCallback(() => setActive({ type: "settings" }), []),
@@ -105,57 +96,20 @@ interface WorkspaceDialogsProps extends PageMutationProps {
 }
 
 export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
-  const {
-    controller,
-    state,
-    change,
-    patchPage,
-    expandPage,
-    onWorkspaceCreated,
-  } = props;
+  const { controller, state, change, patchPage, expandPage, onWorkspaceCreated } = props;
   const { active, close } = controller;
   return (
     <>
-      {active?.type === "rename" && (
-        <RenamePageDialog
-          close={close}
-          page={active.page}
-          patchPage={patchPage}
-        />
-      )}
+      {active?.type === "rename" && <RenamePageDialog close={close} page={active.page} patchPage={patchPage} />}
       {active?.type === "move" && (
-        <MovePageDialog
-          state={state}
-          close={close}
-          page={active.page}
-          patchPage={patchPage}
-          expandPage={expandPage}
-        />
+        <MovePageDialog state={state} close={close} page={active.page} patchPage={patchPage} expandPage={expandPage} />
       )}
-      {active?.type === "icon" && (
-        <PageIconDialog
-          close={close}
-          page={active.page}
-          patchPage={patchPage}
-        />
-      )}
-      {active?.type === "trash" && (
-        <TrashDialog state={state} close={close} change={change} />
-      )}
+      {active?.type === "icon" && <PageIconDialog close={close} page={active.page} patchPage={patchPage} />}
+      {active?.type === "trash" && <TrashDialog state={state} close={close} change={change} />}
       {active?.type === "new-workspace" && (
-        <NewWorkspaceDialog
-          close={close}
-          change={change}
-          onCreated={onWorkspaceCreated}
-        />
+        <NewWorkspaceDialog close={close} change={change} onCreated={onWorkspaceCreated} />
       )}
-      {active?.type === "settings" && (
-        <SettingsDialog
-          state={state}
-          close={close}
-          change={change}
-        />
-      )}
+      {active?.type === "settings" && <SettingsDialog state={state} close={close} change={change} />}
       <RecordPageDialog
         record={props.record}
         page={props.recordPage}
@@ -176,20 +130,11 @@ export function WorkspaceDialogs(props: WorkspaceDialogsProps) {
   );
 }
 
-function RenamePageDialog({
-  page,
-  patchPage,
-  close,
-}: PageMutationProps & { page: Page; close: () => void }) {
+function RenamePageDialog({ page, patchPage, close }: PageMutationProps & { page: Page; close: () => void }) {
   const [name, setName] = useState(page.title);
   const unchanged = name.trim() === page.title;
   return (
-    <Modal
-      open
-      onOpenChange={(open) => !open && close()}
-      title="Rename page"
-      className="compact-dialog"
-    >
+    <Modal open onOpenChange={(open) => !open && close()} title="Rename page" className="compact-dialog">
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -228,8 +173,7 @@ function MovePageDialog({
   page,
   patchPage,
   expandPage,
-}: CommonProps &
-  PageMutationProps & { page: Page; expandPage: (pageId: string) => void }) {
+}: CommonProps & PageMutationProps & { page: Page; expandPage: (pageId: string) => void }) {
   const [query, setQuery] = useState("");
   const recordPages = new Set(state.records.map((record) => record.page_id));
   const targets = state.pages
@@ -270,17 +214,12 @@ function MovePageDialog({
       </span>
     ) : null;
   // One list for the keyboard: "Private pages" first (when not searching), then pages.
-  const options: (string | null)[] = [
-    ...(query.trim() ? [] : [null]),
-    ...targets.map(({ page: target }) => target.id),
-  ];
+  const options: (string | null)[] = [...(query.trim() ? [] : [null]), ...targets.map(({ page: target }) => target.id)];
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const activeIndex = Math.min(active, Math.max(0, options.length - 1));
   useEffect(() => {
-    listRef.current
-      ?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
   const option = (index: number) => ({
     "data-index": index,
@@ -332,11 +271,7 @@ function MovePageDialog({
         {targets.map(({ page: target, path }, index) => {
           const parentPath = path.split(" / ").slice(0, -1).join(" / ");
           return (
-            <button
-              key={target.id}
-              {...option(index + (query.trim() ? 0 : 1))}
-              onClick={() => moveTo(target.id)}
-            >
+            <button key={target.id} {...option(index + (query.trim() ? 0 : 1))} onClick={() => moveTo(target.id)}>
               <PageIcon page={target} size={16} />
               <span className="move-title">
                 <strong>{target.title || "Untitled"}</strong>
@@ -346,9 +281,7 @@ function MovePageDialog({
             </button>
           );
         })}
-        {query.trim() && !targets.length && (
-          <div className="empty-state">No pages match “{query.trim()}”.</div>
-        )}
+        {query.trim() && !targets.length && <div className="empty-state">No pages match “{query.trim()}”.</div>}
       </div>
       <div className="modal-hint list-hint">
         <kbd>↑</kbd> <kbd>↓</kbd> to choose · <CornerDownLeft size={12} /> to move
@@ -357,11 +290,7 @@ function MovePageDialog({
   );
 }
 
-function PageIconDialog({
-  close,
-  page,
-  patchPage,
-}: PageMutationProps & { close: () => void; page: Page }) {
+function PageIconDialog({ close, page, patchPage }: PageMutationProps & { close: () => void; page: Page }) {
   // The page prop is a snapshot from when the dialog opened; track edits locally.
   const [icon, setIcon] = useState(page.icon);
   return (
@@ -383,26 +312,14 @@ function PageIconDialog({
   );
 }
 
-function TrashDialog({
-  state,
-  close,
-  change,
-}: CommonProps & { change: ChangeState }) {
-  const deletedPages = state.pages.filter(
-    (page) =>
-      page.deleted_at && page.workspace_id === state.active_workspace_id,
-  );
+function TrashDialog({ state, close, change }: CommonProps & { change: ChangeState }) {
+  const deletedPages = state.pages.filter((page) => page.deleted_at && page.workspace_id === state.active_workspace_id);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const roots = deletedPages
-    .filter(
-      (page) =>
-        !state.pages.find((parent) => parent.id === page.parent_id)?.deleted_at,
-    )
+    .filter((page) => !state.pages.find((parent) => parent.id === page.parent_id)?.deleted_at)
     .sort((a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at)))
-    .filter((page) =>
-      (page.title || "Untitled").toLowerCase().includes(query.trim().toLowerCase()),
-    );
+    .filter((page) => (page.title || "Untitled").toLowerCase().includes(query.trim().toLowerCase()));
   return (
     <Modal
       open
@@ -447,10 +364,7 @@ function TrashDialog({
               </span>
               {confirming === page.id ? (
                 <span className="trash-confirm">
-                  <button
-                    className="secondary-button"
-                    onClick={() => setConfirming(null)}
-                  >
+                  <button className="secondary-button" onClick={() => setConfirming(null)}>
                     Keep
                   </button>
                   <button
@@ -518,10 +432,7 @@ function NewWorkspaceDialog({
           const workspaceId = id();
           change((state) => ({
             ...state,
-            workspaces: [
-              ...state.workspaces,
-              { id: workspaceId, name: name.trim() || "My workspace" },
-            ],
+            workspaces: [...state.workspaces, { id: workspaceId, name: name.trim() || "My workspace" }],
             active_workspace_id: workspaceId,
           }));
           close();
@@ -531,12 +442,7 @@ function NewWorkspaceDialog({
       >
         <label className="field-label">
           Workspace name
-          <input
-            autoFocus
-            placeholder="My workspace"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
+          <input autoFocus placeholder="My workspace" value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <div className="modal-footer">
           <button type="button" className="secondary-button" onClick={close}>
@@ -549,56 +455,30 @@ function NewWorkspaceDialog({
   );
 }
 
-function SettingsDialog({
-  state,
-  close,
-  change,
-}: CommonProps & { change: ChangeState }) {
+function SettingsDialog({ state, close, change }: CommonProps & { change: ChangeState }) {
   const router = useRouter();
-  const currentWorkspace = state.workspaces.find(
-    (workspace) => workspace.id === state.active_workspace_id,
-  );
+  const currentWorkspace = state.workspaces.find((workspace) => workspace.id === state.active_workspace_id);
   const [name, setName] = useState(currentWorkspace?.name || "");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteWorkspace = () => {
     const workspaceId = state.active_workspace_id;
-    const keep = state.workspaces.find(
-      (workspace) => workspace.id !== workspaceId,
-    );
+    const keep = state.workspaces.find((workspace) => workspace.id !== workspaceId);
     if (!keep) return;
     change((current) => {
-      const pageIds = new Set(
-        current.pages
-          .filter((page) => page.workspace_id === workspaceId)
-          .map((page) => page.id),
-      );
+      const pageIds = new Set(current.pages.filter((page) => page.workspace_id === workspaceId).map((page) => page.id));
       const databaseIds = new Set(
-        current.databases
-          .filter((database) => database.workspace_id === workspaceId)
-          .map((database) => database.id),
+        current.databases.filter((database) => database.workspace_id === workspaceId).map((database) => database.id),
       );
       return {
         ...current,
         active_workspace_id: keep.id,
-        workspaces: current.workspaces.filter(
-          (workspace) => workspace.id !== workspaceId,
-        ),
+        workspaces: current.workspaces.filter((workspace) => workspace.id !== workspaceId),
         pages: current.pages.filter((page) => !pageIds.has(page.id)),
-        documents: current.documents.filter(
-          (document) => !pageIds.has(document.page_id),
-        ),
-        databases: current.databases.filter(
-          (database) => !databaseIds.has(database.id),
-        ),
-        properties: current.properties.filter(
-          (property) => !databaseIds.has(property.database_id),
-        ),
-        records: current.records.filter(
-          (record) => !databaseIds.has(record.database_id),
-        ),
-        views: current.views.filter(
-          (view) => !databaseIds.has(view.database_id),
-        ),
+        documents: current.documents.filter((document) => !pageIds.has(document.page_id)),
+        databases: current.databases.filter((database) => !databaseIds.has(database.id)),
+        properties: current.properties.filter((property) => !databaseIds.has(property.database_id)),
+        records: current.records.filter((record) => !databaseIds.has(record.database_id)),
+        views: current.views.filter((view) => !databaseIds.has(view.database_id)),
       };
     });
     close();
@@ -633,9 +513,7 @@ function SettingsDialog({
               change((current) => ({
                 ...current,
                 workspaces: current.workspaces.map((workspace) =>
-                  workspace.id === current.active_workspace_id
-                    ? { ...workspace, name: name.trim() }
-                    : workspace,
+                  workspace.id === current.active_workspace_id ? { ...workspace, name: name.trim() } : workspace,
                 ),
               }));
               toast.success("Workspace renamed");
@@ -644,16 +522,8 @@ function SettingsDialog({
             <label className="field-label">
               Name
               <span className="settings-inline">
-                <input
-                  value={name}
-                  maxLength={200}
-                  onChange={(event) => setName(event.target.value)}
-                />
-                <Button
-                  disabled={!name.trim() || name.trim() === currentWorkspace?.name}
-                >
-                  Save
-                </Button>
+                <input value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
+                <Button disabled={!name.trim() || name.trim() === currentWorkspace?.name}>Save</Button>
               </span>
             </label>
           </form>
@@ -685,27 +555,27 @@ function SettingsDialog({
         <section className="settings-section">
           <h3>Account</h3>
           <>
-              <div className="settings-row">
-                <div>
-                  <strong>Password</strong>
-                  <p>Change the password you use to sign in.</p>
-                </div>
-                <a className="secondary-button" href="/auth/reset">
-                  Change password
-                  <ArrowUpRight size={14} />
-                </a>
+            <div className="settings-row">
+              <div>
+                <strong>Password</strong>
+                <p>Change the password you use to sign in.</p>
               </div>
-              <div className="settings-row">
-                <div>
-                  <strong>Log out</strong>
-                  <p>Sign out of Slate on this device.</p>
-                </div>
-                <button className="secondary-button" onClick={() => void logOut()}>
-                  <LogOut size={14} />
-                  Log out
-                </button>
+              <a className="secondary-button" href="/auth/reset">
+                Change password
+                <ArrowUpRight size={14} />
+              </a>
+            </div>
+            <div className="settings-row">
+              <div>
+                <strong>Log out</strong>
+                <p>Sign out of Slate on this device.</p>
               </div>
-            </>
+              <button className="secondary-button" onClick={() => void logOut()}>
+                <LogOut size={14} />
+                Log out
+              </button>
+            </div>
+          </>
         </section>
         <section className="settings-section">
           <h3>About</h3>
@@ -724,7 +594,10 @@ function SettingsDialog({
               <strong>Your account and data</strong>
               <p>
                 Delete your account, get a copy of your data, or ask about privacy. See{" "}
-                <a className="settings-link" href="/privacy" target="_blank" rel="noreferrer">Privacy</a> for what Slate stores.
+                <a className="settings-link" href="/privacy" target="_blank" rel="noreferrer">
+                  Privacy
+                </a>{" "}
+                for what Slate stores.
               </p>
             </div>
             <a className="secondary-button" href="/contact?topic=delete" target="_blank" rel="noreferrer">
@@ -741,10 +614,7 @@ function SettingsDialog({
                 <strong>Delete this workspace</strong>
                 <p>Removes the workspace and every page in it.</p>
               </div>
-              <button
-                className="secondary-button danger-outline"
-                onClick={() => setConfirmDelete(true)}
-              >
+              <button className="secondary-button danger-outline" onClick={() => setConfirmDelete(true)}>
                 <Trash2 size={14} />
                 Delete…
               </button>
@@ -753,25 +623,15 @@ function SettingsDialog({
             <div className="danger-confirm">
               <strong>Delete “{currentWorkspace?.name}”?</strong>
               <p>
-                This permanently removes the workspace and all of its pages, and
-                stops any AI agent keys made for it. It can’t be undone.
+                This permanently removes the workspace and all of its pages, and stops any AI agent keys made for it. It
+                can’t be undone.
               </p>
-              {state.workspaces.length < 2 && (
-                <small>Create another workspace before deleting your last one.</small>
-              )}
+              {state.workspaces.length < 2 && <small>Create another workspace before deleting your last one.</small>}
               <div className="confirm-actions">
-                <button
-                  className="secondary-button"
-                  autoFocus
-                  onClick={() => setConfirmDelete(false)}
-                >
+                <button className="secondary-button" autoFocus onClick={() => setConfirmDelete(false)}>
                   Cancel
                 </button>
-                <button
-                  className="danger-button"
-                  disabled={state.workspaces.length < 2}
-                  onClick={deleteWorkspace}
-                >
+                <button className="danger-button" disabled={state.workspaces.length < 2} onClick={deleteWorkspace}>
                   Delete workspace
                 </button>
               </div>
@@ -830,35 +690,30 @@ function RecordPageDialog({
       heading={
         parent ? (
           <>
-          {back && (
+            {back && (
+              <button
+                className="icon-button peek-back"
+                onClick={back.onBack}
+                title={`Back to ${back.label}`}
+                aria-label={`Back to ${back.label}`}
+              >
+                <ArrowLeft size={16} />
+              </button>
+            )}
             <button
-              className="icon-button peek-back"
-              onClick={back.onBack}
-              title={`Back to ${back.label}`}
-              aria-label={`Back to ${back.label}`}
+              className="peek-parent"
+              onClick={() => openPage(parent.id)}
+              title={`Open ${parent.title || "Untitled"}`}
+              aria-label={`Open ${parent.title || "Untitled"}`}
             >
-              <ArrowLeft size={16} />
+              <PageIcon page={parent} size={14} />
+              <span>{parent.title || "Untitled"}</span>
             </button>
-          )}
-          <button
-            className="peek-parent"
-            onClick={() => openPage(parent.id)}
-            title={`Open ${parent.title || "Untitled"}`}
-            aria-label={`Open ${parent.title || "Untitled"}`}
-          >
-            <PageIcon page={parent} size={14} />
-            <span>{parent.title || "Untitled"}</span>
-          </button>
           </>
         ) : undefined
       }
       actions={
-        <button
-          className="icon-button"
-          aria-label="Open as full page"
-          title="Open as full page"
-          onClick={expand}
-        >
+        <button className="icon-button" aria-label="Open as full page" title="Open as full page" onClick={expand}>
           <Maximize2 size={16} />
         </button>
       }
@@ -871,16 +726,11 @@ function RecordPageDialog({
             placeholder="Untitled"
             autoFocus={!page.title.trim()}
             value={page.title}
-            onChange={(event) =>
-              patchPage(page.id, { title: event.target.value })
-            }
+            onChange={(event) => patchPage(page.id, { title: event.target.value })}
             onKeyDown={(event) => {
               if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
               event.preventDefault();
-              event.currentTarget
-                .closest(".record-dialog")
-                ?.querySelector<HTMLElement>(".ProseMirror")
-                ?.focus();
+              event.currentTarget.closest(".record-dialog")?.querySelector<HTMLElement>(".ProseMirror")?.focus();
             }}
           />
           <RecordProperties

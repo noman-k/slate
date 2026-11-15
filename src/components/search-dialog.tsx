@@ -1,12 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Search,
-  CornerDownLeft,
-  ArrowUp,
-  ArrowDown,
-  X,
-} from "lucide-react";
+import { Search, CornerDownLeft, ArrowUp, ArrowDown, X } from "lucide-react";
 import { Modal } from "./ui/menu";
 import { PageIcon } from "./page-icon";
 import type { Page, WorkspaceState } from "@/lib/types";
@@ -29,12 +23,7 @@ function Highlight({ value, query }: { value: string; query: string }) {
 
 /** Readable text around the first match, without Markdown and directive syntax. */
 function snippet(markdown: string, query: string): string {
-  const line = markdown
-    .split("\n")
-    .find(
-      (entry) =>
-        !entry.startsWith(":::") && entry.toLowerCase().includes(query),
-    );
+  const line = markdown.split("\n").find((entry) => !entry.startsWith(":::") && entry.toLowerCase().includes(query));
   if (!line) return "";
   const text = line
     .replace(/^\s*(#{1,6}|[-*+]|\d+\.|>|- \[[ x]\])\s+/i, "")
@@ -72,12 +61,8 @@ export function SearchDialog({
   const listRef = useRef<HTMLDivElement>(null);
   const needle = query.trim().toLowerCase();
   const results = useMemo<Result[]>(() => {
-    const documents = new Map(
-      state.documents.map((document) => [document.page_id, document.markdown]),
-    );
-    const pages = state.pages.filter(
-      (p) => !p.deleted_at && p.workspace_id === state.active_workspace_id,
-    );
+    const documents = new Map(state.documents.map((document) => [document.page_id, document.markdown]));
+    const pages = state.pages.filter((p) => !p.deleted_at && p.workspace_id === state.active_workspace_id);
     if (!needle) {
       // A quick switcher: the pages you were just on come first (the last one is
       // highlighted, so ⌘K then Enter takes you back), then recently edited pages.
@@ -110,18 +95,11 @@ export function SearchDialog({
         excerpt: rank === 2 ? snippet(text, needle) : "",
       });
     }
-    return ranked
-      .sort(
-        (a, b) =>
-          a.rank - b.rank || b.page.updated_at.localeCompare(a.page.updated_at),
-      )
-      .slice(0, 25);
+    return ranked.sort((a, b) => a.rank - b.rank || b.page.updated_at.localeCompare(a.page.updated_at)).slice(0, 25);
   }, [state, needle, recentIds, currentId]);
 
   useEffect(() => {
-    listRef.current
-      ?.querySelector(".search-result.active")
-      ?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector(".search-result.active")?.scrollIntoView({ block: "nearest" });
   }, [selected]);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,12 +108,7 @@ export function SearchDialog({
     onClose();
   };
   return (
-    <Modal
-      open={open}
-      onOpenChange={(v) => !v && onClose()}
-      title="Search your workspace"
-      className="search-dialog"
-    >
+    <Modal open={open} onOpenChange={(v) => !v && onClose()} title="Search your workspace" className="search-dialog">
       <div className="search-input-wrap">
         <Search size={20} />
         <input
@@ -152,9 +125,7 @@ export function SearchDialog({
           role="combobox"
           aria-expanded
           aria-controls="search-results"
-          aria-activedescendant={
-            results[selected] ? `search-${results[selected].page.id}` : undefined
-          }
+          aria-activedescendant={results[selected] ? `search-${results[selected].page.id}` : undefined}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -169,8 +140,7 @@ export function SearchDialog({
               e.preventDefault();
               setSelected((n) => Math.max(0, n - 1));
             }
-            if (e.key === "Enter" && results[selected])
-              visit(results[selected].page.id);
+            if (e.key === "Enter" && results[selected]) visit(results[selected].page.id);
           }}
           autoFocus
         />
@@ -206,9 +176,7 @@ export function SearchDialog({
         }}
       >
         <div className="menu-label">
-          {needle
-            ? `${results.length} ${results.length === 1 ? "result" : "results"}`
-            : "Recent pages"}
+          {needle ? `${results.length} ${results.length === 1 ? "result" : "results"}` : "Recent pages"}
         </div>
         {!results.length && (
           <div className="empty-state">
@@ -237,14 +205,11 @@ export function SearchDialog({
                 </small>
               ) : (
                 <small>
-                  {p.kind === "database" && (
-                    <span className="search-kind">Database · </span>
-                  )}
+                  {p.kind === "database" && <span className="search-kind">Database · </span>}
                   {breadcrumbs(state.pages, p.id)
                     .slice(0, -1)
                     .map((ancestor) => ancestor.title || "Untitled")
-                    .join(" / ") ||
-                    state.workspaces.find((w) => w.id === p.workspace_id)?.name}
+                    .join(" / ") || state.workspaces.find((w) => w.id === p.workspace_id)?.name}
                 </small>
               )}
             </span>

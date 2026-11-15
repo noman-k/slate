@@ -2,20 +2,12 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
-  Cloud,
   CloudOff,
   Copy,
-  Download,
   CircleHelp,
-  Code2,
   Compass,
   FileText,
   HelpCircle,
-  Lock,
-  MoreHorizontal,
-  PanelLeft,
-  Star,
   AlignLeft,
   ChevronRight,
   Plus,
@@ -27,7 +19,7 @@ import {
   List,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Sidebar, PageActions, type PageAction } from "./sidebar";
+import { Sidebar, type PageAction } from "./sidebar";
 import { SearchDialog } from "./search-dialog";
 import { ShortcutsPopover } from "./shortcuts";
 import { PageIcon, parsePageIcon } from "./page-icon";
@@ -55,119 +47,23 @@ import { isPhoneWidth } from "./keys";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
-import { Menu, MenuItem, MenuSeparator, Modal, Popup } from "./ui/menu";
+import { Modal, Popup } from "./ui/menu";
 import { useWorkspace } from "@/lib/use-workspace";
 import { id } from "@/lib/utils";
 import { duplicatePageSubtree } from "@/lib/pages";
 import { breadcrumbs, movePageTo, placementOf, trashPage } from "@/lib/tree";
 import type { Page, DbRecord, RecordOpenMode, WorkspaceState } from "@/lib/types";
 import { DatabaseView, RecordProperties } from "./database/DatabaseView";
-const DocumentEditor = dynamic(
-  () => import("./editor/DocumentEditor").then((m) => m.DocumentEditor),
-  {
-    ssr: false,
-    loading: () => <div className="editor-loading">Opening your page…</div>,
-  },
-);
-function download(name: string, content: string, type = "text/markdown") {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-type StarterView = "table" | "board" | "list";
-/** The rows a fresh database needs: itself, a title and status property, one view. */
-function databaseScaffold(
-  databaseId: string,
-  pageId: string,
-  workspaceId: string,
-  name: string,
-  viewType: StarterView = "table",
-) {
-  return {
-    database: {
-      id: databaseId,
-      workspace_id: workspaceId,
-      page_id: pageId,
-      name,
-    },
-    properties: [
-      {
-        id: id(),
-        database_id: databaseId,
-        name: "Name",
-        type: "title" as const,
-        position: 0,
-        width: 320,
-        config: {},
-      },
-      {
-        id: id(),
-        database_id: databaseId,
-        name: "Status",
-        type: "status" as const,
-        position: 1,
-        width: 160,
-        config: { options: ["Not started", "In progress", "Done"] },
-      },
-    ],
-    view: {
-      id: id(),
-      database_id: databaseId,
-      name:
-        viewType === "table"
-          ? "Table"
-          : viewType === "board"
-            ? "Board"
-            : "List",
-      type: viewType,
-      filters: [],
-      sorts: [],
-      hidden_properties: [],
-    },
-  };
-}
-/** Whether this page is a record of a database that opens its records as full pages. */
-function opensAsPage(state: WorkspaceState, pageId: string) {
-  const record = state.records.find((r) => r.page_id === pageId);
-  if (!record) return false;
-  // On a phone every record is a full page (a side panel would fill the screen anyway).
-  if (isPhoneWidth()) return true;
-  return state.databases.find((d) => d.id === record.database_id)?.open_mode === "page";
-}
-function withDatabase(
-  s: WorkspaceState,
-  made: ReturnType<typeof databaseScaffold>,
-): Pick<WorkspaceState, "databases" | "properties" | "views"> {
-  return {
-    databases: [...s.databases, made.database],
-    properties: [...s.properties, ...made.properties],
-    views: [...s.views, made.view],
-  };
-}
-
-/** "just now", "3 hours ago", "yesterday", "12 days ago". */
-function timeAgo(iso: string, now = Date.now()) {
-  const seconds = Math.round((new Date(iso).getTime() - now) / 1000);
-  const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  const units: [Intl.RelativeTimeFormatUnit, number][] = [
-    ["year", 31536000],
-    ["month", 2592000],
-    ["week", 604800],
-    ["day", 86400],
-    ["hour", 3600],
-    ["minute", 60],
-  ];
-  for (const [unit, size] of units) if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
-  return "just now";
-}
-
+import { WorkspaceTopbar } from "./workspace-topbar";
+import { EmptyWorkspace, MissingPage } from "./workspace-empty";
+import { databaseScaffold, download, opensAsPage, timeAgo, withDatabase, type StarterView } from "./workspace-helpers";
+const DocumentEditor = dynamic(() => import("./editor/DocumentEditor").then((m) => m.DocumentEditor), {
+  ssr: false,
+  loading: () => <div className="editor-loading">Opening your page…</div>,
+});
 export function WorkspaceApp() {
   const dialogs = useWorkspaceDialogs();
-  const { state, change, ready, status, error, recovery, retry } =
-    useWorkspace();
+  const { state, change, ready, status, error, recovery, retry } = useWorkspace();
   const [activeId, setActiveId] = useState("");
   const [search, setSearch] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -226,18 +122,11 @@ export function WorkspaceApp() {
   /** The icon picker popover anchored at the open page's icon. */
   const [iconPicker, setIconPicker] = useState(false);
   const remember = useCallback((pageId: string) => {
-    if (pageId)
-      setRecent((ids) =>
-        [pageId, ...ids.filter((id) => id !== pageId)].slice(0, 12),
-      );
+    if (pageId) setRecent((ids) => [pageId, ...ids.filter((id) => id !== pageId)].slice(0, 12));
   }, []);
-  const record = state.records.find(
-    (r) => r.id === recordId || r.page_id === activeId,
-  );
+  const record = state.records.find((r) => r.id === recordId || r.page_id === activeId);
   const recordPage = state.pages.find((p) => p.id === record?.page_id);
-  const recordParent = state.pages.find(
-    (p) => p.database_id === record?.database_id,
-  );
+  const recordParent = state.pages.find((p) => p.database_id === record?.database_id);
   // The Playbooks view isn't a page: nothing falls back to the first page behind it.
   const chosen =
     activeId === PLAYBOOKS_VIEW
@@ -246,9 +135,7 @@ export function WorkspaceApp() {
         ? recordAsPage
           ? recordPage
           : recordParent
-        : state.pages.find(
-            (p) => p.id === activeId && !p.deleted_at && p.workspace_id === state.active_workspace_id,
-          );
+        : state.pages.find((p) => p.id === activeId && !p.deleted_at && p.workspace_id === state.active_workspace_id);
   // Nothing chosen (at /app): the page last open here, then the first page. A page that
   // was asked for but isn't here gets "not found", never a different page: typing there
   // would change the wrong page.
@@ -256,17 +143,23 @@ export function WorkspaceApp() {
     chosen ??
     (activeId
       ? undefined
-      : state.pages.find(
-          (p) => p.id === savedLast[state.active_workspace_id] && p.workspace_id === state.active_workspace_id && !p.deleted_at,
+      : (state.pages.find(
+          (p) =>
+            p.id === savedLast[state.active_workspace_id] &&
+            p.workspace_id === state.active_workspace_id &&
+            !p.deleted_at,
         ) ??
         state.pages.find(
           (p) =>
             p.workspace_id === state.active_workspace_id &&
             !p.deleted_at &&
             !state.records.some((r) => r.page_id === p.id),
-        ));
+        )));
   // A link to a page in another of your workspaces opens that workspace.
-  const elsewhere = ready && activeId ? state.pages.find((p) => p.id === activeId && !p.deleted_at && p.workspace_id !== state.active_workspace_id) : undefined;
+  const elsewhere =
+    ready && activeId
+      ? state.pages.find((p) => p.id === activeId && !p.deleted_at && p.workspace_id !== state.active_workspace_id)
+      : undefined;
   useEffect(() => {
     if (elsewhere) change((s) => ({ ...s, active_workspace_id: elsewhere.workspace_id }));
   }, [elsewhere, change]);
@@ -284,16 +177,10 @@ export function WorkspaceApp() {
     if (!revealKey) return;
     const ids = revealKey.split(",");
     queueMicrotask(() =>
-      setExpanded((current) =>
-        ids.every((id) => current.has(id)) ? current : new Set([...current, ...ids]),
-      ),
+      setExpanded((current) => (ids.every((id) => current.has(id)) ? current : new Set([...current, ...ids]))),
     );
   }, [revealKey]);
-  const tabTitle = record
-    ? recordPage?.title || "Untitled"
-    : page
-      ? page.title || "Untitled"
-      : "";
+  const tabTitle = record ? recordPage?.title || "Untitled" : page ? page.title || "Untitled" : "";
   /**
    * Scroll memory per history entry, like a browser: Back/Forward return to where you
    * were reading; opening a page fresh starts at the top.
@@ -407,17 +294,12 @@ export function WorkspaceApp() {
     window.addEventListener("popstate", route);
     queueMicrotask(() => {
       try {
-        const prefs = JSON.parse(
-          localStorage.getItem("slate-preferences") || "{}",
-        );
+        const prefs = JSON.parse(localStorage.getItem("slate-preferences") || "{}");
         if (prefs.expanded) setExpanded(new Set(prefs.expanded));
         if (prefs.collapsed || window.innerWidth < 760) setCollapsed(true);
         // Animate from the next frame on, once that position is on screen.
         requestAnimationFrame(() => requestAnimationFrame(() => setSettled(true)));
-        if (Array.isArray(prefs.recent))
-          setRecent((ids) =>
-            [...new Set([...ids, ...prefs.recent])].slice(0, 12),
-          );
+        if (Array.isArray(prefs.recent)) setRecent((ids) => [...new Set([...ids, ...prefs.recent])].slice(0, 12));
         if (prefs.last && typeof prefs.last === "object") {
           lastPages.current = { ...prefs.last, ...lastPages.current };
           setSavedLast(prefs.last);
@@ -479,8 +361,7 @@ export function WorkspaceApp() {
       const el = pageScrollRef.current;
       if (!el) return;
       el.scrollTop = target;
-      if (Math.abs(el.scrollTop - target) > 1 && ++tries < 20)
-        frame = requestAnimationFrame(apply);
+      if (Math.abs(el.scrollTop - target) > 1 && ++tries < 20) frame = requestAnimationFrame(apply);
     };
     apply();
     return () => cancelAnimationFrame(frame);
@@ -490,31 +371,19 @@ export function WorkspaceApp() {
       const before = current.pages.find((p) => p.id === pageId);
       // Moving a page moves its block from the old parent's page to the new one's.
       const s =
-        before &&
-        patch.parent_id !== undefined &&
-        patch.parent_id !== before.parent_id
+        before && patch.parent_id !== undefined && patch.parent_id !== before.parent_id
           ? relinkPageBlock(current, pageId, before.parent_id, patch.parent_id)
           : current;
       return {
         ...s,
-        pages: s.pages.map((p) =>
-          p.id === pageId
-            ? { ...p, ...patch, updated_at: new Date().toISOString() }
-            : p,
-        ),
+        pages: s.pages.map((p) => (p.id === pageId ? { ...p, ...patch, updated_at: new Date().toISOString() } : p)),
         databases: s.databases.map((d) =>
-          d.page_id === pageId && patch.title !== undefined
-            ? { ...d, name: patch.title }
-            : d,
+          d.page_id === pageId && patch.title !== undefined ? { ...d, name: patch.title } : d,
         ),
         records: s.records.map((r) => {
           if (r.page_id !== pageId || patch.title === undefined) return r;
-          const titleProp = s.properties.find(
-            (p) => p.database_id === r.database_id && p.type === "title",
-          );
-          return titleProp
-            ? { ...r, values: { ...r.values, [titleProp.id]: patch.title } }
-            : r;
+          const titleProp = s.properties.find((p) => p.database_id === r.database_id && p.type === "title");
+          return titleProp ? { ...r, values: { ...r.values, [titleProp.id]: patch.title } } : r;
         }),
       };
     });
@@ -554,26 +423,12 @@ export function WorkspaceApp() {
             updated_at: now,
           },
         ],
-        documents: [
-          ...s.documents,
-          { page_id: pageId, markdown: "", updated_at: now },
-        ],
+        documents: [...s.documents, { page_id: pageId, markdown: "", updated_at: now }],
         ...(databaseId
-          ? withDatabase(
-              s,
-              databaseScaffold(
-                databaseId,
-                pageId,
-                s.active_workspace_id,
-                title,
-                viewType,
-              ),
-            )
+          ? withDatabase(s, databaseScaffold(databaseId, pageId, s.active_workspace_id, title, viewType))
           : {}),
       };
-      return linkInParent && parent
-        ? relinkPageBlock(next, pageId, null, parent)
-        : next;
+      return linkInParent && parent ? relinkPageBlock(next, pageId, null, parent) : next;
     });
     if (parent) setExpanded((s) => new Set([...s, parent]));
     return { pageId, databaseId };
@@ -602,16 +457,7 @@ export function WorkspaceApp() {
               }
             : p,
         ),
-        ...withDatabase(
-          s,
-          databaseScaffold(
-            databaseId,
-            pageId,
-            target.workspace_id,
-            target.title,
-            viewType,
-          ),
-        ),
+        ...withDatabase(s, databaseScaffold(databaseId, pageId, target.workspace_id, target.title, viewType)),
       };
     });
   };
@@ -636,9 +482,7 @@ export function WorkspaceApp() {
           : p,
       ),
       documents: s.documents.some((d) => d.page_id === pageId)
-        ? s.documents.map((d) =>
-            d.page_id === pageId ? { ...d, markdown, updated_at: now } : d,
-          )
+        ? s.documents.map((d) => (d.page_id === pageId ? { ...d, markdown, updated_at: now } : d))
         : [...s.documents, { page_id: pageId, markdown, updated_at: now }],
     }));
   };
@@ -664,7 +508,11 @@ export function WorkspaceApp() {
           title: "Steps",
           description: "",
           steps: [
-            ...items.map((text) => ({ id: id(), attrs: { step: "check" as const }, content: [{ type: "text", text }] })),
+            ...items.map((text) => ({
+              id: id(),
+              attrs: { step: "check" as const },
+              content: [{ type: "text", text }],
+            })),
             { id: id(), attrs: { step: "end" as const }, content: [{ type: "text", text: "All done" }] },
           ],
         },
@@ -675,7 +523,12 @@ export function WorkspaceApp() {
       ...s,
       pages: s.pages.map((pg) =>
         pg.id === made.pageId
-          ? { ...pg, icon: "icon:check:green", description: "Run it each time — every run is remembered.", updated_at: now }
+          ? {
+              ...pg,
+              icon: "icon:check:green",
+              description: "Run it each time — every run is remembered.",
+              updated_at: now,
+            }
           : pg,
       ),
       documents: s.documents.map((d) => (d.page_id === made.pageId ? { ...d, markdown, updated_at: now } : d)),
@@ -722,7 +575,11 @@ export function WorkspaceApp() {
   };
   const copyRunLink = (pageId: string, values: Record<string, string>) => {
     const query = new URLSearchParams({ run: "1" });
-    const secrets = new Set(procedureOf(pageId).params.filter((p) => p.type === "secret").map((p) => p.name));
+    const secrets = new Set(
+      procedureOf(pageId)
+        .params.filter((p) => p.type === "secret")
+        .map((p) => p.name),
+    );
     // Secrets never go in a link.
     for (const [name, value] of Object.entries(values)) if (value && !secrets.has(name)) query.set(name, value);
     const link = `${window.location.origin}/p/${pageId}?${query.toString()}`;
@@ -732,9 +589,7 @@ export function WorkspaceApp() {
       .catch(() => toast("Couldn't copy the run link"));
   };
   const activeProcedure = activeRun ? procedureOf(activeRun.pageId) : null;
-  const activeRecord = activeRun
-    ? state.records.find((r) => r.id === activeRun.recordId)
-    : undefined;
+  const activeRecord = activeRun ? state.records.find((r) => r.id === activeRun.recordId) : undefined;
   const activeRunState = activeRecord ? readRun(state, activeRecord) : null;
   /** Moves the active run along and saves it to its record (so it can be resumed). */
   const updateRun = (update: (run: RunState, s: WorkspaceState) => RunState) => {
@@ -742,9 +597,7 @@ export function WorkspaceApp() {
     change((s) => {
       const record = s.records.find((r) => r.id === activeRun.recordId);
       const current = record ? readRun(s, record) : null;
-      return current
-        ? saveRun(s, activeRun.recordId, activeProcedure, update(current, s))
-        : s;
+      return current ? saveRun(s, activeRun.recordId, activeProcedure, update(current, s)) : s;
     });
   };
   /** A run link (/p/<id>?run=1&name=value) opens the run form with those values. */
@@ -765,10 +618,7 @@ export function WorkspaceApp() {
   /** Like Notion: a new page opens immediately with the cursor in its title. */
   /** A New page asked for while the workspace was still loading: made once it's there. */
   const pendingNew = useRef<[string | null, "document" | "database"] | null>(null);
-  const requestNew = (
-    parent?: string | null,
-    kind: "document" | "database" = "document",
-  ) => {
+  const requestNew = (parent?: string | null, kind: "document" | "database" = "document") => {
     // Before the workspace loads, a page can't be made yet (it would vanish): hold the
     // click and do it the moment it's ready.
     if (!ready) {
@@ -793,9 +643,7 @@ export function WorkspaceApp() {
     if (action === "icon") {
       if (p.id === page?.id) {
         // The picker anchors to the header icon, so bring the header into view first.
-        document
-          .querySelector(".page-header-top")
-          ?.scrollIntoView({ block: "nearest" });
+        document.querySelector(".page-header-top")?.scrollIntoView({ block: "nearest" });
         setIconPicker(true);
       } else dialogs.pageIcon(p);
     }
@@ -818,9 +666,7 @@ export function WorkspaceApp() {
       change((s) => {
         const copied = duplicatePageSubtree(s, p.id, { rootId: copyId });
         // The copy sits next to the original, so it gets a block in the same parent.
-        return p.parent_id
-          ? relinkPageBlock(copied, copyId, null, p.parent_id)
-          : copied;
+        return p.parent_id ? relinkPageBlock(copied, copyId, null, p.parent_id) : copied;
       });
       open(copyId);
       toast("Page duplicated");
@@ -828,20 +674,15 @@ export function WorkspaceApp() {
   };
   /** Undo in each open editor (by page), so a toast's "Undo" can reach it. */
   const editorUndo = useRef(new Map<string, () => void>());
-  const registerHistory = useCallback(
-    (pageId: string, api: { undo: () => void } | null) => {
-      if (api) editorUndo.current.set(pageId, api.undo);
-      else editorUndo.current.delete(pageId);
-    },
-    [],
-  );
+  const registerHistory = useCallback((pageId: string, api: { undo: () => void } | null) => {
+    if (api) editorUndo.current.set(pageId, api.undo);
+    else editorUndo.current.delete(pageId);
+  }, []);
   /** The markdown each page last saved, to notice databases added or removed. */
   const lastMarkdown = useRef(new Map<string, string>());
   const saveMarkdown = (pageId: string, markdown: string) => {
     const before =
-      lastMarkdown.current.get(pageId) ??
-      state.documents.find((d) => d.page_id === pageId)?.markdown ??
-      "";
+      lastMarkdown.current.get(pageId) ?? state.documents.find((d) => d.page_id === pageId)?.markdown ?? "";
     lastMarkdown.current.set(pageId, markdown);
     const was = databaseIdsIn(before);
     const now = databaseIdsIn(markdown);
@@ -854,7 +695,12 @@ export function WorkspaceApp() {
     const owned = (dbId: string) => pageOf(dbId)?.parent_id === pageId;
     const trash = removed.filter((dbId) => owned(dbId) && !pageOf(dbId)?.deleted_at);
     const restore = added.filter((dbId) => owned(dbId) && pageOf(dbId)?.deleted_at);
-    saveDocument(pageId, markdown, trash.map((dbId) => pageOf(dbId)!.id), restore.map((dbId) => pageOf(dbId)!.id));
+    saveDocument(
+      pageId,
+      markdown,
+      trash.map((dbId) => pageOf(dbId)!.id),
+      restore.map((dbId) => pageOf(dbId)!.id),
+    );
     for (const dbId of trash) {
       const name = pageOf(dbId)?.title || "Untitled";
       toast(`“${name}” moved to Trash`, {
@@ -866,28 +712,18 @@ export function WorkspaceApp() {
       toast(`Removed the view of “${name}”. The database itself is unchanged.`);
     }
   };
-  const saveDocument = (
-    pageId: string,
-    markdown: string,
-    trashIds: string[] = [],
-    restoreIds: string[] = [],
-  ) =>
+  const saveDocument = (pageId: string, markdown: string, trashIds: string[] = [], restoreIds: string[] = []) =>
     change((current) => {
       let s = current;
       for (const id of trashIds) s = trashPage(s, id);
       for (const id of restoreIds) s = trashPage(s, id, true);
       return {
-      ...s,
-      documents: s.documents.some((d) => d.page_id === pageId)
-        ? s.documents.map((d) =>
-            d.page_id === pageId
-              ? { ...d, markdown, updated_at: new Date().toISOString() }
-              : d,
-          )
-        : [
-            ...s.documents,
-            { page_id: pageId, markdown, updated_at: new Date().toISOString() },
-          ],
+        ...s,
+        documents: s.documents.some((d) => d.page_id === pageId)
+          ? s.documents.map((d) =>
+              d.page_id === pageId ? { ...d, markdown, updated_at: new Date().toISOString() } : d,
+            )
+          : [...s.documents, { page_id: pageId, markdown, updated_at: new Date().toISOString() }],
       };
     });
   /**
@@ -895,11 +731,11 @@ export function WorkspaceApp() {
    * always a full page on a phone, with the usual back navigation.
    */
   const recordOpenMode = (r: DbRecord): RecordOpenMode =>
-    isPhoneWidth() ? "page" : state.databases.find((d) => d.id === r.database_id)?.open_mode ?? "peek";
+    isPhoneWidth() ? "page" : (state.databases.find((d) => d.id === r.database_id)?.open_mode ?? "peek");
   const openRecordAsPage = (r: DbRecord) => {
     open(r.page_id);
     setRecordAsPage(true);
-  };  // Editors save through a stable callback that always uses the latest saveMarkdown.
+  }; // Editors save through a stable callback that always uses the latest saveMarkdown.
   const saveRef = useRef(saveMarkdown);
   useEffect(() => {
     saveRef.current = saveMarkdown;
@@ -908,9 +744,7 @@ export function WorkspaceApp() {
 
   /** From a database page: peek over it, or (per the setting, or ⌘-click) go full page. */
   const openRecord = (r: DbRecord, options?: { fullPage?: boolean }) =>
-    options?.fullPage || recordOpenMode(r) === "page"
-      ? openRecordAsPage(r)
-      : open(r.page_id);
+    options?.fullPage || recordOpenMode(r) === "page" ? openRecordAsPage(r) : open(r.page_id);
   /** Databases this page could show as a linked view: everything in the workspace. */
   const databaseChoices = (hostId: string) =>
     state.databases
@@ -950,9 +784,7 @@ export function WorkspaceApp() {
   };
   /** Rows of an embedded database open in a side peek over the current page. */
   const peekRecord = (r: DbRecord, options?: { fullPage?: boolean }) =>
-    options?.fullPage || recordOpenMode(r) === "page"
-      ? openRecordAsPage(r)
-      : setPeekRecordId(r.id);
+    options?.fullPage || recordOpenMode(r) === "page" ? openRecordAsPage(r) : setPeekRecordId(r.id);
   /**
    * A linked record (from a relation cell or a record's properties) opens in the side
    * panel over what's open now, as in Notion; the page behind stays put. Databases set to
@@ -962,18 +794,17 @@ export function WorkspaceApp() {
     if (recordOpenMode(r) === "page") return openRecordAsPage(r);
     setPeekStack((stack) => (stack[stack.length - 1] === r.id ? stack : [...stack, r.id]));
   };
-  const peeked = peekRecordId
-    ? state.records.find((r) => r.id === peekRecordId)
-    : undefined;
+  const peeked = peekRecordId ? state.records.find((r) => r.id === peekRecordId) : undefined;
   // What "back" returns to: the record under this one in the panel, or the routed record.
-  const previousId = peekStack.length > 1 ? peekStack[peekStack.length - 2] : peekStack.length === 1 && record && !recordAsPage ? record.id : null;
+  const previousId =
+    peekStack.length > 1
+      ? peekStack[peekStack.length - 2]
+      : peekStack.length === 1 && record && !recordAsPage
+        ? record.id
+        : null;
   const previous = previousId ? state.records.find((r) => r.id === previousId) : undefined;
-  const peekedPage = state.pages.find(
-    (p) => p.id === peeked?.page_id && !p.deleted_at,
-  );
-  const peekedParent = state.pages.find(
-    (p) => p.database_id === peeked?.database_id,
-  );
+  const peekedPage = state.pages.find((p) => p.id === peeked?.page_id && !p.deleted_at);
+  const peekedParent = state.pages.find((p) => p.database_id === peeked?.database_id);
   const editor = (p: Page) => (
     <DocumentEditor
       key={p.id}
@@ -1001,9 +832,7 @@ export function WorkspaceApp() {
       onEditSourceChange={(on) => setSourceEdit(on ? p.id : null)}
       onHistoryApi={registerHistory}
       onOpenPage={open}
-      resolvePage={(pageId) =>
-        state.pages.find((item) => item.id === pageId && !item.deleted_at)
-      }
+      resolvePage={(pageId) => state.pages.find((item) => item.id === pageId && !item.deleted_at)}
       onUploadImage={async (file) => {
         await retry();
         const { uploadImage } = await import("@/lib/attachments");
@@ -1099,143 +928,19 @@ export function WorkspaceApp() {
         onClick={() => setCollapsed(true)}
       />
       <div className="main-pane">
-        <header className="topbar">
-          <div className="topbar-left">
-            {collapsed && (
-              <button
-                className="icon-button"
-                onClick={() => setCollapsed(false)}
-                aria-label="Show sidebar"
-              >
-                <PanelLeft size={18} />
-              </button>
-            )}
-            <nav className="breadcrumbs" aria-label="Breadcrumb">
-              {activeId === PLAYBOOKS_VIEW && (
-                <span>
-                  <button onClick={() => open(PLAYBOOKS_VIEW)}>
-                    <Compass size={16} />
-                    <span>Playbooks</span>
-                  </button>
-                </span>
-              )}
-              {chain.map((p, i) => (
-                <span key={p.id}>
-                  {i > 0 && <span className="breadcrumb-separator">/</span>}
-                  <button onClick={() => open(p.id)} title={p.title}>
-                    <PageIcon page={p} size={16} fallback={null} />
-                    <span>{p.title || "Untitled"}</span>
-                  </button>
-                </span>
-              ))}
-            </nav>
-          </div>
-          <div className="topbar-actions">
-            <span
-              className={`save-status ${status}`}
-              title={
-                status === "saved" ? "All changes saved" : "Saving your changes"
-              }
-            >
-              {status === "saved" ? (
-                <Check size={12} />
-              ) : status === "error" ? (
-                <CloudOff size={14} />
-              ) : (
-                <Cloud size={14} />
-              )}
-              <span>
-                {status === "saved"
-                  ? "Saved"
-                  : status === "saving"
-                    ? "Saving…"
-                    : "Save failed"}
-              </span>
-            </span>
-            <Popup
-              align="end"
-              trigger={
-                <button className="private-button">
-                  <Lock size={14} />
-                  <span>Private</span>
-                </button>
-              }
-            >
-              <div className="privacy-popover">
-                <Lock size={20} />
-                <strong>Just for you</strong>
-                <p>
-                  This page belongs to your private workspace. Only you can
-                  access it.
-                </p>
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(window.location.href);
-                    toast.success("Private page link copied");
-                  }}
-                >
-                  <Copy size={14} />
-                  Copy page link
-                </button>
-              </div>
-            </Popup>
-            {page && (
-              <>
-                <button
-                  className={`icon-button favorite-button ${page.favorite ? "is-favorite" : ""}`}
-                  aria-label={
-                    page.favorite ? "Remove from favorites" : "Add to favorites"
-                  }
-                  onClick={() => action("favorite", page)}
-                >
-                  <Star
-                    size={18}
-                    fill={page.favorite ? "currentColor" : "none"}
-                  />
-                </button>
-                <Menu
-                  align="end"
-                  trigger={
-                    <button className="icon-button" aria-label="Page options">
-                      <MoreHorizontal size={20} />
-                    </button>
-                  }
-                >
-                  <PageActions page={page} onAction={action} />
-                  <MenuSeparator />
-                  <MenuItem
-                    onClick={() => {
-                      download(
-                        `${page.title}.md`,
-                        `# ${page.title}\n\n${page.description}\n\n${state.documents.find((d) => d.page_id === page.id)?.markdown || ""}`,
-                      );
-                      toast.success("Markdown exported");
-                    }}
-                  >
-                    <Download />
-                    Export Markdown
-                  </MenuItem>
-                  {page.kind === "document" && isStructured(page.id) && (
-                    <MenuItem onClick={() => setSourceView(page.id)}>
-                      <Code2 />
-                      View as Markdown
-                    </MenuItem>
-                  )}
-                  <MenuItem
-                    onClick={() => {
-                      void navigator.clipboard.writeText(window.location.href);
-                      toast.success("Page link copied");
-                    }}
-                  >
-                    <Copy />
-                    Copy page link
-                  </MenuItem>
-                </Menu>
-              </>
-            )}
-          </div>
-        </header>
+        <WorkspaceTopbar
+          collapsed={collapsed}
+          onShowSidebar={() => setCollapsed(false)}
+          playbooks={activeId === PLAYBOOKS_VIEW}
+          chain={chain}
+          page={page}
+          status={status}
+          onOpen={open}
+          onAction={action}
+          markdownOf={(pageId) => state.documents.find((d) => d.page_id === pageId)?.markdown || ""}
+          canViewSource={!!page && page.kind === "document" && isStructured(page.id)}
+          onViewSource={setSourceView}
+        />
         {error && (
           <div className="save-error">
             <CloudOff size={16} />
@@ -1243,11 +948,7 @@ export function WorkspaceApp() {
             {recovery && (
               <button
                 onClick={() =>
-                  download(
-                    "slate-unsynced-draft.json",
-                    JSON.stringify(recovery, null, 2),
-                    "application/json",
-                  )
+                  download("slate-unsynced-draft.json", JSON.stringify(recovery, null, 2), "application/json")
                 }
               >
                 Download draft
@@ -1260,9 +961,7 @@ export function WorkspaceApp() {
           className={`page-scroll ${page?.kind === "database" ? "database-page" : "document-page"}`}
           key={activeId}
           ref={pageScrollRef}
-          onScroll={(e) =>
-            scrollMemory.current.set(entryKey.current, e.currentTarget.scrollTop)
-          }
+          onScroll={(e) => scrollMemory.current.set(entryKey.current, e.currentTarget.scrollTop)}
         >
           {!ready ? (
             <div className="workspace-loading">
@@ -1313,11 +1012,7 @@ export function WorkspaceApp() {
                       aria-label="Change page icon"
                       title="Change icon"
                     >
-                      <PageIcon
-                        page={page}
-                        size={page.kind === "database" ? 48 : 72}
-                        fallback={null}
-                      />
+                      <PageIcon page={page} size={page.kind === "database" ? 48 : 72} fallback={null} />
                     </button>
                   )}
                 </div>
@@ -1353,13 +1048,10 @@ export function WorkspaceApp() {
                   autoFocus={describing === page.id && !page.description}
                   value={page.description}
                   rows={1}
-                  onChange={(e) =>
-                    patchPage(page.id, { description: e.target.value })
-                  }
+                  onChange={(e) => patchPage(page.id, { description: e.target.value })}
                   onBlur={(e) => {
                     if (!e.target.value.trim()) {
-                      if (page.description)
-                        patchPage(page.id, { description: "" });
+                      if (page.description) patchPage(page.id, { description: "" });
                       setDescribing(null);
                     }
                   }}
@@ -1386,10 +1078,7 @@ export function WorkspaceApp() {
                       />
                     )}
                     {isBlankDocument(page) && (
-                      <div
-                        className="page-starter"
-                        aria-label="Start this page"
-                      >
+                      <div className="page-starter" aria-label="Start this page">
                         <p>
                           Press <kbd>↵</kbd> to start writing, or begin with
                         </p>
@@ -1398,9 +1087,7 @@ export function WorkspaceApp() {
                             onClick={(e) =>
                               e.currentTarget
                                 .closest(".page-content")
-                                ?.querySelector<HTMLElement>(
-                                  ".page-body .ProseMirror",
-                                )
+                                ?.querySelector<HTMLElement>(".page-body .ProseMirror")
                                 ?.focus()
                             }
                           >
@@ -1410,11 +1097,7 @@ export function WorkspaceApp() {
                           <span className="page-starter-divider" aria-hidden />
                           {/* The three layouts all make a database: the label says so,
                               the icons tell them apart. */}
-                          <span
-                            className="page-starter-group"
-                            role="group"
-                            aria-label="Database"
-                          >
+                          <span className="page-starter-group" role="group" aria-label="Database">
                             <span className="page-starter-label" aria-hidden>
                               Database
                             </span>
@@ -1436,11 +1119,7 @@ export function WorkspaceApp() {
                             ))}
                           </span>
                           <span className="page-starter-divider" aria-hidden />
-                          <span
-                            className="page-starter-group"
-                            role="group"
-                            aria-label="Template"
-                          >
+                          <span className="page-starter-group" role="group" aria-label="Template">
                             <span className="page-starter-label" aria-hidden>
                               Template
                             </span>
@@ -1471,21 +1150,18 @@ export function WorkspaceApp() {
                             Run
                           </button>
                           <span className="run-bar-meta">
-                            {procedure.steps.length}{" "}
-                            {procedure.steps.length === 1 ? "step" : "steps"}
+                            {procedure.steps.length} {procedure.steps.length === 1 ? "step" : "steps"}
                             {procedure.params.length > 0 &&
                               ` · ${procedure.params.length} ${procedure.params.length === 1 ? "input" : "inputs"}`}
                           </span>
                           {inProgress && (
                             <button
                               className="run-bar-link is-resume"
-                              onClick={() =>
-                                setActiveRun({ pageId: page.id, recordId: inProgress.record.id })
-                              }
+                              onClick={() => setActiveRun({ pageId: page.id, recordId: inProgress.record.id })}
                             >
                               <span className="run-live" aria-hidden />
-                              Resume {recordTitle(inProgress.record, state)} · step{" "}
-                              {inProgress.run.step + 1} of {procedure.steps.length}
+                              Resume {recordTitle(inProgress.record, state)} · step {inProgress.run.step + 1} of{" "}
+                              {procedure.steps.length}
                             </button>
                           )}
                           {database && (
@@ -1495,7 +1171,9 @@ export function WorkspaceApp() {
                               title="See every run of this page"
                             >
                               {runs.length} {runs.length === 1 ? "run" : "runs"}
-                              {runs[0] && <span className="run-bar-when">· last {timeAgo(runs[0].record.created_at)}</span>}
+                              {runs[0] && (
+                                <span className="run-bar-when">· last {timeAgo(runs[0].record.created_at)}</span>
+                              )}
                             </button>
                           )}
                           <Popup
@@ -1511,21 +1189,21 @@ export function WorkspaceApp() {
                               <strong>How playbooks work</strong>
                               <ol>
                                 <li>
-                                  <b>Inputs</b> are what you need to know before starting, like an order
-                                  number. They&apos;re asked for when someone presses Run.
+                                  <b>Inputs</b> are what you need to know before starting, like an order number.
+                                  They&apos;re asked for when someone presses Run.
                                 </li>
                                 <li>
-                                  <b>Steps</b> say what to do: Say, Ask, Check, Decide, Call an app, or
-                                  Finish. Add one with <kbd>/</kbd> or “Add a step”, and use{" "}
-                                  <b>Value</b> to fill in an input or an earlier answer.
+                                  <b>Steps</b> say what to do: Say, Ask, Check, Decide, Call an app, or Finish. Add one
+                                  with <kbd>/</kbd> or “Add a step”, and use <b>Value</b> to fill in an input or an
+                                  earlier answer.
                                 </li>
                                 <li>
-                                  <b>Headings</b> split it into sections. A Decide or Check step can jump
-                                  to a section, like “Roll back”.
+                                  <b>Headings</b> split it into sections. A Decide or Check step can jump to a section,
+                                  like “Roll back”.
                                 </li>
                                 <li>
-                                  Press <b>Run</b> to go through it one step at a time. Every run is kept
-                                  in <b>Runs</b>, and you can pause and pick up later.
+                                  Press <b>Run</b> to go through it one step at a time. Every run is kept in <b>Runs</b>
+                                  , and you can pause and pick up later.
                                 </li>
                               </ol>
                             </div>
@@ -1537,9 +1215,7 @@ export function WorkspaceApp() {
                     {isStructured(page.id) && sourceEdit !== page.id ? (
                       <PlaybookBuilder
                         key={page.id}
-                        markdown={
-                          state.documents.find((d) => d.page_id === page.id)?.markdown || ""
-                        }
+                        markdown={state.documents.find((d) => d.page_id === page.id)?.markdown || ""}
                         onChange={(md) => savePage(page.id, md)}
                         onRunFrom={(section) => openRunStart(page.id, {}, section)}
                       />
@@ -1549,9 +1225,7 @@ export function WorkspaceApp() {
                     {(() => {
                       // Subpages live here, under "Pages inside", unless the page's text
                       // links to them (a page block from "/page" or "Add to page").
-                      const markdown =
-                        state.documents.find((d) => d.page_id === page.id)
-                          ?.markdown || "";
+                      const markdown = state.documents.find((d) => d.page_id === page.id)?.markdown || "";
                       const unplaced = state.pages
                         .filter(
                           (p) =>
@@ -1569,11 +1243,7 @@ export function WorkspaceApp() {
                             <button
                               onClick={() =>
                                 change((s) =>
-                                  unplaced.reduce(
-                                    (acc, child) =>
-                                      relinkPageBlock(acc, child.id, null, page.id),
-                                    s,
-                                  ),
+                                  unplaced.reduce((acc, child) => relinkPageBlock(acc, child.id, null, page.id), s),
                                 )
                               }
                               title="Add links to these pages at the end of the text"
@@ -1582,23 +1252,14 @@ export function WorkspaceApp() {
                             </button>
                           </div>
                           {unplaced.map((p) => (
-                            <button
-                              key={p.id}
-                              className="editor-page-reference"
-                              onClick={() => open(p.id)}
-                            >
+                            <button key={p.id} className="editor-page-reference" onClick={() => open(p.id)}>
                               <PageIcon page={p} size={18} />
-                              <span className={p.title ? "" : "is-untitled"}>
-                                {p.title || "Untitled"}
-                              </span>
+                              <span className={p.title ? "" : "is-untitled"}>{p.title || "Untitled"}</span>
                               {/* Same chevron as page blocks in the text: it opens the page. */}
                               <ChevronRight size={16} />
                             </button>
                           ))}
-                          <button
-                            className="pages-inside-add"
-                            onClick={() => requestNew(page.id)}
-                          >
+                          <button className="pages-inside-add" onClick={() => requestNew(page.id)}>
                             <Plus size={16} />
                             Add a page
                           </button>
@@ -1610,73 +1271,25 @@ export function WorkspaceApp() {
               </div>
             </article>
           ) : missing ? (
-            <div className="empty-workspace" role="status">
-              <FileText size={36} />
-              {missingPage?.deleted_at ? (
-                <>
-                  <h2>“{missingPage.title || "Untitled"}” is in the Trash.</h2>
-                  <p>Restore it to open it again, or go back to your pages.</p>
-                </>
-              ) : (
-                <>
-                  <h2>This page isn’t here.</h2>
-                  <p>It may have been deleted, or the link is for another account.</p>
-                </>
-              )}
-              <div className="empty-workspace-actions">
-                {missingPage?.deleted_at && (
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      change((s) => trashPage(s, missingPage.id, true));
-                      toast.success("Restored");
-                    }}
-                  >
-                    Restore
-                  </button>
-                )}
-                <button
-                  className={missingPage?.deleted_at ? "secondary-button" : "primary-button"}
-                  onClick={() => {
-                    const home = returnPage(state.active_workspace_id);
-                    if (home && home !== activeId) open(home);
-                  }}
-                >
-                  Go to your pages
-                </button>
-              </div>
-            </div>
+            <MissingPage
+              page={missingPage}
+              onRestore={(pageId) => {
+                change((s) => trashPage(s, pageId, true));
+                toast.success("Restored");
+              }}
+              onHome={() => {
+                const home = returnPage(state.active_workspace_id);
+                if (home && home !== activeId) open(home);
+              }}
+            />
           ) : (
-            <div className="empty-workspace">
-              <FileText size={36} />
-              <h2>A little room to think.</h2>
-              <p>Start with a page to write in, or a database to organize.</p>
-              <div className="empty-workspace-actions">
-                <button
-                  className="primary-button"
-                  onClick={() => requestNew(null)}
-                >
-                  <FileText size={16} />
-                  New page
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => requestNew(null, "database")}
-                >
-                  <Table2 size={16} />
-                  New database
-                </button>
-              </div>
-            </div>
+            <EmptyWorkspace onNew={(kind) => requestNew(null, kind)} />
           )}
         </main>
         {collapsed && (
           <ShortcutsPopover
             trigger={
-              <button
-                className="help-button"
-                aria-label="Help and keyboard shortcuts"
-              >
+              <button className="help-button" aria-label="Help and keyboard shortcuts">
                 <HelpCircle size={18} />
               </button>
             }
@@ -1704,9 +1317,7 @@ export function WorkspaceApp() {
           recordOptions={(param) =>
             state.records
               .filter(
-                (r) =>
-                  r.database_id === param.databaseId &&
-                  !state.pages.find((p) => p.id === r.page_id)?.deleted_at,
+                (r) => r.database_id === param.databaseId && !state.pages.find((p) => p.id === r.page_id)?.deleted_at,
               )
               .map((r) => ({ id: r.id, label: recordTitle(r, state) }))
           }
@@ -1734,8 +1345,7 @@ export function WorkspaceApp() {
           onBack={() => updateRun((run) => backRun(run))}
           onPause={() => {
             setActiveRun(null);
-            if (activeRunState.status === "running")
-              toast("Run paused — resume it from the page");
+            if (activeRunState.status === "running") toast("Run paused — resume it from the page");
           }}
           onStop={() => updateRun((run) => ({ ...run, status: "stopped", step: -1 }))}
           onRunAgain={() => {
@@ -1825,8 +1435,7 @@ export function WorkspaceApp() {
               label: "Undo",
               onClick: () => {
                 const before = state.pages.find((p) => p.id === page.id);
-                const beforeMarkdown =
-                  state.documents.find((d) => d.page_id === page.id)?.markdown ?? "";
+                const beforeMarkdown = state.documents.find((d) => d.page_id === page.id)?.markdown ?? "";
                 change((s) => ({
                   ...s,
                   pages: s.pages.map((p) =>
@@ -1834,9 +1443,7 @@ export function WorkspaceApp() {
                       ? { ...p, title: before.title, icon: before.icon, description: before.description }
                       : p,
                   ),
-                  documents: s.documents.map((d) =>
-                    d.page_id === page.id ? { ...d, markdown: beforeMarkdown } : d,
-                  ),
+                  documents: s.documents.map((d) => (d.page_id === page.id ? { ...d, markdown: beforeMarkdown } : d)),
                 }));
               },
             },
@@ -1848,9 +1455,7 @@ export function WorkspaceApp() {
         state={state}
         change={change}
         patchPage={patchPage}
-        expandPage={(pageId) =>
-          setExpanded((current) => new Set([...current, pageId]))
-        }
+        expandPage={(pageId) => setExpanded((current) => new Set([...current, pageId]))}
         onWorkspaceCreated={() => setActiveId("")}
         {...(peeked && peekedPage
           ? {

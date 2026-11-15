@@ -19,14 +19,19 @@ test("a visitor finds the form, is guided through mistakes, and sends a message"
     await expect(page.getByRole("radio", { name: /Account or sign-in/ })).toBeFocused();
     // Picking a topic tailors the message prompt.
     await page.getByRole("radio", { name: /Privacy question/ }).check();
-    await expect(page.getByLabel("Message", { exact: true })).toHaveAttribute("placeholder", "What would you like to know?");
+    await expect(page.getByLabel("Message", { exact: true })).toHaveAttribute(
+      "placeholder",
+      "What would you like to know?",
+    );
     await page.getByLabel("Your email", { exact: true }).fill(email);
     await page.getByLabel("Message", { exact: true }).fill("Where is my data stored?");
     await page.getByRole("button", { name: "Send message" }).click();
     const sent = page.getByRole("status");
     await expect(sent).toContainText("Thanks, your message is in.");
     await expect(sent).toContainText(email);
-    expect(await contactMessages(email)).toEqual([{ topic: "privacy", email, message: "Where is my data stored?", user_id: null }]);
+    expect(await contactMessages(email)).toEqual([
+      { topic: "privacy", email, message: "Where is my data stored?", user_id: null },
+    ]);
     // Another message starts from a clean form.
     await page.getByRole("button", { name: "Send another message" }).click();
     await expect(page.getByLabel("Message", { exact: true })).toHaveValue("");

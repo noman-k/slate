@@ -9,7 +9,9 @@ async function phoneProblems(page: Page) {
   return page.evaluate(() => {
     const width = document.documentElement.clientWidth;
     const zoomy: string[] = [];
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>("input, textarea, select, [contenteditable=true]"))) {
+    for (const el of Array.from(
+      document.querySelectorAll<HTMLElement>("input, textarea, select, [contenteditable=true]"),
+    )) {
       if (el.matches("[type=checkbox], [type=radio], [type=hidden], [aria-hidden=true] *, [tabindex='-1']")) continue;
       const style = getComputedStyle(el);
       if (style.display === "none" || style.visibility === "hidden" || el.getBoundingClientRect().width === 0) continue;
@@ -48,7 +50,11 @@ test("subpages in the sidebar line up by level, with room for a finger", async (
   // Opening a page shows its parents expanded: hub > Tenant Rent Log > Rent Ledger.
   await expect(sidebar.locator(".tree-row", { hasText: "Rent Ledger" })).toBeVisible();
   const iconLeft = (title: string) =>
-    sidebar.locator(".tree-row", { hasText: title }).first().locator(".tree-page .page-icon").evaluate((el) => Math.round(el.getBoundingClientRect().left));
+    sidebar
+      .locator(".tree-row", { hasText: title })
+      .first()
+      .locator(".tree-page .page-icon")
+      .evaluate((el) => Math.round(el.getBoundingClientRect().left));
   const [hub, log, ledger, tenants, notes] = await Promise.all(
     ["Rental Property Finance Hub", "Tenant Rent Log", "Rent Ledger", "Tenants", "Workspace notes"].map(iconLeft),
   );
@@ -87,7 +93,10 @@ test("pages, databases, playbooks and search fit the screen, with no fields that
   await expect(step).toBeVisible();
   expect(await phoneProblems(page)).toEqual({ zoomy: [], overflow: 0 });
   // A step's text has its own full-width line, and its "…" is there without hovering.
-  const [text, badge] = await Promise.all([step.locator(".pb-step-text").boundingBox(), step.locator(".proc-step-badge").boundingBox()]);
+  const [text, badge] = await Promise.all([
+    step.locator(".pb-step-text").boundingBox(),
+    step.locator(".proc-step-badge").boundingBox(),
+  ]);
   expect(text!.y).toBeGreaterThan(badge!.y + badge!.height - 1);
   await expect(step.getByRole("button", { name: /Step 1\.1 options|Step .* options/ })).toBeVisible();
   // The outline doesn't scroll inside the page (no second scrollbar).
@@ -95,7 +104,10 @@ test("pages, databases, playbooks and search fit the screen, with no fields that
   if (await outline.count()) expect(await outline.evaluate((el) => getComputedStyle(el).overflowY)).not.toBe("auto");
   // Search.
   await page.getByRole("button", { name: "Show sidebar" }).tap();
-  await page.getByRole("button", { name: /^Search/ }).first().tap();
+  await page
+    .getByRole("button", { name: /^Search/ })
+    .first()
+    .tap();
   await expect(page.getByRole("dialog")).toBeVisible();
   expect((await phoneProblems(page)).zoomy).toEqual([]);
 });
@@ -107,7 +119,9 @@ test("iPhone Safari gets a no-zoom safety net; other phones keep pinch-zoom unto
     if (ios) await page.addInitScript(() => Object.defineProperty(navigator, "platform", { get: () => "iPhone" }));
     await page.goto("/auth/login");
     await page.waitForLoadState("networkidle");
-    const contents = await page.locator('meta[name="viewport"]').evaluateAll((metas) => metas.map((m) => (m as HTMLMetaElement).content));
+    const contents = await page
+      .locator('meta[name="viewport"]')
+      .evaluateAll((metas) => metas.map((m) => (m as HTMLMetaElement).content));
     expect(contents.length).toBeGreaterThan(0);
     for (const content of contents) expect(content.includes("maximum-scale=1")).toBe(ios);
     await context.close();
@@ -119,7 +133,12 @@ async function pageWithTodoAndLinks(page: Page, baseURL: string, hub: string) {
   await page.getByRole("button", { name: "Show sidebar" }).tap();
   await page.getByRole("button", { name: "New page", exact: true }).first().tap();
   const start = page.getByLabel("Start this page");
-  if (await start.count()) await start.getByRole("button", { name: /^(Empty|Blank|Page)/ }).first().tap().catch(() => {});
+  if (await start.count())
+    await start
+      .getByRole("button", { name: /^(Empty|Blank|Page)/ })
+      .first()
+      .tap()
+      .catch(() => {});
   await page.getByLabel("Page title", { exact: true }).fill("Errands");
   await page.getByLabel("Page title", { exact: true }).press("Enter");
   const editor = page.getByLabel("Page content", { exact: true });
@@ -148,7 +167,10 @@ test("tapping a to-do or a link uses it, without raising the keyboard", async ({
   await box.tap();
   // A link to another site opens in a new tab.
   await context.route("https://shop.example.test/**", (route) => route.fulfill({ body: "shop" }));
-  const [tab] = await Promise.all([context.waitForEvent("page"), editor.locator('a[href^="https://shop.example.test"]').tap()]);
+  const [tab] = await Promise.all([
+    context.waitForEvent("page"),
+    editor.locator('a[href^="https://shop.example.test"]').tap(),
+  ]);
   await expect(tab).toHaveURL("https://shop.example.test/milk");
   await tab.close();
   expect(await editorHasFocus(page)).toBe(false);
@@ -188,14 +210,18 @@ test("on a touch screen, help shows touch tips instead of keyboard shortcuts", a
   await expect(page.locator("aside.sidebar .sidebar-search kbd")).toHaveCount(0);
 });
 
-test("on a phone a database row opens as a full page, without raising the keyboard, and Back returns", async ({ page }) => {
+test("on a phone a database row opens as a full page, without raising the keyboard, and Back returns", async ({
+  page,
+}) => {
   await page.goto(`/p/${account!.ids.ledger}`);
   const ledger = page.url();
   await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).tap();
   // A full page (a side panel would fill the screen anyway): no dialog over the table.
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("2026-04 — Basement");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  expect(await page.evaluate(() => document.activeElement?.matches("input, textarea, [contenteditable=true]"))).toBe(false);
+  expect(await page.evaluate(() => document.activeElement?.matches("input, textarea, [contenteditable=true]"))).toBe(
+    false,
+  );
   await page.goBack();
   await expect(page).toHaveURL(ledger);
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
@@ -224,7 +250,14 @@ test("a page block opens on the first tap, and a tap reveals nothing before it's
           if (node instanceof HTMLElement && node.matches(".block-controls")) log.push("handles");
     }).observe(document.body, { childList: true, subtree: true });
     window.addEventListener("touchstart", () => (watching = true), true);
-    window.addEventListener("click", () => { watching = false; log.push("click"); }, true);
+    window.addEventListener(
+      "click",
+      () => {
+        watching = false;
+        log.push("click");
+      },
+      true,
+    );
   });
   await page.locator(".editor-page-reference", { hasText: "Tenant Rent Log" }).tap();
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Tenant Rent Log");
@@ -282,7 +315,8 @@ test("menus on a phone: finger-sized rows, on screen, and no keyboard until you 
   const box = (await menu.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
-  for (const item of await menu.getByRole("menuitem").all()) expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  for (const item of await menu.getByRole("menuitem").all())
+    expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await page.keyboard.press("Escape");
   // A database's menus don't put the cursor in a field (that would raise the keyboard over them).
   await page.goto(`/p/${account!.ids.ledger}`);
@@ -299,7 +333,10 @@ test("the sidebar slides in and out as a drawer, with a backdrop that fades both
   // backdrop is see-through and untappable.
   await expect(page.locator(".workspace-app.is-settled")).toBeAttached();
   await expect(sidebar).toBeHidden();
-  const closed = await sidebar.evaluate((el) => ({ width: el.getBoundingClientRect().width, transform: getComputedStyle(el).transform }));
+  const closed = await sidebar.evaluate((el) => ({
+    width: el.getBoundingClientRect().width,
+    transform: getComputedStyle(el).transform,
+  }));
   expect(closed.width).toBeGreaterThan(200);
   expect(closed.transform).toMatch(/matrix\(1, 0, 0, 1, -2\d\d/);
   await expect(sidebar).toBeHidden();
@@ -313,14 +350,17 @@ test("the sidebar slides in and out as a drawer, with a backdrop that fades both
   await expect(sidebar).toBeHidden();
 });
 
-test("playbooks on a phone: a roomy list, fields that fit, and run buttons within a thumb's reach", async ({ page }) => {
+test("playbooks on a phone: a roomy list, fields that fit, and run buttons within a thumb's reach", async ({
+  page,
+}) => {
   await page.goto(`/p/${account!.ids.hub}`);
   await page.getByRole("button", { name: "Show sidebar" }).tap();
   await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
   await page.getByRole("button", { name: "New page", exact: true }).first().tap();
   await page.getByLabel("Start this page").getByRole("button", { name: "Playbook", exact: true }).tap();
   const gallery = page.locator(".procedure-gallery");
-  if (!(await gallery.getByRole("option", { name: /Refund request/ }).count())) await gallery.getByRole("button", { name: /^More templates/ }).tap();
+  if (!(await gallery.getByRole("option", { name: /Refund request/ }).count()))
+    await gallery.getByRole("button", { name: /^More templates/ }).tap();
   // On a phone, tapping a template uses it (the gallery closes).
   await gallery.getByRole("option", { name: /Refund request/ }).tap();
   await expect(gallery).toBeHidden();
@@ -360,7 +400,10 @@ test("search on a phone fills the screen, with Cancel and clear, and no keyboard
   await page.goto(`/p/${account!.ids.hub}`);
   await page.getByRole("button", { name: "Show sidebar" }).tap();
   await expect.poll(async () => (await page.locator("aside.sidebar").boundingBox())?.x).toBe(0);
-  await page.getByRole("button", { name: /^Search/ }).first().tap();
+  await page
+    .getByRole("button", { name: /^Search/ })
+    .first()
+    .tap();
   const dialog = page.getByRole("dialog", { name: "Search your workspace" });
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(300);
@@ -398,7 +441,9 @@ test("on a phone, a toolbar above the keyboard indents and outdents to-dos (ther
   const editor = page.getByLabel("Page content", { exact: true });
   // It floats just under the line being edited (clear of the keyboard and browser bars).
   const line = (await editor.locator('ul[data-type="taskList"] > li').last().boundingBox())!;
-  await expect.poll(async () => Math.round((await toolbar.boundingBox())!.y - (line.y + line.height))).toBeGreaterThanOrEqual(0);
+  await expect
+    .poll(async () => Math.round((await toolbar.boundingBox())!.y - (line.y + line.height)))
+    .toBeGreaterThanOrEqual(0);
   expect((await toolbar.boundingBox())!.y - (line.y + line.height)).toBeLessThan(24);
   const bar = (await toolbar.boundingBox())!;
   expect(bar.x).toBeGreaterThanOrEqual(0);

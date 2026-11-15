@@ -1,0 +1,171 @@
+/* The playbook template gallery. (Part of globals.css; the parts load in order.) */
+/* ---------- Playbook / runbook gallery ---------- */
+.modal-surface.procedure-gallery {
+  width: 720px;
+}
+.procedure-kinds {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--divider);
+}
+.procedure-kinds button {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+@media (hover: hover) {
+  .procedure-kinds button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.procedure-kinds button.is-active {
+  background: var(--bg-strong);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-chip);
+}
+/* The dialog's header and tabs stay put; only the list of templates scrolls. */
+.modal-surface.procedure-gallery {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.procedure-body {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 16px;
+  min-height: 300px;
+  height: min(440px, calc(100dvh - 2 * clamp(24px, 13vh, 120px) - 190px));
+}
+.procedure-list {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 4px;
+}
+.procedure-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  outline: none;
+}
+.procedure-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.procedure-option .page-icon {
+  margin-top: 1px;
+}
+.procedure-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.procedure-option strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.procedure-option small {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.procedure-option.is-active {
+  background: var(--hover-strong);
+}
+.procedure-list:focus-visible .procedure-option.is-active {
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.procedure-preview {
+  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--divider);
+  min-width: 0;
+}
+.procedure-preview-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.procedure-preview h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+.procedure-preview > p {
+  margin: 8px 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.procedure-when {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.procedure-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: -4px 0 14px;
+}
+.procedure-inputs .procedure-when {
+  width: 100%;
+}
+.procedure-inputs code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.procedure-preview ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--divider);
+}
+.procedure-preview li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: 13px;
+  color: var(--text);
+}
+.procedure-preview li small {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .procedure-body {
+    grid-template-columns: 1fr;
+  }
+  .procedure-preview {
+    display: none;
+  }
+}

@@ -60,7 +60,10 @@ export function checkPlaybook(model: PlaybookModel): PlaybookChecks {
       if (a.op !== "set" && a.op !== "not_set" && !String(a.value || "").trim())
         add(steps, step.id, { level: "warning", message: "Say what to compare it with." });
       if ((a.then || "") === (a.else || ""))
-        add(steps, step.id, { level: "tip", message: "Both answers go the same way, so this decision changes nothing." });
+        add(steps, step.id, {
+          level: "tip",
+          message: "Both answers go the same way, so this decision changes nothing.",
+        });
     }
     if (type === "api" && !String(a.url || "").trim())
       add(steps, step.id, { level: "warning", message: "Add the web address to call." });
@@ -74,7 +77,10 @@ export function checkPlaybook(model: PlaybookModel): PlaybookChecks {
     const missing = new Set<string>();
     for (const match of used.matchAll(VARIABLE_PATTERN)) if (!known.has(match[1])) missing.add(match[1]);
     for (const name of missing)
-      add(steps, step.id, { level: "warning", message: `It uses “${name}”, but there's no input or answer with that name.` });
+      add(steps, step.id, {
+        level: "warning",
+        message: `It uses “${name}”, but there's no input or answer with that name.`,
+      });
   });
 
   // Which steps a run can reach, following the order and every jump.
@@ -103,7 +109,10 @@ export function checkPlaybook(model: PlaybookModel): PlaybookChecks {
   model.sections.forEach((section, index) => {
     if (!section.title.trim()) add(sections, section.id, { level: "warning", message: "Give this section a name." });
     else if (titles.indexOf(section.title.trim()) !== index)
-      add(sections, section.id, { level: "warning", message: "Another section has the same name, so jumps to it are unclear." });
+      add(sections, section.id, {
+        level: "warning",
+        message: "Another section has the same name, so jumps to it are unclear.",
+      });
     if (!section.steps.length) {
       add(sections, section.id, { level: "tip", message: "This section has no steps yet." });
       return;
@@ -119,7 +128,10 @@ export function checkPlaybook(model: PlaybookModel): PlaybookChecks {
   // A run that runs out of steps stops without saying how it ended.
   const last = flat[flat.length - 1];
   if (last && last.step.attrs.step !== "end" && reached.has(flat.length - 1))
-    add(steps, last.step.id, { level: "tip", message: "Runs stop after this step. End with a Finish step to say how it ended." });
+    add(steps, last.step.id, {
+      level: "tip",
+      message: "Runs stop after this step. End with a Finish step to say how it ended.",
+    });
 
   let total = 0;
   let warnings = 0;

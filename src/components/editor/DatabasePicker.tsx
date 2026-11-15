@@ -26,13 +26,7 @@ interface DatabasePickerProps {
  * Picks a database to show in the page: an existing one (as a linked view) or a new
  * one. Search filters as you type; ↑↓ move, Enter picks, Esc closes.
  */
-export function DatabasePicker({
-  databases,
-  onPick,
-  onCreate,
-  onClose,
-  position,
-}: DatabasePickerProps) {
+export function DatabasePicker({ databases, onPick, onCreate, onClose, position }: DatabasePickerProps) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -58,9 +52,7 @@ export function DatabasePicker({
     else if (matches[at - 1]) onPick(matches[at - 1].id);
   };
   useEffect(() => {
-    listRef.current
-      ?.querySelector<HTMLElement>(`[data-index="${index}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector<HTMLElement>(`[data-index="${index}"]`)?.scrollIntoView({ block: "nearest" });
   }, [index]);
   const option = (at: number) => ({
     id: `database-option-${at}`,
@@ -77,17 +69,8 @@ export function DatabasePicker({
   });
   return (
     <>
-      <button
-        className="editor-menu-scrim"
-        aria-label="Close database picker"
-        onClick={onClose}
-      />
-      <div
-        className="editor-db-picker"
-        style={position}
-        role="dialog"
-        aria-label="Add a database"
-      >
+      <button className="editor-menu-scrim" aria-label="Close database picker" onClick={onClose} />
+      <div className="editor-db-picker" style={position} role="dialog" aria-label="Add a database">
         <label className="editor-db-picker-search">
           <Search size={15} />
           <input
@@ -135,9 +118,7 @@ export function DatabasePicker({
               <small>Create an empty database here</small>
             </span>
           </button>
-          <div className="editor-menu-label">
-            {databases.length ? "Link an existing database" : "No databases yet"}
-          </div>
+          <div className="editor-menu-label">{databases.length ? "Link an existing database" : "No databases yet"}</div>
           {matches.map((db, at) => (
             <button key={db.id} {...option(at + 1)}>
               <span className="editor-db-picker-icon">

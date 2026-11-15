@@ -87,11 +87,7 @@ export function MenuItem({
   disabled?: boolean;
 }) {
   return (
-    <Dropdown.Item
-      className={`menu-item ${danger ? "danger" : ""}`}
-      onSelect={onClick}
-      disabled={disabled}
-    >
+    <Dropdown.Item className={`menu-item ${danger ? "danger" : ""}`} onSelect={onClick} disabled={disabled}>
       {children}
     </Dropdown.Item>
   );
@@ -115,13 +111,7 @@ export function Popup({
     <Popover.Root>
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content
-          className="menu-surface"
-          side={placed}
-          sideOffset={6}
-          align={align}
-          collisionPadding={12}
-        >
+        <Popover.Content className="menu-surface" side={placed} sideOffset={6} align={align} collisionPadding={12}>
           {children}
         </Popover.Content>
       </Popover.Portal>
@@ -167,9 +157,7 @@ export function Modal({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay
-          className={`modal-backdrop ${peek ? "peek-backdrop" : ""}`}
-        />
+        <Dialog.Overlay className={`modal-backdrop ${peek ? "peek-backdrop" : ""}`} />
         <Dialog.Content
           ref={surface}
           className={`${peek ? "peek-surface" : "modal-surface"} ${className}`}
@@ -185,11 +173,7 @@ export function Modal({
               {/* Title on the left; actions and Close (X) at the top right, like dialogs. */}
               <Dialog.Title>{heading ?? title}</Dialog.Title>
               {actions}
-              <Dialog.Close
-                className="icon-button"
-                aria-label="Close"
-                title="Close (Esc)"
-              >
+              <Dialog.Close className="icon-button" aria-label="Close" title="Close (Esc)">
                 <X size={18} />
               </Dialog.Close>
             </div>
@@ -204,9 +188,7 @@ export function Modal({
               </span>
             </div>
           )}
-          <Dialog.Description
-            className={description ? "modal-description" : "sr-only"}
-          >
+          <Dialog.Description className={description ? "modal-description" : "sr-only"}>
             {description || title}
           </Dialog.Description>
           {children}

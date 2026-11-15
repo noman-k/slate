@@ -1,0 +1,226 @@
+/* Touch screens and small windows. (Part of globals.css; the parts load in order.) */
+/* ---------- Touch screens and small windows ----------
+ * Hover styles only apply where there's a real pointer (scripts/hover-media.mjs keeps it that
+ * way), so on touch screens a tap is never "spent" on revealing something. Controls a mouse
+ * reveals by hovering are shown where they matter instead, fields people type in are 16px
+ * (smaller makes iPhone Safari zoom in), and taps get immediate feedback.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+a,
+button,
+input,
+select,
+textarea,
+label,
+summary,
+[role="button"],
+[role="tab"],
+[role="option"],
+[role="menuitem"] {
+  /* No double-tap-to-zoom delay on controls. */
+  touch-action: manipulation;
+}
+@media (hover: none) {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Taps light up while pressed, as hover would with a mouse. */
+  button:active,
+  [role="button"]:active,
+  [role="menuitem"]:active,
+  [role="option"]:active,
+  .tree-page:active,
+  .nav-row:active {
+    background-color: var(--hover-strong);
+  }
+  .primary-button:active,
+  .landing-button:not(.outline):not(.ghost):active,
+  .auth-submit:active {
+    background-color: var(--accent-hover);
+  }
+
+  /* The current page's row keeps its "…" and "+" in the sidebar; the section "+" too. */
+  .tree-row.selected .tree-actions {
+    display: flex;
+  }
+  .section-heading .icon-button {
+    opacity: 1;
+  }
+  .page-quiet-actions {
+    opacity: 1;
+  }
+
+  /* Playbooks: each step's "…" (move, duplicate, delete) is always there; dragging by the
+     grip would fight with scrolling, and the menu moves steps too. */
+  .pb-step > .proc-step-row > .pb-icon-button {
+    opacity: 1;
+  }
+  .pb-grip {
+    display: none;
+  }
+
+  /* Fields people type in: 16px, so iPhone Safari doesn't zoom into them. (`:root` so these
+     win over the components' own styles, which load later.) */
+  :root .search-input-wrap input,
+  :root .run-field input,
+  :root .run-field select,
+  :root .settings-section input,
+  :root .compact-dialog input,
+  :root .pb-step-text,
+  :root .pb-textarea,
+  :root .page-description,
+  :root .pb-section-description,
+  :root .proc-name-input,
+  :root .proc-step-config input,
+  :root .proc-step-config select,
+  :root .pb-side input,
+  :root .pb-side select,
+  :root .proc-step-badge select {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* A step's text gets its own full-width line under its number, type and "…". */
+  .pb-step > .proc-step-row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .pb-step > .proc-step-row > .pb-icon-button {
+    margin-left: auto;
+  }
+  .pb-step > .proc-step-row > .proc-step-body {
+    order: 1;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+  .pb-step .pb-step-text-wrap {
+    flex-basis: 100%;
+  }
+}
+
+/* Settings › AI agents: what a new key may do, and each key's scope in the list. */
+.agent-scope {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.agent-scope legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.agent-scope label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+}
+.agent-scope label.is-on {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.agent-scope input {
+  flex-shrink: 0;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.agent-scope span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agent-scope strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.agent-scope small {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.agent-scope-badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tag-text);
+  background: var(--tag-default-bg);
+}
+.agent-scope-badge.is-write {
+  background: var(--tag-blue-bg);
+}
+.agent-scope-badge.is-edit {
+  background: var(--tag-orange-bg);
+}
+@media (max-width: 560px) {
+  .agent-scope {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/*
+ * Touch screens: menu rows a finger can hit without care (about 44px, as the platform
+ * guidelines ask), with slightly larger text. A mouse keeps the compact rows. `html`
+ * raises these above each component's own sizes.
+ */
+@media (pointer: coarse) {
+  html .menu-item,
+  html .db-menu-action,
+  html .db-option-row,
+  html .editor-context-menu > button,
+  html .slash-command-menu > button,
+  html .editor-db-picker-list > button {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  html .menu-label {
+    padding-top: 10px;
+  }
+  html .editor-bubble button {
+    width: 34px;
+    height: 34px;
+  }
+  html .icon-swatch {
+    width: 28px;
+    height: 28px;
+  }
+  /* Fields and small buttons inside menus. */
+  html .db-menu input:not([type="checkbox"]):not([type="radio"]),
+  html .editor-db-picker-search input,
+  html .db-menu .db-menu-select,
+  html .icon-search,
+  html .icon-tool {
+    min-height: 40px;
+    height: auto;
+  }
+  html .db-menu .db-icon-button {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  html .db-menu button:not(.db-badge-remove) {
+    min-height: 40px;
+  }
+  html .db-menu .db-badge-remove {
+    width: 24px;
+    height: 24px;
+  }
+  html .db-relation-option > button,
+  html .db-open-mode button {
+    min-height: 44px;
+  }
+}

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 /** Supabase as nobody in particular, for endpoints that check a key or token themselves. Null when Supabase isn't set up. */
 export function anonSupabase() {

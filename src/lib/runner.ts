@@ -124,8 +124,7 @@ export function valuesOf(p: Pick<Procedure, "params" | "steps">) {
 }
 
 type JsonNode = { type?: string; text?: string; attrs?: Record<string, unknown>; content?: JsonNode[] };
-const textOf = (node: JsonNode): string =>
-  node.text ?? (node.content || []).map(textOf).join("");
+const textOf = (node: JsonNode): string => node.text ?? (node.content || []).map(textOf).join("");
 
 /** Reads a page's Markdown into its parameters, sections and steps. */
 export function parseProcedure(markdown: string): Procedure {

@@ -7,13 +7,7 @@ import { useId } from "react";
 export function BrandMark({ size = 22 }: { size?: number }) {
   const gradient = `slate-tile-${useId().replace(/:/g, "")}`;
   return (
-    <svg
-      className="brand-mark"
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      aria-hidden
-    >
+    <svg className="brand-mark" width={size} height={size} viewBox="0 0 64 64" aria-hidden>
       <defs>
         <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#4c9bf0" />
@@ -21,13 +15,7 @@ export function BrandMark({ size = 22 }: { size?: number }) {
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="16" fill={`url(#${gradient})`} />
-      <path
-        d="M32 14.5 49 23 32 31.5 15 23Z"
-        fill="#fff"
-        stroke="#fff"
-        strokeWidth="3"
-        strokeLinejoin="round"
-      />
+      <path d="M32 14.5 49 23 32 31.5 15 23Z" fill="#fff" stroke="#fff" strokeWidth="3" strokeLinejoin="round" />
       <path
         d="M14.5 32 32 40.75 49.5 32"
         fill="none"
