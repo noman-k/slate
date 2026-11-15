@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Brand } from "./brand";
 import { ThemeSwitcher } from "./theme-switcher";
 import { REPOSITORY_URL } from "@/lib/project";
+import { GitHubLink } from "./github-link";
 
 /** Header for the public pages around the app (docs, privacy, contact). Needs landing.css. */
 export function SiteHeader({ current }: { current?: "/docs/mcp" | "/privacy" | "/contact" }) {
@@ -23,6 +24,7 @@ export function SiteHeader({ current }: { current?: "/docs/mcp" | "/privacy" | "
           {link("/contact", "Contact")}
         </nav>
         <div className="landing-account">
+          <GitHubLink />
           <Link href="/app" className="landing-button small outline">
             Open Slate
           </Link>

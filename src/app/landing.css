@@ -148,6 +148,28 @@ html:has(.landing) {
   gap: 8px;
   margin-left: auto;
 }
+/* The source code link: GitHub's mark, quiet until pointed at. */
+.landing-github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  color: var(--ink-3);
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+@media (hover: hover) {
+  .landing-github:hover {
+    color: var(--ink);
+    background: var(--hover);
+  }
+}
+.landing-github:focus-visible {
+  color: var(--ink);
+}
 
 /* Buttons: the app's primary and secondary buttons, a size up. */
 .landing-button {

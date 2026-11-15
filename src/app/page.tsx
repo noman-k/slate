@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { GitHubLink } from "@/components/github-link";
 import {
   Activity,
   ArrowRight,
@@ -308,11 +309,9 @@ export default async function Home() {
             <a href="#connect">AI agents</a>
             <a href="#faq">FAQ</a>
             <Link href="/docs/mcp">Docs</Link>
-            <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">
-              GitHub
-            </a>
           </nav>
           <div className="landing-account">
+            <GitHubLink />
             {who === "visitor" && (
               <Link href="/auth/login" className="landing-link">
                 Log in
