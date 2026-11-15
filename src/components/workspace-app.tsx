@@ -51,6 +51,7 @@ import {
 import { createRun, readRun, recordLookup, runsOf, saveRun } from "@/lib/runs";
 import { sendRequest } from "@/lib/api-request";
 import { recordTitle } from "@/lib/database";
+import { isPhoneWidth } from "./keys";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
@@ -132,6 +133,8 @@ function databaseScaffold(
 function opensAsPage(state: WorkspaceState, pageId: string) {
   const record = state.records.find((r) => r.page_id === pageId);
   if (!record) return false;
+  // On a phone every record is a full page (a side panel would fill the screen anyway).
+  if (isPhoneWidth()) return true;
   return state.databases.find((d) => d.id === record.database_id)?.open_mode === "page";
 }
 function withDatabase(
@@ -886,9 +889,12 @@ export function WorkspaceApp() {
           ],
       };
     });
-  /** A database's choice of how its records open: side panel (default) or full page. */
+  /**
+   * How a record opens: the database's choice (side panel, the default, or full page), or
+   * always a full page on a phone, with the usual back navigation.
+   */
   const recordOpenMode = (r: DbRecord): RecordOpenMode =>
-    state.databases.find((d) => d.id === r.database_id)?.open_mode ?? "peek";
+    isPhoneWidth() ? "page" : state.databases.find((d) => d.id === r.database_id)?.open_mode ?? "peek";
   const openRecordAsPage = (r: DbRecord) => {
     open(r.page_id);
     setRecordAsPage(true);

@@ -14,6 +14,23 @@ export function useKeyPlatform(): KeyPlatform {
 }
 
 const TOUCH_ONLY = "(hover: none) and (pointer: coarse)";
+const PHONE = "(max-width: 760px)";
+/**
+ * A phone-sized screen. There, records always open as a full page (a side panel would
+ * fill the screen anyway, so the choice between them means nothing).
+ */
+export const isPhoneWidth = () => typeof window !== "undefined" && matchMedia(PHONE).matches;
+export function usePhoneWidth(): boolean {
+  return useSyncExternalStore(
+    (change) => {
+      const query = matchMedia(PHONE);
+      query.addEventListener("change", change);
+      return () => query.removeEventListener("change", change);
+    },
+    () => matchMedia(PHONE).matches,
+    () => false,
+  );
+}
 /** The same, for event handlers: true on a phone or tablet used by touch. */
 export const isTouchOnly = () => typeof window !== "undefined" && matchMedia(TOUCH_ONLY).matches;
 /** A phone or tablet used by touch (no mouse or trackpad): keyboard shortcuts don't apply. */

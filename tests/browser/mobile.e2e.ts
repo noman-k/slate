@@ -188,14 +188,25 @@ test("on a touch screen, help shows touch tips instead of keyboard shortcuts", a
   await expect(page.locator("aside.sidebar .sidebar-search kbd")).toHaveCount(0);
 });
 
-test("opening a database row on a phone doesn't raise the keyboard", async ({ page }) => {
+test("on a phone a database row opens as a full page, without raising the keyboard, and Back returns", async ({ page }) => {
   await page.goto(`/p/${account!.ids.ledger}`);
+  const ledger = page.url();
   await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).tap();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByLabel("Record title")).toHaveValue(/2026-04/);
-  // The panel has focus, so no text field is active (and no keyboard comes up).
-  await expect(dialog).toBeFocused();
+  // A full page (a side panel would fill the screen anyway): no dialog over the table.
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("2026-04 — Basement");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(await page.evaluate(() => document.activeElement?.matches("input, textarea, [contenteditable=true]"))).toBe(false);
+  await page.goBack();
+  await expect(page).toHaveURL(ledger);
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
+  // A linked record opens the same way.
+  await page.locator("tbody tr").first().getByRole("button", { name: "Alex Morgan" }).tap();
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Alex Morgan");
+  // The side panel / full page choice is a desktop setting: not offered on a phone.
+  await page.goto(ledger);
+  await page.getByRole("button", { name: "View settings" }).first().tap();
+  await expect(page.locator(".db-menu")).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Open records in" })).toHaveCount(0);
 });
 
 test("a page block opens on the first tap, and a tap reveals nothing before it's used", async ({ page }) => {
