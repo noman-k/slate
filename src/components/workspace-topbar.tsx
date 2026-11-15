@@ -33,6 +33,7 @@ export function WorkspaceTopbar({
   markdownOf,
   canViewSource,
   onViewSource,
+  loading = false,
 }: {
   /** The sidebar is hidden, so the bar offers to show it. */
   collapsed: boolean;
@@ -50,6 +51,8 @@ export function WorkspaceTopbar({
   /** A playbook's source can be viewed as Markdown. */
   canViewSource: boolean;
   onViewSource: (pageId: string) => void;
+  /** The workspace is still loading. */
+  loading?: boolean;
 }) {
   return (
     <header className="topbar">
@@ -79,7 +82,8 @@ export function WorkspaceTopbar({
           ))}
         </nav>
       </div>
-      <div className="topbar-actions">
+      {/* Nothing to say (saved, private) until the workspace is there. */}
+      <div className={`topbar-actions ${loading ? "is-loading" : ""}`} aria-hidden={loading || undefined}>
         <span
           className={`save-status ${status}`}
           title={status === "saved" ? "All changes saved" : "Saving your changes"}

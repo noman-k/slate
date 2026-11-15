@@ -275,6 +275,22 @@ test("on a phone, filters open one after another and fit the screen", async ({ p
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test("on a phone, pressing beside the open sidebar doesn't flash the screen grey", async ({ page }) => {
+  await page.goto(`/p/${account!.ids.guide}`);
+  await page.getByRole("button", { name: "Show sidebar" }).tap();
+  const scrim = page.locator(".sidebar-scrim.is-open");
+  await expect(scrim).toBeVisible();
+  const color = () => scrim.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const resting = await color();
+  // Held down (as a finger would be), it keeps its dimmed colour…
+  await page.mouse.move(370, 400);
+  await page.mouse.down();
+  expect(await color()).toBe(resting);
+  await page.mouse.up();
+  // …and the tap still closes the sidebar.
+  await expect(page.locator(".sidebar-scrim.is-open")).toHaveCount(0);
+});
+
 test("a page block opens on the first tap, and a tap reveals nothing before it's used", async ({ page }) => {
   await page.goto(`/p/${account!.ids.hub}`);
   // Safari treats a tap that makes something appear before its click as a hover, and

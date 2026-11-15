@@ -23,7 +23,6 @@ import { Sidebar, type PageAction } from "./sidebar";
 import { SearchDialog } from "./search-dialog";
 import { ShortcutsPopover } from "./shortcuts";
 import { PageIcon, parsePageIcon } from "./page-icon";
-import { BrandMark } from "./brand";
 import { databaseIdsIn, isShownInPage, placementViews, relinkPageBlock } from "@/lib/page-blocks";
 import { templateMarkdown, type ProcedureTemplate } from "@/lib/procedures";
 import { ProcedureGallery } from "./procedure-gallery";
@@ -55,12 +54,13 @@ import { breadcrumbs, movePageTo, placementOf, trashPage } from "@/lib/tree";
 import { moveToWorkspace, planWorkspaceMove } from "@/lib/workspace-move";
 import type { Page, DbRecord, RecordOpenMode, WorkspaceState } from "@/lib/types";
 import { DatabaseView, RecordProperties } from "./database/DatabaseView";
+import { EditorSkeleton, PageSkeleton } from "./skeletons";
 import { WorkspaceTopbar } from "./workspace-topbar";
 import { EmptyWorkspace, MissingPage } from "./workspace-empty";
 import { databaseScaffold, download, opensAsPage, timeAgo, withDatabase, type StarterView } from "./workspace-helpers";
 const DocumentEditor = dynamic(() => import("./editor/DocumentEditor").then((m) => m.DocumentEditor), {
   ssr: false,
-  loading: () => <div className="editor-loading">Opening your page…</div>,
+  loading: () => <EditorSkeleton />,
 });
 export function WorkspaceApp() {
   const dialogs = useWorkspaceDialogs();
@@ -944,6 +944,7 @@ export function WorkspaceApp() {
         {ready && tabTitle ? `${tabTitle}` : ""}
       </div>
       <Sidebar
+        loading={!ready}
         state={state}
         activeId={page?.id || activeId}
         expanded={expanded}
@@ -994,6 +995,7 @@ export function WorkspaceApp() {
           markdownOf={(pageId) => state.documents.find((d) => d.page_id === pageId)?.markdown || ""}
           canViewSource={!!page && page.kind === "document" && isStructured(page.id)}
           onViewSource={setSourceView}
+          loading={!ready}
         />
         {error && (
           <div className="save-error">
@@ -1020,10 +1022,9 @@ export function WorkspaceApp() {
           onScroll={(e) => scrollMemory.current.set(entryKey.current, e.currentTarget.scrollTop)}
         >
           {!ready ? (
-            <div className="workspace-loading">
-              <BrandMark size={40} />
-              <span>Opening your workspace…</span>
-            </div>
+            <article className="page-content">
+              <PageSkeleton label="Opening your workspace…" />
+            </article>
           ) : activeId === PLAYBOOKS_VIEW ? (
             <article className="page-content playbooks-page">
               <PlaybooksView

@@ -740,6 +740,28 @@ test("a row added in a filtered view starts with what the filter asks, and stays
   await expect(rows.filter({ hasText: "Deposit refund" })).toHaveCount(0);
 });
 
+test("while the workspace loads, the page and sidebar show their shape, and nothing claims to be saved", async ({
+  page,
+}) => {
+  // Hold the workspace back for a moment.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/rest/v1/rpc/load_workspace_state", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/app");
+  await expect(page.getByRole("status", { name: "Opening your workspace…" })).toBeVisible();
+  await expect(page.locator(".skeleton-sidebar")).toBeVisible();
+  await expect(page.getByText("No pages yet.")).toHaveCount(0);
+  await expect(page.getByText("Saved", { exact: true })).toBeHidden();
+  release();
+  // Then the real page takes its place.
+  await expect(page.getByLabel("Page title", { exact: true })).toBeVisible();
+  await expect(page.locator(".skeleton-page, .skeleton-sidebar")).toHaveCount(0);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.

@@ -46,9 +46,12 @@ import type { Page, WorkspaceState } from "@/lib/types";
 import { Menu, MenuItem, MenuSeparator } from "./ui/menu";
 import { ShortcutsPopover } from "./shortcuts";
 import { PageIcon } from "./page-icon";
+import { SidebarSkeleton } from "./skeletons";
 import { Keys, useKeys, useTouchOnly } from "./keys";
 export type PageAction = "rename" | "duplicate" | "trash" | "move" | "favorite" | "icon";
 interface Props {
+  /** The workspace is still loading: its pages show as a skeleton. */
+  loading?: boolean;
   state: WorkspaceState;
   activeId: string;
   expanded: Set<string>;
@@ -593,7 +596,7 @@ export function Sidebar(p: Props) {
               onDragEnd={finishDrag}
               onDragCancel={cancelDrag}
             >
-              {tree}
+              {p.loading ? <SidebarSkeleton /> : tree}
               {/* What's being dragged follows the pointer as a small chip. */}
               <DragOverlay dropAnimation={null} modifiers={[besidePointer]}>
                 {dragged ? (
@@ -604,7 +607,7 @@ export function Sidebar(p: Props) {
                 ) : null}
               </DragOverlay>
             </DndContext>
-            {!pages.length && <p className="sidebar-empty">No pages yet.</p>}
+            {!pages.length && !p.loading && <p className="sidebar-empty">No pages yet.</p>}
           </SidebarSection>
         </div>
         <nav className="sidebar-footer-nav" aria-label="More">
@@ -618,8 +621,16 @@ export function Sidebar(p: Props) {
             side="top"
             trigger={
               <button className="workspace-switch" aria-label={`Workspace: ${workspace?.name || "Your workspace"}`}>
-                <span className="workspace-avatar">{initial}</span>
-                <span>{workspace?.name || "Your workspace"}</span>
+                {p.loading ? (
+                  <span className="skeleton workspace-avatar" aria-hidden />
+                ) : (
+                  <span className="workspace-avatar">{initial}</span>
+                )}
+                {p.loading ? (
+                  <span className="skeleton skeleton-row-name" style={{ width: 90 }} aria-hidden />
+                ) : (
+                  <span>{workspace?.name || "Your workspace"}</span>
+                )}
                 <ChevronDown size={16} />
               </button>
             }

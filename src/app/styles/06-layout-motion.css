@@ -153,34 +153,115 @@
   margin: 0 4px;
   background: var(--divider);
 }
-.workspace-loading {
-  height: 65vh;
+/* Loading: the shape of what's coming, in soft blocks (see skeletons.tsx). They fade in after
+   a moment, so a quick load never flashes them, and a light sweep runs across them. */
+.skeleton {
+  display: block;
+  border-radius: 4px;
+  background-color: var(--skeleton, color-mix(in srgb, var(--text) 7%, transparent));
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--text) 5%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+.skeleton-page,
+.skeleton-editor,
+.skeleton-sidebar {
+  animation: skeleton-in 0.3s ease 0.15s both;
+}
+.skeleton-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  padding-top: 8px;
 }
-.loading-logo {
-  height: 40px;
-  width: 40px;
-  border-radius: 9px;
-  border: 1px solid var(--border-strong);
-  background: var(--bg-elevated);
+.skeleton-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+.skeleton-title {
+  width: min(420px, 70%);
+  height: 38px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+}
+.skeleton-subtitle {
+  width: min(300px, 50%) !important;
+  margin-bottom: 30px;
+}
+.skeleton-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+.skeleton-line {
+  height: 14px;
+  max-width: 680px;
+}
+.skeleton-heading {
+  width: min(240px, 45%);
+  height: 22px;
+  margin-bottom: 4px;
+}
+.skeleton-editor {
+  padding: 8px 0 24px;
+}
+.skeleton-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 8px;
+}
+.skeleton-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 25px;
-  font-weight: 600;
-  color: var(--text);
-  animation: pulse 1.5s infinite;
+  gap: 10px;
+  height: 30px;
 }
-.editor-loading {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  padding: 24px 0;
+.skeleton-row-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+.skeleton-row-name {
+  height: 11px;
+  border-radius: 3px;
+}
+.topbar-actions.is-loading {
+  visibility: hidden;
+}
+@keyframes skeleton-sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+@keyframes skeleton-in {
+  from {
+    opacity: 0;
+  }
+}
+/* Reduced motion: no sweep, and no wait; the shapes simply show. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-image: none;
+  }
+  .skeleton-page,
+  .skeleton-editor,
+  .skeleton-sidebar {
+    animation: none;
+  }
 }
 .app-error {
   height: 100dvh;

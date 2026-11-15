@@ -36,6 +36,15 @@ summary,
   .nav-row:active {
     background-color: var(--hover-strong);
   }
+  /* …except full-screen layers that close something when tapped (the dimmed area beside
+     the sidebar, the clear one behind an editor menu): the whole screen flashing grey
+     under a finger looks like a glitch. They keep their own look. */
+  .sidebar-scrim:active {
+    background-color: var(--backdrop);
+  }
+  .editor-menu-scrim:active {
+    background-color: transparent;
+  }
   .primary-button:active,
   .landing-button:not(.outline):not(.ghost):active,
   .auth-submit:active {
