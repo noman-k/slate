@@ -184,3 +184,18 @@ describe("agents", () => {
     ).toThrow(/its operators are/);
   });
 });
+
+describe("view order", () => {
+  it("orders tabs by position, keeping views without one after, as they were", async () => {
+    const { orderedViews, moveView } = await import("../src/lib/database");
+    const views = [{ id: "a", position: null }, { id: "b", position: 1 }, { id: "c", position: 0 }, { id: "d" }];
+    expect(orderedViews(views).map((v) => v.id)).toEqual(["c", "b", "a", "d"]);
+    const state = createSeedState();
+    const ids = state.views.filter((v) => v.database_id === SEED_IDS.database && !v.placement).map((v) => v.id);
+    const moved = moveView(state, ids, ids[2], 0);
+    const order = orderedViews(moved.views.filter((v) => ids.includes(v.id))).map((v) => v.id);
+    expect(order).toEqual([ids[2], ids[0], ids[1], ...ids.slice(3)]);
+    // Other databases' views are left alone.
+    expect(moved.views.filter((v) => !ids.includes(v.id))).toEqual(state.views.filter((v) => !ids.includes(v.id)));
+  });
+});

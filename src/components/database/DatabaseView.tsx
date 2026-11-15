@@ -64,6 +64,8 @@ import {
   restoreRemovedRecord,
   updateCell,
   visibleRecords,
+  moveView,
+  orderedViews,
 } from "@/lib/database";
 import { PageIcon } from "../page-icon";
 import "./database.css";
@@ -1311,9 +1313,22 @@ export function DatabaseView({
     (db) => db.id === databaseId && !state.pages.find((page) => page.id === db.page_id)?.deleted_at,
   );
   // Views are the database's own, or (for a linked block) that block's own copies.
-  const views = state.views.filter(
-    (view) => view.database_id === databaseId && (view.placement ?? null) === (placement ?? null),
+  const views = orderedViews(
+    state.views.filter((view) => view.database_id === databaseId && (view.placement ?? null) === (placement ?? null)),
   );
+  const viewIds = views.map((v) => v.id);
+  /** A tab being dragged to a new place, and where it would land. */
+  const [draggedView, setDraggedView] = useState<string | null>(null);
+  const [viewDrop, setViewDrop] = useState<{ id: string; after: boolean } | null>(null);
+  const placeView = (viewId: string, to: number, extra: View[] = []) =>
+    onChange((current) =>
+      moveView(
+        { ...current, views: [...current.views, ...extra] },
+        [...viewIds, ...extra.map((v) => v.id)],
+        viewId,
+        to,
+      ),
+    );
   const openMode = openModeOf(state, databaseId);
   const savedOpenMode = savedOpenModeOf(state, databaseId);
   const phone = usePhoneWidth();
@@ -1449,7 +1464,8 @@ export function DatabaseView({
       type: newViewType,
       group_by: properties.find((p) => p.type === "status" || p.type === "select")?.id,
     };
-    onChange((current) => ({ ...current, views: [...current.views, next] }));
+    // At the end of the tabs.
+    placeView(next.id, viewIds.length, [next]);
     setActiveId(next.id);
     setNewViewOpen(false);
     setViewName("");
@@ -1722,8 +1738,38 @@ export function DatabaseView({
               key={item.id}
               role="tab"
               aria-selected={item.id === view.id}
-              className={`db-view-tab ${item.id === view.id ? "active" : ""}`}
+              className={`db-view-tab ${item.id === view.id ? "active" : ""} ${draggedView === item.id ? "is-dragging" : ""} ${viewDrop?.id === item.id ? (viewDrop.after ? "is-drop-after" : "is-drop-before") : ""}`}
               onClick={() => setActiveId(item.id)}
+              // Drag a tab to put the views in another order.
+              draggable={views.length > 1}
+              title={views.length > 1 ? "Drag to reorder" : undefined}
+              onDragStart={(e) => {
+                setDraggedView(item.id);
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("application/x-slate-view", item.id);
+              }}
+              onDragOver={(e) => {
+                if (!draggedView) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                const box = e.currentTarget.getBoundingClientRect();
+                const after = e.clientX > box.left + box.width / 2;
+                if (viewDrop?.id !== item.id || viewDrop.after !== after) setViewDrop({ id: item.id, after });
+              }}
+              onDragLeave={() => setViewDrop((drop) => (drop?.id === item.id ? null : drop))}
+              onDrop={(e) => {
+                if (!draggedView) return;
+                e.preventDefault();
+                const rest = viewIds.filter((id) => id !== draggedView);
+                const at = rest.indexOf(item.id);
+                if (at >= 0 && draggedView !== item.id) placeView(draggedView, at + (viewDrop?.after ? 1 : 0));
+                setDraggedView(null);
+                setViewDrop(null);
+              }}
+              onDragEnd={() => {
+                setDraggedView(null);
+                setViewDrop(null);
+              }}
             >
               <ViewIcon type={item.type} />
               <span>{item.name}</span>
@@ -1806,7 +1852,8 @@ export function DatabaseView({
               icon={<Copy size={16} />}
               onClick={() => {
                 const next = { ...view, id: token(), name: `${view.name} copy` };
-                onChange((current) => ({ ...current, views: [...current.views, next] }));
+                // Right after the view it copies.
+                placeView(next.id, viewIds.indexOf(view.id) + 1, [next]);
                 setActiveId(next.id);
               }}
             >
@@ -1921,6 +1968,21 @@ export function DatabaseView({
             ))}
             {views.length > 1 && (
               <>
+                <div className="db-menu-divider" />
+                <MenuAction
+                  icon={<ArrowLeft size={16} />}
+                  disabled={viewIds.indexOf(view.id) <= 0}
+                  onClick={() => placeView(view.id, viewIds.indexOf(view.id) - 1)}
+                >
+                  Move view left
+                </MenuAction>
+                <MenuAction
+                  icon={<ArrowRight size={16} />}
+                  disabled={viewIds.indexOf(view.id) >= viewIds.length - 1}
+                  onClick={() => placeView(view.id, viewIds.indexOf(view.id) + 1)}
+                >
+                  Move view right
+                </MenuAction>
                 <div className="db-menu-divider" />
                 <MenuAction
                   danger

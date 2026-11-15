@@ -119,6 +119,8 @@ export interface DatabaseView {
   hidden_properties: string[];
   property_order?: string[];
   group_by?: string;
+  /** Its place among the database's tabs; views without one come after, as they were. */
+  position?: number | null;
 }
 export interface WorkspaceState {
   workspaces: Workspace[];

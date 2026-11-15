@@ -622,3 +622,26 @@ export function addRecordTo(
 
 /** Whether a relation property links each record to at most one other (its "Limit"). */
 export const linksOne = (property: Property) => property.type === "relation" && property.config.limit === 1;
+
+/** A database's views in their tab order: by position, then (without one) as they come. */
+export function orderedViews<T extends Pick<DatabaseView, "position">>(views: T[]): T[] {
+  return views
+    .map((view, index) => ({ view, index }))
+    .sort((a, b) => (a.view.position ?? Infinity) - (b.view.position ?? Infinity) || a.index - b.index)
+    .map(({ view }) => view);
+}
+
+/**
+ * Moves a view among its database's tabs (`ids`, in tab order) to `to`, numbering them all
+ * so the order holds from then on.
+ */
+export function moveView(state: WorkspaceState, ids: string[], viewId: string, to: number): WorkspaceState {
+  const order = ids.filter((id) => id !== viewId);
+  if (order.length === ids.length) return state;
+  order.splice(Math.max(0, Math.min(to, order.length)), 0, viewId);
+  const position = new Map(order.map((id, index) => [id, index]));
+  return {
+    ...state,
+    views: state.views.map((view) => (position.has(view.id) ? { ...view, position: position.get(view.id)! } : view)),
+  };
+}

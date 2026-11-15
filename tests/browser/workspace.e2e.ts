@@ -607,6 +607,33 @@ test("a record opens over its database without scrolling it, and lists every lin
   await expect(page.getByRole("tab", { name: "Paid" })).toHaveAttribute("aria-selected", "true");
 });
 
+test("database views can be put in another order, by dragging a tab or from View settings", async ({ page }) => {
+  const tabs = page.getByRole("tablist", { name: "Database views" }).getByRole("tab");
+  await expect(tabs.first()).toBeVisible();
+  const before = await tabs.allTextContents();
+  // Drag the third tab onto the left half of the first: it goes first.
+  const first = (await tabs.nth(0).boundingBox())!;
+  await tabs.nth(2).dragTo(tabs.nth(0), { targetPosition: { x: 4, y: first.height / 2 } });
+  await expect(tabs).toHaveText([before[2], before[0], before[1], ...before.slice(3)]);
+  // From View settings: the open view moves one place right.
+  await tabs.nth(0).click();
+  await page.getByRole("button", { name: "View settings" }).click();
+  await page.getByRole("button", { name: "Move view right" }).click();
+  await expect(tabs).toHaveText([before[0], before[2], before[1], ...before.slice(3)]);
+  await page.keyboard.press("Escape");
+  // It's kept.
+  await expect
+    .poll(() => page.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith("slate-pending:"))))
+    .toBe(false);
+  await page.reload();
+  await expect(page.getByRole("tablist", { name: "Database views" }).getByRole("tab")).toHaveText([
+    before[0],
+    before[2],
+    before[1],
+    ...before.slice(3),
+  ]);
+});
+
 test("a database can open its records as full pages", async ({ page }) => {
   const title = page.getByLabel("Page title", { exact: true });
   // Default: the side panel.
