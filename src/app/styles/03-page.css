@@ -277,3 +277,130 @@
   z-index: 70;
   animation: appear 0.12s ease;
 }
+
+/* The page outline: a short line per heading on the right edge (longer for bigger
+   headings, the one you're reading lit up); pointing at it opens the headings' names. */
+.page-outline-slot {
+  position: sticky;
+  top: 0;
+  height: 0;
+  z-index: 20;
+}
+.page-outline {
+  position: absolute;
+  top: 112px;
+  right: 14px;
+}
+.page-outline-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 10px 6px;
+  max-height: calc(100vh - 260px);
+  overflow: hidden;
+}
+.page-outline-line {
+  flex: none;
+  display: block;
+  height: 2px;
+  width: 16px;
+  border-radius: 1px;
+  background: var(--border-strong);
+  transition: background-color 0.15s;
+}
+.page-outline-line.level-2 {
+  width: 12px;
+}
+.page-outline-line.level-3 {
+  width: 8px;
+}
+.page-outline-line.is-active {
+  background: var(--text-secondary);
+}
+.page-outline-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 260px;
+  max-height: min(70vh, calc(100vh - 200px));
+  margin: 0;
+  list-style: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(6px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    visibility 0s 0.15s;
+}
+.page-outline:focus-within .page-outline-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+@media (hover: hover) {
+  .page-outline:hover .page-outline-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+      opacity 0.15s,
+      transform 0.15s;
+  }
+}
+.page-outline-panel button {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.page-outline-panel button.level-2 {
+  padding-left: 22px;
+}
+.page-outline-panel button.level-3 {
+  padding-left: 36px;
+}
+.page-outline-panel button:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+  outline: none;
+}
+@media (hover: hover) {
+  .page-outline-panel button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.page-outline-panel button.is-active {
+  color: var(--accent-text);
+}
+.page-body .ProseMirror :is(h1, h2, h3) {
+  scroll-margin-top: 24px;
+}
+/* Pointing is how it opens, so touch screens and narrow windows go without. */
+@media (hover: none), (max-width: 760px) {
+  .page-outline-slot {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-outline-panel {
+    transform: none;
+  }
+}

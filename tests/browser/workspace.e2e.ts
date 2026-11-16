@@ -105,6 +105,59 @@ test("two hyphens become an em dash, Backspace undoes it, and --- still makes a 
   await page.reload();
   await expect(title).toHaveValue("Dash verification one\u2014two a--b");
 });
+test("a page with headings gets an outline down the right edge that follows along and jumps to them", async ({
+  page,
+}) => {
+  await createPage(page, "Outline verification");
+  const editor = page.getByLabel("Page content", { exact: true });
+  const outline = page.getByRole("navigation", { name: "Page outline" });
+  const section = async (heading: string, marks: string) => {
+    await editor.pressSequentially(`${marks} ${heading}`);
+    await editor.press("Enter");
+    for (let line = 0; line < 24; line++) {
+      await page.keyboard.insertText(`${heading} line ${line + 1}`);
+      await editor.press("Enter");
+    }
+  };
+  await editor.click();
+  await section("Plan", "#");
+  // One heading is not worth an outline.
+  await expect(outline).toHaveCount(0);
+  await section("Details", "##");
+  await section("Wrap up", "##");
+  await expect(outline).toBeVisible();
+  const lines = outline.locator(".page-outline-line");
+  await expect(lines).toHaveCount(3);
+  // Smaller headings get shorter lines.
+  const widths = await lines.evaluateAll((all) => all.map((el) => el.getBoundingClientRect().width));
+  expect(widths[0]).toBeGreaterThan(widths[1]);
+  const scroller = page.locator("main.page-scroll");
+  await scroller.evaluate((el) => el.scrollTo(0, 0));
+  await expect(lines.nth(0)).toHaveClass(/is-active/);
+  // Its names show when you point at it; picking one goes there.
+  const wrapUp = outline.getByRole("button", { name: "Wrap up", exact: true });
+  await expect(wrapUp).toBeHidden();
+  await outline.hover();
+  await expect(wrapUp).toBeVisible();
+  await expect(outline.getByRole("button", { name: "Plan", exact: true })).toHaveAttribute("aria-current", "location");
+  await wrapUp.click();
+  const heading = editor.getByRole("heading", { name: "Wrap up" });
+  await expect
+    .poll(async () => {
+      const [top, box] = await Promise.all([
+        scroller.evaluate((el) => el.getBoundingClientRect().top),
+        heading.boundingBox(),
+      ]);
+      return Math.abs(box!.y - top);
+    })
+    .toBeLessThan(80);
+  await expect(lines.nth(2)).toHaveClass(/is-active/);
+  // Scrolling by hand moves the lit line too.
+  await page.mouse.move(400, 400);
+  await expect(wrapUp).toBeHidden();
+  await page.mouse.wheel(0, -100000);
+  await expect(lines.nth(0)).toHaveClass(/is-active/);
+});
 test("a long record name wraps in the side panel, and several tags in a cell keep their names whole", async ({
   page,
 }) => {

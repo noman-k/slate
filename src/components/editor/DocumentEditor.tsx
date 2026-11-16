@@ -51,6 +51,7 @@ import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
 import { isTouchOnly, useKeys } from "../keys";
 import { KeyboardToolbar, changeIndent } from "./keyboard-toolbar";
+import { PageOutline } from "./page-outline";
 import { blockAtY, placeBubble, popoverNearSelection, type TopBlock } from "./editor-layout";
 import { buildSlashItems, filterSlashItems, type DbPicker, type SlashItem, type UrlInput } from "./slash-items";
 export interface DocumentEditorProps {
@@ -1007,6 +1008,7 @@ export function DocumentEditor(props: DocumentEditorProps) {
         <EmbedContext.Provider value={{ renderDatabase, onOpenPage, resolvePage, listDatabases }}>
           <EditorContent editor={editor} />
           <KeyboardToolbar editor={editor} />
+          <PageOutline editor={editor} />
         </EmbedContext.Provider>
       ) : (
         <>

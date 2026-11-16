@@ -1029,6 +1029,8 @@ export function WorkspaceApp() {
           ref={pageScrollRef}
           onScroll={(e) => scrollMemory.current.set(entryKey.current, e.currentTarget.scrollTop)}
         >
+          {/* The page outline (headings down the right edge) is placed here by the editor. */}
+          <div className="page-outline-slot" />
           {!ready ? (
             <article className="page-content">
               <PageSkeleton label="Opening your workspace…" />
