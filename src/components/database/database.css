@@ -659,6 +659,21 @@
   flex-wrap: nowrap;
   cursor: pointer;
 }
+/* Several tags in a cell: each keeps its whole name (a lone long one still ends in "…"),
+   and the ones that run past the edge fade out there instead of being squeezed mid-word.
+   Hovering shows them all; the record panel and board cards wrap them instead. */
+.db-select-trigger > .db-badge {
+  flex: none;
+}
+.db-select-trigger:has(> .db-badge + .db-badge) {
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent calc(100% - 6px));
+}
+.db-record-property-value .db-select-trigger,
+.db-board-property .db-select-trigger {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  mask-image: none;
+}
 .db-relation-trigger {
   cursor: pointer;
 }

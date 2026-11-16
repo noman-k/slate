@@ -60,6 +60,13 @@
   margin: 0 0 25px;
   padding: 0;
   box-shadow: none !important;
+  display: block;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  /* The panel is a column; the title keeps the height its lines need. */
+  flex: none;
+  overflow-wrap: anywhere;
 }
 .empty-workspace {
   min-height: 75vh;

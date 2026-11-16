@@ -677,7 +677,10 @@ function Cell({
           if (!open) setQuery("");
         }}
         trigger={
-          <button className="db-cell-button db-select-trigger">
+          <button
+            className="db-cell-button db-select-trigger"
+            title={selected.length > 1 ? selected.join(", ") : undefined}
+          >
             {selected.map((item) => (
               <Badge key={item} value={item} />
             ))}

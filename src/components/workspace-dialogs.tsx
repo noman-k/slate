@@ -796,6 +796,25 @@ interface RecordPageDialogProps extends PageMutationProps {
   openPage: (pageId: string) => void;
   renderEditor: (page: Page) => ReactNode;
 }
+/** Grows the title box to fit its lines. */
+function fitTitle(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+/** The title box's ref: fits it now, and again whenever the panel's width changes. */
+function watchTitle(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  fitTitle(el);
+  let width = el.clientWidth;
+  const observer = new ResizeObserver(() => {
+    if (el.clientWidth === width) return;
+    width = el.clientWidth;
+    fitTitle(el);
+  });
+  observer.observe(el);
+  return () => observer.disconnect();
+}
+
 function RecordPageDialog({
   record,
   page,
@@ -858,13 +877,19 @@ function RecordPageDialog({
     >
       {record && page && (
         <>
-          <input
+          {/* A text area, so a long name wraps onto more lines instead of running off. */}
+          <textarea
             className="record-title-input"
             aria-label="Record title"
             placeholder="Untitled"
+            rows={1}
+            ref={watchTitle}
             autoFocus={!page.title.trim()}
             value={page.title}
-            onChange={(event) => patchPage(page.id, { title: event.target.value })}
+            onChange={(event) => {
+              patchPage(page.id, { title: event.target.value.replace(/\n/g, " ") });
+              fitTitle(event.target);
+            }}
             onKeyDown={(event) => {
               if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
               event.preventDefault();

@@ -75,6 +75,49 @@ test("Markdown shortcuts, code fences, inline database and refresh are lossless"
   await expect(page.getByRole("heading", { name: "Persistent heading", level: 2 })).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
 });
+test("two hyphens become an em dash, Backspace undoes it, and --- still makes a divider", async ({ page }) => {
+  await createPage(page, "Dash verification");
+  const editor = page.getByLabel("Page content", { exact: true });
+  await editor.pressSequentially("well--almost");
+  await expect(editor.locator("p").first()).toHaveText("well\u2014almost");
+  await editor.press("Enter");
+  await editor.pressSequentially("a--");
+  await editor.press("Backspace");
+  await editor.pressSequentially("b");
+  await expect(editor.locator("p").nth(1)).toHaveText("a--b");
+  await editor.press("Enter");
+  await editor.pressSequentially("---");
+  await expect(editor.locator("hr")).toHaveCount(1);
+  await editor.pressSequentially("```");
+  await editor.pressSequentially("x--y");
+  await expect(editor.locator("pre")).toContainText("x--y");
+});
+test("a long record name wraps in the side panel, and several tags in a cell keep their names whole", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).click();
+  const title = page.getByRole("textbox", { name: "Record title", exact: true });
+  const oneLine = (await title.boundingBox())!.height;
+  await title.fill("Horse Shipping — Azure Resource Provisioning Blocked by a Missing Subscription Quota");
+  await expect.poll(async () => (await title.boundingBox())!.height).toBeGreaterThan(oneLine * 1.5);
+  expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight + 1)).toBe(
+    true,
+  );
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  // Tags in a narrow cell: none is squeezed (each is as wide as its name), the extra fade at the edge.
+  const cell = page.locator(".db-select-trigger").first();
+  await cell.evaluate((button) => {
+    button.style.width = "180px";
+    button.replaceChildren(
+      ...["Operations", "Database", "Deployment"].map((name) =>
+        Object.assign(document.createElement("span"), { className: "db-badge", textContent: name }),
+      ),
+    );
+  });
+  const badges = await cell.locator(".db-badge").evaluateAll((all) => all.map((b) => b.scrollWidth - b.clientWidth));
+  expect(badges).toEqual([0, 0, 0]);
+  expect(await cell.evaluate((el) => getComputedStyle(el).maskImage)).toContain("gradient");
+});
 test("records have private persistent URLs and editable page content", async ({ page }) => {
   // Clicking a name renames it; the "Open" button opens the record.
   await page.getByRole("button", { name: "Open 2026-04 — Basement", exact: true }).click();
