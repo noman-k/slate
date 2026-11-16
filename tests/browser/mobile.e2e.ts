@@ -334,6 +334,17 @@ test("on a phone, dialogs are sheets from the bottom: Settings and Trash fit, an
   expect((await restore.boundingBox())!.width).toBeLessThanOrEqual(44);
   await restore.tap();
   await expect(page.getByText("Page restored")).toBeVisible();
+  // A long Trash scrolls, as one sheet under its pinned header.
+  await trash.locator(".trash-list").evaluate((list) => {
+    for (let i = 0; i < 30; i++) list.append(Object.assign(document.createElement("div"), { textContent: `Row ${i}` }));
+  });
+  // Scrolled the way a finger would (setting scrollTop works even where people can't scroll).
+  const list = (await trash.locator(".trash-list").boundingBox())!;
+  await page.mouse.move(list.x + 60, list.y + 40);
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => trash.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(trash.getByRole("button", { name: "Close" })).toBeInViewport();
+  await trash.evaluate((el) => (el.scrollTop = 0));
   // A short drag springs back instead of closing.
   const header = (await trash.locator(".modal-heading").boundingBox())!;
   await page.mouse.move(header.x + 120, header.y + 20);

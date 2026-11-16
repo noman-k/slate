@@ -192,7 +192,11 @@
     max-height: calc(100dvh - var(--keyboard-inset, 0px) - max(24px, env(safe-area-inset-top)));
     border-radius: 16px 16px 0 0;
     padding: 0 18px calc(18px + env(safe-area-inset-bottom));
+    /* The whole sheet scrolls (its header stays pinned), long lists included. */
+    overflow-x: hidden;
+    overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     animation: sheet-in 0.28s var(--ease);
     transition: transform 0.22s var(--ease);
   }
