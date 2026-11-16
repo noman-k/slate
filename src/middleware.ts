@@ -11,6 +11,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   // The contact form is for everyone, signed in or not; the route reads the session itself.
   if (request.nextUrl.pathname === "/api/contact") return NextResponse.next();
+  // For search engines: they list only public pages, and need no session.
+  if (request.nextUrl.pathname === "/sitemap.xml" || request.nextUrl.pathname === "/robots.txt")
+    return NextResponse.next();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   // The front page, docs and privacy page are public; the front page adapts to signed-in visitors itself.

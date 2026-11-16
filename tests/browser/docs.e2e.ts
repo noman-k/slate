@@ -54,3 +54,27 @@ test("the privacy page is public and gives a way to reach the operator", async (
   // No email address on the page: everything goes through the contact form.
   await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
 });
+
+test("search engines get a sitemap of the public pages and a robots.txt, without signing in", async ({
+  request,
+  baseURL,
+}) => {
+  const sitemap = await request.get("/sitemap.xml", { maxRedirects: 0 });
+  expect(sitemap.status()).toBe(200);
+  expect(sitemap.headers()["content-type"]).toContain("xml");
+  const xml = await sitemap.text();
+  for (const path of ["", "/docs/mcp", "/contact", "/privacy"]) expect(xml).toContain(`<loc>${baseURL}${path}</loc>`);
+  expect(xml).not.toContain("/app");
+  expect(xml).not.toContain("/p/");
+  // Every page it lists opens without an account.
+  for (const loc of xml.match(/<loc>[^<]+<\/loc>/g)!) {
+    const page = await request.get(loc.slice(5, -6), { maxRedirects: 0 });
+    expect(page.status(), loc).toBe(200);
+  }
+
+  const robots = await request.get("/robots.txt", { maxRedirects: 0 });
+  expect(robots.status()).toBe(200);
+  const text = await robots.text();
+  expect(text).toContain(`Sitemap: ${baseURL}/sitemap.xml`);
+  expect(text).toContain("Disallow: /p/");
+});
