@@ -45,6 +45,7 @@ import { recordTitle } from "@/lib/database";
 import { isPhoneWidth } from "./keys";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
+import { installSmartDash } from "@/lib/smart-dash";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
 import { Modal, Popup } from "./ui/menu";
 import { useWorkspace } from "@/lib/use-workspace";
@@ -63,6 +64,8 @@ const DocumentEditor = dynamic(() => import("./editor/DocumentEditor").then((m) 
   loading: () => <EditorSkeleton />,
 });
 export function WorkspaceApp() {
+  // "--" becomes "—" in titles and names, as it does in pages.
+  useEffect(installSmartDash, []);
   const dialogs = useWorkspaceDialogs();
   const { state, change, ready, status, error, recovery, retry, onServer } = useWorkspace();
   const [activeId, setActiveId] = useState("");
@@ -1082,6 +1085,7 @@ export function WorkspaceApp() {
               <AutosizeTextarea
                 className="page-title"
                 aria-label="Page title"
+                data-smart-dash
                 rows={1}
                 value={page.title}
                 placeholder="Untitled"

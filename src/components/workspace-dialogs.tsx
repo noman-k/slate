@@ -159,6 +159,7 @@ function RenamePageDialog({ page, patchPage, close }: PageMutationProps & { page
           <input
             autoFocus
             aria-label="Page name"
+            data-smart-dash
             placeholder="Untitled"
             value={name}
             onFocus={(event) => event.currentTarget.select()}
@@ -881,6 +882,7 @@ function RecordPageDialog({
           <textarea
             className="record-title-input"
             aria-label="Record title"
+            data-smart-dash
             placeholder="Untitled"
             rows={1}
             ref={watchTitle}

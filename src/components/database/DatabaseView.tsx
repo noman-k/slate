@@ -736,6 +736,7 @@ function Cell({
         autoFocus
         className="db-inline-input"
         aria-label={`Edit ${property.name}`}
+        data-smart-dash={property.type === "title" || property.type === "text" ? "" : undefined}
         placeholder={property.type === "title" ? "Untitled" : undefined}
         type={
           property.type === "date"

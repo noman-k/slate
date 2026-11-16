@@ -91,6 +91,19 @@ test("two hyphens become an em dash, Backspace undoes it, and --- still makes a 
   await editor.pressSequentially("```");
   await editor.pressSequentially("x--y");
   await expect(editor.locator("pre")).toContainText("x--y");
+  // Titles too, with the same Backspace to undo.
+  const title = page.getByRole("textbox", { name: "Page title", exact: true });
+  await title.click();
+  await title.press("End");
+  await title.pressSequentially(" one--two");
+  await expect(title).toHaveValue("Dash verification one\u2014two");
+  await title.pressSequentially(" a--");
+  await title.press("Backspace");
+  await title.pressSequentially("b");
+  await expect(title).toHaveValue("Dash verification one\u2014two a--b");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(title).toHaveValue("Dash verification one\u2014two a--b");
 });
 test("a long record name wraps in the side panel, and several tags in a cell keep their names whole", async ({
   page,
