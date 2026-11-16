@@ -196,9 +196,13 @@ function ValuePickerFor({ editor }: { editor: Editor | null }) {
           <ValuePicker
             values={values || []}
             onPick={(key) =>
-              window.requestAnimationFrame(() =>
-                editor?.chain().focus().insertContent({ type: "valueRef", attrs: { key } }).run(),
-              )
+              window.requestAnimationFrame(() => {
+                if (!editor) return;
+                // Focus now: Tiptap's focus() waits a frame, and a key pressed as soon as the
+                // value shows (Enter for the next step) would land nowhere.
+                editor.view.focus();
+                editor.chain().focus().insertContent({ type: "valueRef", attrs: { key } }).run();
+              })
             }
           />
         )

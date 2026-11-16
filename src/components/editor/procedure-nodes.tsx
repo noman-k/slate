@@ -539,13 +539,15 @@ function StepView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
     const { from, to } = editor.state.selection;
     const inside = from >= start && to <= end;
     // After the menu has closed and handed focus back.
-    window.requestAnimationFrame(() =>
+    window.requestAnimationFrame(() => {
+      // Focus now, not a frame later (Tiptap's focus()), so the next key lands in the step.
+      editor.view.focus();
       editor
         .chain()
         .focus()
         .insertContentAt(inside ? { from, to } : end, { type: "valueRef", attrs: { key } })
-        .run(),
-    );
+        .run();
+    });
   };
   return (
     <NodeViewWrapper className={`proc-step is-${step}`}>
