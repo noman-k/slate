@@ -2,7 +2,15 @@
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
-import { Node, mergeAttributes, textblockTypeInputRule, type Editor, type JSONContent } from "@tiptap/core";
+import {
+  Extension,
+  Node,
+  mergeAttributes,
+  textInputRule,
+  textblockTypeInputRule,
+  type Editor,
+  type JSONContent,
+} from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -532,6 +540,18 @@ const HighlightCode = CodeBlockLowlight.extend({
   },
 }).configure({ lowlight, enableTabIndentation: true, tabSize: 2 });
 
+/**
+ * Two hyphens become an em dash as you type ("well--almost" → "well—almost"), as in Notion
+ * and most writing apps. Backspace right after turns it back into "--". "---" at the start
+ * of a line still makes a divider (its rule takes "—-" too); never in code.
+ */
+const SmartDash = Extension.create({
+  name: "smartDash",
+  addInputRules() {
+    return [textInputRule({ find: /--$/, replace: "\u2014" })];
+  },
+});
+
 export function createDocumentExtensions(options: EmbedOptions = {}) {
   return [
     StarterKit.configure({
@@ -568,6 +588,7 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
     ProcedureStep,
     ValueRef,
     ProcedureSections,
+    SmartDash,
   ];
 }
 
