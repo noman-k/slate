@@ -75,6 +75,54 @@ describe("update_page", () => {
     expect(smuggled.edit.documents[0].markdown).not.toContain(":::slate");
   });
 
+  it("places the page's own databases and subpages where an agent writes their block line, and nothing else", () => {
+    const state = createSeedState();
+    const tenants = state.databases.find((d) => d.page_id === SEED_IDS.tenants)!;
+    const planned = edit(state, "update_page", {
+      page_id: SEED_IDS.hub,
+      replace: [
+        {
+          find: "## Your workspace",
+          replace_with: `## Your workspace\n\n[Database: Tenants (id ${tenants.id}) — use query_database to read it]\n\n[Page: Tenant Rent Log (id ${SEED_IDS.log})]`,
+        },
+      ],
+    });
+    const markdown = planned.edit.documents[0].markdown;
+    expect(markdown).toContain(
+      `## Your workspace\n\n:::slate {"kind":"database","id":"${tenants.id}"}\n\n:::slate {"kind":"page","id":"${SEED_IDS.log}"}`,
+    );
+    expect(planned.result.data).toMatchObject({ changed: ["1 passage", "placed 2 blocks"] });
+    // By the database's page id too.
+    const byPage = edit(state, "update_page", {
+      page_id: SEED_IDS.hub,
+      append: `[Database: Tenants (id ${SEED_IDS.tenants})]`,
+    });
+    expect(byPage.edit.documents[0].markdown).toContain(`:::slate {"kind":"database","id":"${tenants.id}"}`);
+    // Not another page's database, and not twice.
+    fails(
+      () =>
+        edit(state, "update_page", {
+          page_id: SEED_IDS.hub,
+          append: `[Database: Rent Ledger (id ${SEED_IDS.database})]`,
+        }),
+      /isn't inside/,
+    );
+    fails(
+      () =>
+        edit(state, "update_page", {
+          page_id: SEED_IDS.hub,
+          append: `[Page: Tenant Rent Log (id ${SEED_IDS.log})]\n\n[Page: Tenant Rent Log (id ${SEED_IDS.log})]`,
+        }),
+      /already shown/,
+    );
+    // In code it's just text.
+    const code = edit(state, "update_page", {
+      page_id: SEED_IDS.hub,
+      append: `\`\`\`\n[Page: Tenant Rent Log (id ${SEED_IDS.log})]\n\`\`\``,
+    });
+    expect(code.edit.documents[0].markdown).not.toContain(":::slate");
+  });
+
   it("sends databases and playbooks to their own tools, and renames a row's title column too", () => {
     const state = createSeedState();
     fails(() => edit(state, "update_page", { page_id: SEED_IDS.ledger, append: "x" }), /update_database/);

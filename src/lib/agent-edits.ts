@@ -35,6 +35,8 @@ import { serializePlaybook, parsePlaybook } from "./playbook-model";
 import { parseProcedure } from "./runner";
 import { runsOf } from "./runs";
 import { descendants } from "./tree";
+import { encodeDirective } from "./markdown";
+import { isShownInPage } from "./page-blocks";
 import type {
   CellValue,
   Database,
@@ -108,7 +110,9 @@ export const EDIT_TOOLS: ToolDefinition[] = [
       "Change an existing page: its title, icon, description, or its text (Markdown). For the text, either replace exact passages " +
       "(`replace`: each `find` must appear exactly once in the page's text as read_page shows it), add to the end (`append`), or " +
       "rewrite all of it (`content`; only for pages without embedded subpages or databases). A collapsible toggle is " +
-      "<details> (add ` open` to show it expanded), <summary>Title</summary>, the inside as Markdown, then </details>, each on its own line. Embedded blocks shown like " +
+      "<details> (add ` open` to show it expanded), <summary>Title</summary>, the inside as Markdown, then </details>, each on its own line. " +
+      "To show one of the page's own subpages or databases (pages_inside) in its text, put a line like [Database: Name (id …)] or " +
+      "[Page: Title (id …)] where it should go. Embedded blocks shown like " +
       "[Page: …] or [Database: …] are kept as they are. Works for database rows too (their page text); use update_database " +
       "for a row's properties and update_playbook for a playbook's steps. Read the page first.",
     inputSchema: {
@@ -390,6 +394,49 @@ const emptyEdit = (): Edit => ({
 const STRUCTURE = /^\s*:::slate(-node)?\s/;
 const structureOf = (markdown: string) => markdown.split("\n").filter((line) => STRUCTURE.test(line));
 
+/** How read_page shows an embedded block: `[Database: Name (id …) — …]` or `[Page: Title (id …)]`. */
+const BLOCK_LINE = /^(\s*)\[(Database|Page): .*\(id ([\w-]+)\)[^\]]*\]\s*$/;
+
+/**
+ * An agent may put one of the page's own subpages or databases into its text by writing the
+ * line read_page shows for one. Those lines become real blocks here; anything else that
+ * would add a block (another page's database, a second copy) is refused.
+ */
+function placeOwnBlocks(state: WorkspaceState, page: Page, before: string, after: string) {
+  const old = new Set(before.split("\n"));
+  const placed: string[] = [];
+  let fence = "";
+  const lines = after.split("\n").map((line) => {
+    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (marker) {
+      if (!fence) fence = marker[1];
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = "";
+      return line;
+    }
+    const found = !fence && !old.has(line) && BLOCK_LINE.exec(line);
+    if (!found) return line;
+    const [, indent, kind, key] = found;
+    const database = kind === "Database" ? state.databases.find((d) => d.id === key || d.page_id === key) : undefined;
+    const target = state.pages.find((p) => p.id === (database ? database.page_id : key) && !p.deleted_at);
+    const name = target?.title || "Untitled";
+    if (!target || (kind === "Database" && !database))
+      throw new ToolError(`There's no ${kind.toLowerCase()} with the id “${key}”.`);
+    if (target.parent_id !== page.id)
+      throw new ToolError(
+        `“${name}” isn't inside “${page.title}”. Only a page's own subpages and databases (pages_inside in read_page) can be placed in its text.`,
+      );
+    const databaseId = database?.id ?? (target.kind === "database" ? target.database_id : undefined);
+    const directive = encodeDirective(
+      databaseId ? { kind: "database", id: databaseId } : { kind: "page", id: target.id },
+    );
+    if (placed.includes(directive) || isShownInPage(before, { id: target.id, database_id: databaseId }))
+      throw new ToolError(`“${name}” is already shown in the page; it can appear once.`);
+    placed.push(directive);
+    return `${indent}${directive}`;
+  });
+  return { markdown: lines.join("\n"), placed };
+}
+
 function livePage(state: WorkspaceState, raw: unknown): Page {
   const id = typeof raw === "string" ? raw.trim() : "";
   const page = state.pages.find((p) => p.id === id && !p.deleted_at);
@@ -482,7 +529,17 @@ function updatePage(state: WorkspaceState, args: Record<string, unknown>): Plann
       if (addition) after = after.trim() ? `${after.replace(/\s+$/, "")}\n\n${addition}\n` : `${addition}\n`;
       changes.push("added text");
     }
-    if (structureOf(after).join("\n") !== structureOf(before).join("\n"))
+    const own = placeOwnBlocks(state, page, before, after);
+    after = own.markdown;
+    if (own.placed.length) changes.push(`placed ${own.placed.length} block${own.placed.length === 1 ? "" : "s"}`);
+    const added = [...own.placed];
+    const kept = structureOf(after).filter((line) => {
+      const at = added.indexOf(line.trim());
+      if (at < 0) return true;
+      added.splice(at, 1);
+      return false;
+    });
+    if (kept.join("\n") !== structureOf(before).join("\n"))
       throw new ToolError(
         "That change would add or remove an embedded block (a subpage, database or playbook step). Change only the text around them.",
       );
