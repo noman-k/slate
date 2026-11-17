@@ -104,7 +104,8 @@ export const WRITE_TOOLS: ToolDefinition[] = [
     name: "create_page",
     title: "Create a page",
     description:
-      "Create a new page with a title and Markdown text (headings, lists, to-dos like '- [ ] task', tables, code). " +
+      "Create a new page with a title and Markdown text (headings, lists, to-dos like '- [ ] task', tables, code, and collapsible " +
+      "toggles written as <details>, then <summary>Title</summary> on its own line, the inside as Markdown, and </details>). " +
       "It's added at the top level, or inside an existing page, where it's listed under that page's \"Pages inside\" (the page's own text isn't changed). " +
       "Returns the new page's id and address. Creates only; it never changes existing pages.",
     inputSchema: {

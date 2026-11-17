@@ -105,6 +105,32 @@ test("two hyphens become an em dash, Backspace undoes it, and --- still makes a 
   await page.reload();
   await expect(title).toHaveValue("Dash verification one\u2014two a--b");
 });
+test("<details> in Markdown becomes a toggle, and a toggle is saved as <details>", async ({ page }) => {
+  await createPage(page, "Toggle verification");
+  await page.getByRole("button", { name: "Markdown", exact: true }).click();
+  await page.locator(".cm-content").click();
+  await page.keyboard.insertText(
+    "Before\n\n<details>\n<summary>Tax-time review</summary>\n\t- Use year filters\n\t- Keep receipts\n</details>\n\nAfter",
+  );
+  await page.getByRole("button", { name: "Interactive", exact: true }).click();
+  const editor = page.getByLabel("Page content", { exact: true });
+  const title = editor.getByRole("textbox", { name: "Toggle title" });
+  await expect(title).toHaveValue("Tax-time review");
+  const inside = editor.locator(".toggle-content").filter({ hasText: "Use year filters" });
+  // It came in closed, as <details> without "open" is.
+  await expect(inside).toBeHidden();
+  await editor.getByRole("button", { name: "Expand toggle" }).click();
+  await expect(inside).toBeVisible();
+  await expect(inside.locator("li")).toHaveText(["Use year filters", "Keep receipts"]);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(title).toHaveValue("Tax-time review");
+  await expect(inside).toBeVisible();
+  await page.getByRole("button", { name: "Markdown", exact: true }).click();
+  await expect(page.locator(".cm-content")).toContainText("<details open>");
+  await expect(page.locator(".cm-content")).toContainText("<summary>Tax-time review</summary>");
+  await expect(page.locator(".cm-content")).not.toContainText("slate-node");
+});
 test("a page with headings gets an outline down the right edge that follows along and jumps to them", async ({
   page,
 }) => {

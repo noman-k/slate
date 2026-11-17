@@ -107,7 +107,8 @@ export const EDIT_TOOLS: ToolDefinition[] = [
     description:
       "Change an existing page: its title, icon, description, or its text (Markdown). For the text, either replace exact passages " +
       "(`replace`: each `find` must appear exactly once in the page's text as read_page shows it), add to the end (`append`), or " +
-      "rewrite all of it (`content`; only for pages without embedded subpages or databases). Embedded blocks shown like " +
+      "rewrite all of it (`content`; only for pages without embedded subpages or databases). A collapsible toggle is " +
+      "<details> (add ` open` to show it expanded), <summary>Title</summary>, the inside as Markdown, then </details>, each on its own line. Embedded blocks shown like " +
       "[Page: …] or [Database: …] are kept as they are. Works for database rows too (their page text); use update_database " +
       "for a row's properties and update_playbook for a playbook's steps. Read the page first.",
     inputSchema: {

@@ -21,7 +21,7 @@ import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
 import { Database, ChevronRight, Info, Code2, Copy, Check, ChevronsUpDown, Search } from "lucide-react";
-import { encodeDirective, fencedCode, splitMarkdown } from "../../lib/markdown";
+import { encodeDirective, escapeSummary, fencedCode, splitMarkdown } from "../../lib/markdown";
 import { PageIcon } from "../page-icon";
 
 import { EmbedContext, type EmbedOptions } from "./embed-context";
@@ -283,6 +283,19 @@ const Callout = Node.create({
     return ReactNodeViewRenderer(ContainerView);
   },
 });
+/**
+ * A collapsible toggle. It's saved as HTML's own `<details>`, which Markdown allows, so it
+ * reads well anywhere and agents and imports can write one (Notion's export uses it too):
+ *
+ *     <details open>
+ *     <summary>Title</summary>
+ *
+ *     What's inside, as Markdown.
+ *
+ *     </details>
+ *
+ * Toggles saved before this (a `:::slate-node` line) still open.
+ */
 const Toggle = Node.create({
   name: "toggle",
   group: "block",
@@ -297,8 +310,10 @@ const Toggle = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["div", mergeAttributes(HTMLAttributes, { "data-toggle": "" }), 0];
   },
-  renderMarkdown(node) {
-    return `:::slate-node ${JSON.stringify(node)}`;
+  renderMarkdown(node, h) {
+    const body = (node.content || []).map((child: JSONContent) => h.renderChildren([child])).join("\n\n");
+    const title = escapeSummary(String(node.attrs?.title ?? ""));
+    return `<details${node.attrs?.open ? " open" : ""}>\n<summary>${title}</summary>\n\n${body}\n\n</details>`;
   },
   addNodeView() {
     return ReactNodeViewRenderer(ContainerView);
@@ -593,10 +608,25 @@ export function createDocumentExtensions(options: EmbedOptions = {}) {
 }
 
 export function parseDocument(editor: Pick<Editor, "schema" | "markdown">, source: string): JSONContent {
-  const content: JSONContent[] = [];
+  const top: JSONContent[] = [];
+  let content = top;
+  /** Toggles being filled, outermost first (each `<details>` until its `</details>`). */
+  const open: { node: JSONContent; parent: JSONContent[] }[] = [];
+  const close = () => {
+    const { node, parent } = open.pop()!;
+    if (!node.content!.length) node.content!.push({ type: "paragraph" });
+    parent.push(node);
+    content = parent;
+  };
   const parts = splitMarkdown(source);
   for (const [index, part] of parts.entries()) {
-    if (part.kind === "embed") content.push({ type: "workspaceEmbed", attrs: part.directive });
+    if (part.kind === "toggle-start") {
+      const node: JSONContent = { type: "toggle", attrs: { title: part.title, open: part.open }, content: [] };
+      open.push({ node, parent: content });
+      content = node.content!;
+    } else if (part.kind === "toggle-end") {
+      if (open.length) close();
+    } else if (part.kind === "embed") content.push({ type: "workspaceEmbed", attrs: part.directive });
     else if (part.kind === "preserved") content.push({ type: "preservedSource", attrs: { source: part.source } });
     else if (part.kind === "rich") {
       try {
@@ -617,8 +647,9 @@ export function parseDocument(editor: Pick<Editor, "schema" | "markdown">, sourc
       content.push(...(editor.markdown?.parse(text).content || []));
     }
   }
+  while (open.length) close();
   return {
     type: "doc",
-    content: content.length ? content : [{ type: "paragraph" }],
+    content: top.length ? top : [{ type: "paragraph" }],
   };
 }

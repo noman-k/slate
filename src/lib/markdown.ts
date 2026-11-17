@@ -11,7 +11,51 @@ export type MarkdownPart =
   | { kind: "markdown"; source: string }
   | { kind: "embed"; source: string; directive: WorkspaceDirective }
   | { kind: "preserved"; source: string }
-  | { kind: "rich"; source: string; node: Record<string, unknown> };
+  | { kind: "rich"; source: string; node: Record<string, unknown> }
+  /** A collapsible toggle opens (`<details>` and its `<summary>`)… */
+  | { kind: "toggle-start"; source: string; title: string; open: boolean }
+  /** …and closes (`</details>`); what's between is split as usual. */
+  | { kind: "toggle-end"; source: string };
+
+const DETAILS_OPEN = /^<details(\s+open(?:=(?:""|"open"|'open'|open))?)?\s*>\s*(.*)$/i;
+const DETAILS_CLOSE = /^<\/details>\s*$/i;
+const SUMMARY = /^<summary>([\s\S]*?)<\/summary>\s*$/i;
+
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
+/** A toggle's title as plain text: tags, Markdown emphasis and entities taken out. */
+function summaryText(html: string) {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, name: string) => ENTITIES[name])
+    .replace(/^(\*\*|__)(.*)\1$/s, "$2")
+    .trim();
+}
+/** Written back the same way, so `<summary>` can't be broken by what's typed in a title. */
+export const escapeSummary = (title: string) =>
+  title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, " ");
+
+/**
+ * The line where a toggle opened at `start` closes (`</details>` at the same depth, outside
+ * code), or -1. Children may be indented one tab, as Notion writes them.
+ */
+function detailsEnd(lines: string[], start: number, indent: string) {
+  let depth = 1;
+  let fence = "";
+  for (let index = start + 1; index < lines.length; index++) {
+    const line = lines[index].startsWith(indent) ? lines[index].slice(indent.length).replace(/^\t/, "") : lines[index];
+    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (marker) {
+      if (!fence) fence = marker[1];
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = "";
+      continue;
+    }
+    if (fence) continue;
+    const trimmed = line.trim();
+    if (DETAILS_OPEN.test(trimmed)) depth++;
+    else if (DETAILS_CLOSE.test(trimmed) && --depth === 0) return index;
+  }
+  return -1;
+}
 
 export function encodeDirective(value: WorkspaceDirective): string {
   return `:::slate ${JSON.stringify(value)}`;
@@ -43,8 +87,52 @@ export function splitMarkdown(source: string): MarkdownPart[] {
       pending = [];
     }
   };
+  /** Open toggles: where each closes, and the indent its children carry (Notion's tab). */
+  const toggles: { end: number; indent: string }[] = [];
   for (let index = 0; index < lines.length; index++) {
-    const line = lines[index];
+    const open = toggles[toggles.length - 1];
+    if (open && index === open.end) {
+      flush();
+      result.push({ kind: "toggle-end", source: lines[index] });
+      toggles.pop();
+      continue;
+    }
+    const indent = open?.indent ?? "";
+    const line = indent && lines[index].startsWith(indent) ? lines[index].slice(indent.length) : lines[index];
+    const details = !fence && DETAILS_OPEN.exec(line.trim());
+    if (details) {
+      const end = detailsEnd(lines, index, indent);
+      if (end > 0) {
+        flush();
+        // The title: on the same line, or the next one with text.
+        let rest = details[2].trim();
+        const raw = [lines[index]];
+        if (!rest) {
+          let next = index + 1;
+          while (next < end && !lines[next].trim()) next++;
+          if (next < end && SUMMARY.test(lines[next].trim())) {
+            raw.push(...lines.slice(index + 1, next + 1));
+            rest = lines[next].trim();
+            index = next;
+          }
+        }
+        const summary = SUMMARY.exec(rest);
+        // Children all indented a tab further (Notion's export) lose that tab here.
+        const inner = lines.slice(index + 1, end).filter((entry) => entry.trim());
+        const childIndent =
+          inner.length && inner.every((entry) => entry.startsWith(`${indent}\t`)) ? `${indent}\t` : indent;
+        result.push({
+          kind: "toggle-start",
+          source: raw.join("\n"),
+          title: summary ? summaryText(summary[1]) : "",
+          open: Boolean(details[1]),
+        });
+        toggles.push({ end, indent: childIndent });
+        // Text after </summary> on the same line is the toggle's first line.
+        if (!summary && rest) pending.push(rest);
+        continue;
+      }
+    }
     if (index === 0 && line.trim() === "---") {
       const closing = lines.findIndex((entry, offset) => offset > 0 && ["---", "..."].includes(entry.trim()));
       if (closing > 0) {

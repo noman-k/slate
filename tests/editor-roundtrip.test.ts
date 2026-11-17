@@ -91,4 +91,52 @@ describe("interactive editor / Markdown round-trip", () => {
     expect(first.content?.[0].type).toBe("toggle");
     expect(second).toEqual(first);
   });
+  it("reads <details> as a toggle and saves toggles that way, with what's inside as Markdown", () => {
+    const source =
+      "Before\n\n<details>\n<summary>Plan &amp; <b>budget</b></summary>\n\n- One\n- Two\n\n<details open><summary>**Inner**</summary>\n\nDeep `code`\n\n</details>\n\n</details>\n\nAfter";
+    const { first, markdown, second } = roundTrip(source);
+    expect(first.content?.map((node) => node.type)).toEqual(["paragraph", "toggle", "paragraph"]);
+    const toggle = first.content![1];
+    expect(toggle.attrs).toEqual({ title: "Plan & budget", open: false });
+    expect(toggle.content?.map((node) => node.type)).toEqual(["bulletList", "toggle"]);
+    expect(toggle.content![1].attrs).toEqual({ title: "Inner", open: true });
+    expect(markdown).toContain("<details>\n<summary>Plan &amp; budget</summary>\n\n- One\n- Two");
+    expect(markdown).toContain("<details open>\n<summary>Inner</summary>\n\nDeep `code`\n\n</details>");
+    expect(markdown).not.toContain(":::slate-node");
+    expect(second).toEqual(first);
+  });
+  it("reads Notion's toggles, children indented a tab, and keeps embeds inside them", () => {
+    const embed = encodeDirective({ kind: "database", id: "ledger-db" });
+    const source = `<details>\n<summary>Tax-time review</summary>\n\t- Use year filters\n\t- Keep receipts\n\t${embed}\n</details>`;
+    const { first, second, markdown } = roundTrip(source);
+    const toggle = first.content![0];
+    expect(toggle.type).toBe("toggle");
+    expect(toggle.attrs?.title).toBe("Tax-time review");
+    expect(toggle.content?.map((node) => node.type)).toEqual(["bulletList", "workspaceEmbed"]);
+    expect(toggle.content![1].attrs?.id).toBe("ledger-db");
+    expect(markdown).toContain(`\n${embed}\n`);
+    expect(second).toEqual(first);
+  });
+  it("turns a toggle saved the old way into <details> on the next save", () => {
+    const node = {
+      type: "toggle",
+      attrs: { title: "a < b", open: true },
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Inside" }] }],
+    };
+    const { markdown, second } = roundTrip(`:::slate-node ${JSON.stringify(node)}`);
+    expect(markdown).toBe("<details open>\n<summary>a &lt; b</summary>\n\nInside\n\n</details>");
+    expect(second.content![0]).toEqual(node);
+  });
+  it("leaves <details> without a closing tag, or one inside code, as it was", () => {
+    const unclosed = parseDocument(documentApi, "<details>\n<summary>Never closed</summary>\n\nText");
+    expect(unclosed.content?.some((node) => node.type === "toggle")).toBe(false);
+    const fenced = parseDocument(documentApi, "```html\n<details>\n<summary>x</summary>\n</details>\n```");
+    expect(fenced.content?.map((node) => node.type)).toEqual(["codeBlock"]);
+    const empty = parseDocument(documentApi, "<details>\n<summary>Empty</summary>\n</details>");
+    expect(empty.content![0]).toEqual({
+      type: "toggle",
+      attrs: { title: "Empty", open: false },
+      content: [{ type: "paragraph" }],
+    });
+  });
 });
