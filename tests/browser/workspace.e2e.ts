@@ -241,6 +241,43 @@ test("a page with headings gets an outline down the right edge that follows alon
   await page.mouse.wheel(0, -100000);
   await expect(lines.nth(0)).toHaveClass(/is-active/);
 });
+test("rows can be pinned to the top of a view, from their menu or several at once, and unpinned", async ({ page }) => {
+  const table = page.locator(".db-table").first();
+  const titles = () => table.locator("tbody tr .db-title-text > span:not(.db-pin-mark)").allInnerTexts();
+  const before = await titles();
+  const third = before[2];
+  const row = (name: string) => table.locator("tbody tr", { hasText: name }).first();
+  // Pin the third row from its menu: it moves to the top, with a pin and a line under it.
+  await row(third).hover();
+  await row(third)
+    .getByRole("button", { name: `Actions for ${third}` })
+    .click();
+  await page.getByRole("button", { name: "Pin to top", exact: true }).click();
+  await expect.poll(titles).toEqual([third, ...before.filter((name) => name !== third)]);
+  await expect(row(third).getByRole("img", { name: "Pinned" })).toBeVisible();
+  await expect(table.locator("tbody tr.db-last-pinned")).toHaveCount(1);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  // Several at once from the selection bar: they join the pins, in order.
+  const last = before[before.length - 1];
+  await row(last)
+    .getByRole("checkbox", { name: `Select ${last}` })
+    .click({ force: true });
+  await page.getByRole("toolbar", { name: "Selected rows" }).getByRole("button", { name: "Pin to top" }).click();
+  await expect.poll(async () => (await titles()).slice(0, 2)).toEqual([third, last]);
+  await page.keyboard.press("Escape");
+  // Pins are kept.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect.poll(async () => (await titles()).slice(0, 2)).toEqual([third, last]);
+  // Unpinning puts a row back where it was.
+  await row(third).hover();
+  await row(third)
+    .getByRole("button", { name: `Actions for ${third}` })
+    .click();
+  await page.getByRole("button", { name: "Unpin", exact: true }).click();
+  await expect.poll(titles).toEqual([last, ...before.filter((name) => name !== last)]);
+  await expect(row(third).getByRole("img", { name: "Pinned" })).toHaveCount(0);
+});
 test("dragging a column wider between pixels still saves, as a whole-pixel width", async ({ page }) => {
   const handle = page.getByRole("separator", { name: /^Resize / }).first();
   const before = Number(await handle.getAttribute("aria-valuenow"));

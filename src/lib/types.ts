@@ -121,6 +121,8 @@ export interface DatabaseView {
   group_by?: string;
   /** Its place among the database's tabs; views without one come after, as they were. */
   position?: number | null;
+  /** Rows pinned to the top of this view, in the order they show. */
+  pinned?: string[];
 }
 export interface WorkspaceState {
   workspaces: Workspace[];

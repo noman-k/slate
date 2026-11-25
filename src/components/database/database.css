@@ -2290,3 +2290,16 @@
 .db-view-tab.is-drop-after::before {
   right: 0;
 }
+
+/* Pinned rows: a small pin by the name, and a firmer line under the last one, so the pinned
+   rows read as their own group at the top of the view. */
+.db-pin-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-left: 2px;
+  color: var(--text-tertiary);
+}
+.db-table tbody tr.db-last-pinned > td {
+  border-bottom: 2px solid var(--border-strong);
+}

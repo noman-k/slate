@@ -90,6 +90,18 @@ describe("recursive page duplication", () => {
     expect(copies.every((page) => !page.favorite && page.created_at === now)).toBe(true);
   });
 
+  it("keeps a view's pinned rows pinned in the copy, pointing at the copy's rows", () => {
+    const state = relationFixture();
+    const view = state.views.find((item) => item.database_id === SEED_IDS.database)!;
+    const ledgerRows = state.records.filter((record) => record.database_id === SEED_IDS.database);
+    view.pinned = [ledgerRows[1].id, ledgerRows[0].id];
+    const result = duplicatePageSubtree(state, SEED_IDS.hub, options());
+    const copy = result.views.slice(state.views.length).find((item) => item.name === view.name && item.pinned)!;
+    const copiedIds = new Set(result.records.slice(state.records.length).map((record) => record.id));
+    expect(copy.pinned).toHaveLength(2);
+    expect(copy.pinned!.every((id) => copiedIds.has(id))).toBe(true);
+  });
+
   it("remaps internal database, relation, rollup and view property references to copies", () => {
     const state = relationFixture();
     const originalView = state.views.find((view) => view.database_id === SEED_IDS.database && view.name === "Paid")!;

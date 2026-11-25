@@ -31,6 +31,8 @@ import {
   ListFilter,
   Mail,
   MoreHorizontal,
+  Pin,
+  PinOff,
   Plus,
   Search,
   Sigma,
@@ -66,6 +68,7 @@ import {
   visibleRecords,
   moveView,
   orderedViews,
+  changePins,
 } from "@/lib/database";
 import { PageIcon } from "../page-icon";
 import "./database.css";
@@ -567,7 +570,10 @@ function Cell({
   autoEdit,
   onAutoEdited,
   expanded = false,
+  pinned = false,
 }: {
+  /** The row is pinned to the top of the view (its name shows a pin). */
+  pinned?: boolean;
   record: DbRecord;
   property: Property;
   state: WorkspaceState;
@@ -771,6 +777,11 @@ function Cell({
         <button className="db-title-text" onClick={startEdit} title="Click to rename">
           <RecordIcon record={record} state={state} size={16} />
           <span className={value ? "" : "is-untitled"}>{name}</span>
+          {pinned && (
+            <span className="db-pin-mark" role="img" aria-label="Pinned" title="Pinned to the top">
+              <Pin size={12} />
+            </span>
+          )}
         </button>
         <button
           className="db-open-peek"
@@ -1375,6 +1386,9 @@ export function DatabaseView({
     () => visibleRecords(databaseId, view, state, search, keep),
     [databaseId, view, state, search, keep],
   );
+  /** Rows pinned to the top of this view (those showing come first in `records`). */
+  const pins = useMemo(() => new Set(view.pinned ?? []), [view.pinned]);
+  const pinnedShown = records.filter((record) => pins.has(record.id)).length;
   const updateView = (patch: Partial<View>) =>
     onChange((current) => ({
       ...current,
@@ -1382,6 +1396,38 @@ export function DatabaseView({
         ? current.views.map((v) => (v.id === view.id ? { ...v, ...patch } : v))
         : [...current.views, { ...view, ...patch }],
     }));
+  /** Pins or unpins rows in this view; pins of rows that are gone are dropped. */
+  const setPins = (ids: string[], pin: boolean, before?: string | null) => {
+    const live = (view.pinned ?? []).filter((id) =>
+      state.records.some((r) => r.id === id && r.database_id === databaseId),
+    );
+    updateView({ pinned: changePins(live, ids, pin, before) });
+  };
+  /** Up or down one place among its own rows: the pinned ones, or the rest. */
+  const moveRecordBy = (record: DbRecord, step: 1 | -1) => {
+    if (pins.has(record.id)) {
+      const order = records.filter((r) => pins.has(r.id)).map((r) => r.id);
+      const from = order.indexOf(record.id),
+        to = from + step;
+      if (to < 0 || to >= order.length) return;
+      [order[from], order[to]] = [order[to], order[from]];
+      updateView({ pinned: [...order, ...(view.pinned ?? []).filter((id) => !order.includes(id))] });
+      return;
+    }
+    const rest = records.filter((r) => !pins.has(r.id));
+    const other = rest[rest.findIndex((r) => r.id === record.id) + step];
+    if (other)
+      onChange((current) => ({
+        ...current,
+        records: current.records.map((r) =>
+          r.id === record.id
+            ? { ...r, position: other.position }
+            : r.id === other.id
+              ? { ...r, position: record.position }
+              : r,
+        ),
+      }));
+  };
   const addRecord = (initial: Record<string, CellValue> = {}) => {
     if (!database) return;
     const now = new Date().toISOString(),
@@ -1526,6 +1572,14 @@ export function DatabaseView({
   };
   const dropRecord = (target: DbRecord, after = false) => {
     if (!draggedRecord || draggedRecord === target.id) return;
+    // Dropped among the pinned rows: pinned there. Dragged out of them: unpinned.
+    if (pins.has(target.id)) {
+      const order = records.filter((r) => pins.has(r.id) && r.id !== draggedRecord);
+      const next = order[order.findIndex((r) => r.id === target.id) + (after ? 1 : 0)];
+      setPins([draggedRecord], true, next?.id ?? null);
+      return;
+    }
+    if (pins.has(draggedRecord)) setPins([draggedRecord], false);
     const ordered = state.records
       .filter(
         (item) => item.database_id === databaseId && !state.pages.find((page) => page.id === item.page_id)?.deleted_at,
@@ -1647,45 +1701,19 @@ export function DatabaseView({
             {selection.isSelected(record.id) ? "Deselect" : "Select"}
           </MenuAction>
         )}
+        <MenuAction
+          icon={pins.has(record.id) ? <PinOff size={16} /> : <Pin size={16} />}
+          onClick={() => setPins([record.id], !pins.has(record.id))}
+        >
+          {pins.has(record.id) ? "Unpin" : "Pin to top"}
+        </MenuAction>
         <MenuAction icon={<Copy size={16} />} onClick={() => duplicateRecord(record)}>
           Duplicate
         </MenuAction>
-        <MenuAction
-          icon={<ArrowUp size={16} />}
-          onClick={() => {
-            const previous = records[records.findIndex((r) => r.id === record.id) - 1];
-            if (previous)
-              onChange((current) => ({
-                ...current,
-                records: current.records.map((r) =>
-                  r.id === record.id
-                    ? { ...r, position: previous.position }
-                    : r.id === previous.id
-                      ? { ...r, position: record.position }
-                      : r,
-                ),
-              }));
-          }}
-        >
+        <MenuAction icon={<ArrowUp size={16} />} onClick={() => moveRecordBy(record, -1)}>
           Move up
         </MenuAction>
-        <MenuAction
-          icon={<ArrowDown size={16} />}
-          onClick={() => {
-            const next = records[records.findIndex((r) => r.id === record.id) + 1];
-            if (next)
-              onChange((current) => ({
-                ...current,
-                records: current.records.map((r) =>
-                  r.id === record.id
-                    ? { ...r, position: next.position }
-                    : r.id === next.id
-                      ? { ...r, position: record.position }
-                      : r,
-                ),
-              }));
-          }}
-        >
+        <MenuAction icon={<ArrowDown size={16} />} onClick={() => moveRecordBy(record, 1)}>
           Move down
         </MenuAction>
         <div className="db-menu-divider" />
@@ -1701,7 +1729,8 @@ export function DatabaseView({
    * so there it only opens the menu.
    */
   const rowGrip = (record: DbRecord) => {
-    const locked = view.sorts.length > 0;
+    // Pinned rows keep their own order, so they can be dragged even in a sorted view.
+    const locked = view.sorts.length > 0 && !pins.has(record.id);
     return (
       <span
         role="button"
@@ -1756,7 +1785,13 @@ export function DatabaseView({
       )}
       <div className="db-toolbar">
         {selection.count > 0 && (
-          <SelectionBar count={selection.count} onDelete={selection.remove} onClear={selection.clear} />
+          <SelectionBar
+            count={selection.count}
+            onDelete={selection.remove}
+            onClear={selection.clear}
+            pin={selection.selected.every((id) => pins.has(id)) ? "unpin" : "pin"}
+            onPin={(pin) => setPins(selection.selected, pin)}
+          />
         )}
         <div className="db-tabs" role="tablist" aria-label="Database views">
           {(views.length ? views : [fallback]).slice(0, 4).map((item) => (
@@ -2213,7 +2248,7 @@ export function DatabaseView({
                   <tr
                     key={record.id}
                     aria-selected={selection.count ? selection.isSelected(record.id) : undefined}
-                    className={`${draggedRecord === record.id ? "db-dragging-row" : ""} ${dropHint?.id === record.id ? (dropHint.after ? "db-drop-after" : "db-drop-before") : ""} ${selection.isSelected(record.id) ? "is-selected" : ""}`}
+                    className={`${draggedRecord === record.id ? "db-dragging-row" : ""} ${dropHint?.id === record.id ? (dropHint.after ? "db-drop-after" : "db-drop-before") : ""} ${selection.isSelected(record.id) ? "is-selected" : ""} ${index === pinnedShown - 1 ? "db-last-pinned" : ""}`}
                     // On a touch screen, while selecting, a tap on a row selects it.
                     onClickCapture={(e) => {
                       if (!touch || !selection.count) return;
@@ -2268,6 +2303,7 @@ export function DatabaseView({
                             visible.find((property) => property.id === cell.column.id)?.type === "title"
                           }
                           onAutoEdited={doneTyping}
+                          pinned={pins.has(record.id)}
                         />
                       </td>
                     ))}
@@ -2339,6 +2375,11 @@ export function DatabaseView({
               <button className="db-list-title" onClick={() => onOpenRecord(record)}>
                 <RecordIcon record={record} state={state} size={16} />
                 <span>{recordTitle(record, state)}</span>
+                {pins.has(record.id) && (
+                  <span className="db-pin-mark" role="img" aria-label="Pinned" title="Pinned to the top">
+                    <Pin size={12} />
+                  </span>
+                )}
               </button>
               <div className="db-list-values">
                 {visible
@@ -2425,6 +2466,11 @@ export function DatabaseView({
                     <button className="db-board-card-title" onClick={() => onOpenRecord(record)}>
                       <RecordIcon record={record} state={state} size={16} />
                       {recordTitle(record, state)}
+                      {pins.has(record.id) && (
+                        <span className="db-pin-mark" role="img" aria-label="Pinned" title="Pinned to the top">
+                          <Pin size={12} />
+                        </span>
+                      )}
                     </button>
                     {visible
                       .filter((p) => p.type !== "title" && p.id !== groupProperty?.id)

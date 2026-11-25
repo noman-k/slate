@@ -7,7 +7,7 @@
  * On a touch screen, "Select" in a row's menu starts it, and then tapping a row selects it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Minus, Trash2, X } from "lucide-react";
+import { Check, Minus, Pin, PinOff, Trash2, X } from "lucide-react";
 
 /** Whether an event is aimed at somewhere text is typed (where Backspace edits, not deletes). */
 const typing = (target: EventTarget | null) =>
@@ -160,16 +160,27 @@ export function SelectionBar({
   count,
   onDelete,
   onClear,
+  pin,
+  onPin,
 }: {
   count: number;
   onDelete: () => void;
   onClear: () => void;
+  /** Whether the rows can be pinned (some aren't yet) or unpinned (all are). */
+  pin?: "pin" | "unpin";
+  onPin?: (pin: boolean) => void;
 }) {
   return (
     <div className="db-selection-bar" role="toolbar" aria-label="Selected rows">
       <span className="db-selection-count" role="status" aria-live="polite">
         {count} selected
       </span>
+      {pin && onPin && (
+        <button type="button" className="db-selection-action" onClick={() => onPin(pin === "pin")}>
+          {pin === "pin" ? <Pin size={15} /> : <PinOff size={15} />}
+          {pin === "pin" ? "Pin to top" : "Unpin"}
+        </button>
+      )}
       <button type="button" className="db-selection-action is-danger" onClick={onDelete}>
         <Trash2 size={15} />
         Delete

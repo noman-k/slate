@@ -11,8 +11,10 @@ import {
   restoreRemovedRecord,
   updateCell,
   visibleRecords,
+  changePins,
 } from "../src/lib/database";
 import type { DatabaseView, Property, WorkspaceState } from "../src/lib/types";
+import { createSeedState, SEED_IDS } from "./fixtures/seed";
 
 const date = "2026-11-11T10:00:00.000Z";
 const properties: Property[] = [
@@ -294,5 +296,45 @@ describe("database data operations", () => {
   it("escapes CSV quotes, delimiters and newlines", () => {
     const changed = updateCell(state, "one", properties[0], 'April, "rent"\npaid');
     expect(csvExport(changed.records, properties.slice(0, 2), changed)).toContain('"April, ""rent""\npaid","100"');
+  });
+});
+
+describe("pinned rows", () => {
+  const state = createSeedState();
+  const rows = state.records.filter((record) => record.database_id === SEED_IDS.database);
+  const title = state.properties.find((p) => p.database_id === SEED_IDS.database && p.type === "title")!;
+  const base = state.views.find((v) => v.database_id === SEED_IDS.database)!;
+  const names = (view: DatabaseView) =>
+    visibleRecords(SEED_IDS.database, view, state).map((record) => cellValue(record, title, state));
+
+  it("come first, in pin order, whatever the sort; the rest keep the view's order", () => {
+    const sorted: DatabaseView = { ...base, filters: [], sorts: [{ property_id: title.id, direction: "asc" }] };
+    const unpinned = names(sorted);
+    const [a, b] = [rows[3], rows[1]];
+    const pinned = names({ ...sorted, pinned: [a.id, b.id] });
+    expect(pinned.slice(0, 2)).toEqual([cellValue(a, title, state), cellValue(b, title, state)]);
+    expect(pinned.slice(2)).toEqual(unpinned.filter((name) => !pinned.slice(0, 2).includes(name)));
+  });
+
+  it("still follow the view's filter", () => {
+    const only = String(cellValue(rows[0], title, state));
+    const filtered: DatabaseView = {
+      ...base,
+      sorts: [],
+      filters: [{ property_id: title.id, operator: "contains", value: only }],
+      pinned: [rows[2].id, rows[0].id],
+    };
+    const shown = visibleRecords(SEED_IDS.database, filtered, state);
+    expect(shown[0].id).toBe(rows[0].id);
+    // rows[2] is pinned but the filter leaves it out.
+    expect(shown.some((record) => record.id === rows[2].id)).toBe(false);
+  });
+
+  it("are added at the end or before another pin, and removed", () => {
+    expect(changePins(undefined, ["a"], true)).toEqual(["a"]);
+    expect(changePins(["a", "b"], ["c"], true)).toEqual(["a", "b", "c"]);
+    expect(changePins(["a", "b"], ["c"], true, "b")).toEqual(["a", "c", "b"]);
+    expect(changePins(["a", "b", "c"], ["c"], true, "a")).toEqual(["c", "a", "b"]);
+    expect(changePins(["a", "b", "c"], ["b"], false)).toEqual(["a", "c"]);
   });
 });

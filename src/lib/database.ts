@@ -355,7 +355,31 @@ export function visibleRecords(
         if (difference) return sort.direction === "asc" ? difference : -difference;
       }
       return a.position - b.position;
-    });
+    })
+    .sort(pinnedFirst(view.pinned));
+}
+
+/**
+ * Pinned rows come first, in the order they were pinned, whatever the view's sort; the rest
+ * keep their order (the sort is stable). Filters still apply: a pinned row they hide stays hidden.
+ */
+const pinnedFirst = (pinned: string[] | undefined) => {
+  const at = new Map((pinned ?? []).map((id, index) => [id, index]));
+  return (a: DbRecord, b: DbRecord) =>
+    (at.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (at.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+};
+
+/** A view's pins with `ids` pinned (added at the end, or before `before`) or unpinned. */
+export function changePins(
+  pinned: string[] | undefined,
+  ids: string[],
+  pin: boolean,
+  before?: string | null,
+): string[] {
+  const rest = (pinned ?? []).filter((id) => !ids.includes(id));
+  if (!pin) return rest;
+  const at = before ? rest.indexOf(before) : -1;
+  return at < 0 ? [...rest, ...ids] : [...rest.slice(0, at), ...ids, ...rest.slice(at)];
 }
 
 export function updateCell(

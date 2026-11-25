@@ -303,6 +303,8 @@ export function duplicatePageSubtree(
           ...sort,
           property_id: propertyMap.get(sort.property_id) ?? sort.property_id,
         })),
+        // Pins point at the copy's own rows.
+        ...(view.pinned ? { pinned: view.pinned.map((id) => recordMap.get(id) ?? id) } : {}),
         hidden_properties: view.hidden_properties.map((id) => propertyMap.get(id) ?? id),
         ...("property_order" in view && Array.isArray(view.property_order)
           ? {
