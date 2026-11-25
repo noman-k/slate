@@ -1,16 +1,17 @@
 "use client";
 /**
- * Editing on a phone: a small toolbar that floats just under the line being edited (above
- * it when the keyboard would cover it), as the selection popup does. A phone keyboard has
- * no Tab key, so this is where indenting lives (nesting to-dos and list items), along with
- * a to-do and bullet list, undo and redo, and Done to put the keyboard away.
+ * Editing on a phone: a toolbar that sits right on top of the on-screen keyboard while a page
+ * is being edited, as in Notion. A phone keyboard has no Tab key, so this is where indenting
+ * lives (nesting to-dos and list items), along with a to-do and bullet list, undo and redo,
+ * and Done to put the keyboard away.
  *
- * It follows the cursor rather than sitting above the keyboard: browsers' own bars there
- * (iOS 26 Safari's floating address bar) can't be detected and would cover it. It steps
- * aside while text is selected, for the formatting popup. Its buttons never take focus
- * from the text, so the keyboard stays up while you use them.
+ * The app is pinned to what's visible above the keyboard (lib/visual-viewport.ts), so the
+ * toolbar is simply the bottom of that area; the line being edited is kept above it. It steps
+ * aside while text is selected, for the formatting popup. Its buttons never take focus from
+ * the text, so the keyboard stays up while you use them.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/react";
 import { IndentDecrease, IndentIncrease, List, ListChecks, Redo2, Undo2 } from "lucide-react";
 import { useTouchOnly } from "../keys";
@@ -34,21 +35,13 @@ const canIndent = (editor: Editor, outdent: boolean) => {
   return outdent ? editor.can().liftListItem(type) : editor.can().sinkListItem(type);
 };
 
-/** Gap between the line and the toolbar, and its height (for placing it above instead). */
-const GAP = 8;
-const HEIGHT = 46;
-/**
- * The bottom of the visible area that browsers' own bars may cover, unseen by the page
- * (iOS 26 Safari floats its address bar and the form ⌃⌄✓ bar there, over the page, just
- * above the keyboard). The toolbar never goes there: it goes above the line instead.
- */
-const BROWSER_BARS = 112;
+/** The toolbar's height; the page keeps the line being edited at least this far up. */
+export const KEYBOARD_TOOLBAR_HEIGHT = 48;
 
 export function KeyboardToolbar({ editor }: { editor: Editor | null }) {
   const touch = useTouchOnly();
   const [focused, setFocused] = useState(false);
   const [, rerender] = useState(0);
-  const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,44 +82,28 @@ export function KeyboardToolbar({ editor }: { editor: Editor | null }) {
     return () => root.removeEventListener("touchstart", claim);
   }, [visible]);
 
-  // Under the line (list item, paragraph…) the cursor is in; above it if the keyboard (the
-  // bottom of what's visible) would hide it. Kept inside the screen sideways.
-  useLayoutEffect(() => {
-    if (!visible || !editor) return;
-    const position = () => {
-      const host = ref.current?.offsetParent as HTMLElement | null;
-      if (!host) return;
-      const { from } = editor.state.selection;
-      const at = editor.view.domAtPos(from).node;
-      const element = (at.nodeType === Node.ELEMENT_NODE ? (at as Element) : at.parentElement)?.closest(
-        "li, p, h1, h2, h3, h4, pre, blockquote, .editor-callout",
-      );
-      const caret = editor.view.coordsAtPos(from);
-      const line = element?.getBoundingClientRect() ?? { top: caret.top, bottom: caret.bottom };
-      const frame = host.getBoundingClientRect();
-      const viewport = window.visualViewport;
-      const visibleBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
-      const below = line.bottom + GAP + HEIGHT <= visibleBottom - BROWSER_BARS;
-      const top = (below ? line.bottom + GAP : line.top - GAP - HEIGHT) - frame.top;
-      const width = ref.current?.offsetWidth ?? 320;
-      const screenLeft = Math.min(Math.max(8, caret.left - 24), window.innerWidth - width - 8);
-      const left = screenLeft - frame.left;
-      // Only when it moved: this runs after every render.
-      setPlace((current) =>
-        current && Math.abs(current.top - top) < 0.5 && Math.abs(current.left - left) < 0.5 ? current : { top, left },
-      );
-    };
-    position();
+  // When the keyboard comes up (or the visible area changes), the line being edited moves
+  // back into view above the toolbar.
+  useEffect(() => {
     const viewport = window.visualViewport;
-    viewport?.addEventListener("resize", position);
-    viewport?.addEventListener("scroll", position);
-    document.addEventListener("scroll", position, true);
-    return () => {
-      viewport?.removeEventListener("resize", position);
-      viewport?.removeEventListener("scroll", position);
-      document.removeEventListener("scroll", position, true);
+    if (!visible || !editor || !viewport) return;
+    let frame = 0;
+    const reveal = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (editor.isFocused) editor.view.dispatch(editor.state.tr.scrollIntoView());
+      });
     };
-  });
+    viewport.addEventListener("resize", reveal);
+    // The keyboard may have finished opening before this was listening: check once it has.
+    reveal();
+    const settled = setTimeout(reveal, 400);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(settled);
+      viewport.removeEventListener("resize", reveal);
+    };
+  }, [visible, editor]);
 
   if (!visible || !editor) return null;
   const keep = (event: React.PointerEvent | React.MouseEvent) => event.preventDefault();
@@ -161,14 +138,8 @@ export function KeyboardToolbar({ editor }: { editor: Editor | null }) {
       {icon}
     </button>
   );
-  return (
-    <div
-      ref={ref}
-      className="keyboard-toolbar"
-      role="toolbar"
-      aria-label="Editing"
-      style={place ? { top: place.top, left: place.left } : { visibility: "hidden" }}
-    >
+  return createPortal(
+    <div ref={ref} className="keyboard-toolbar" role="toolbar" aria-label="Editing">
       {button("Outdent", <IndentDecrease size={20} />, () => changeIndent(editor, true), canIndent(editor, true))}
       {button("Indent", <IndentIncrease size={20} />, () => changeIndent(editor, false), canIndent(editor, false))}
       <span className="keyboard-toolbar-divider" aria-hidden />
@@ -205,6 +176,7 @@ export function KeyboardToolbar({ editor }: { editor: Editor | null }) {
       >
         Done
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }

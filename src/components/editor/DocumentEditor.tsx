@@ -50,7 +50,7 @@ import { EditorUrlPopover } from "./EditorUrlPopover";
 import { DatabasePicker, type DatabaseChoice } from "./DatabasePicker";
 import "./editor.css";
 import { isTouchOnly, useKeys } from "../keys";
-import { KeyboardToolbar, changeIndent } from "./keyboard-toolbar";
+import { KEYBOARD_TOOLBAR_HEIGHT, KeyboardToolbar, changeIndent } from "./keyboard-toolbar";
 import { PageOutline } from "./page-outline";
 import { blockAtY, placeBubble, popoverNearSelection, type TopBlock } from "./editor-layout";
 import { buildSlashItems, filterSlashItems, type DbPicker, type SlashItem, type UrlInput } from "./slash-items";
@@ -252,6 +252,14 @@ export function DocumentEditor(props: DocumentEditorProps) {
       extensions,
       content: "",
       editorProps: {
+        // On a phone the editing toolbar covers the bottom of the page: typing keeps the
+        // line clear of it (and a little off the top bar).
+        ...(isTouchOnly()
+          ? {
+              scrollMargin: { top: 24, bottom: KEYBOARD_TOOLBAR_HEIGHT + 24, left: 0, right: 0 },
+              scrollThreshold: { top: 24, bottom: KEYBOARD_TOOLBAR_HEIGHT + 24, left: 0, right: 0 },
+            }
+          : {}),
         attributes: {
           class: "slate-prose",
           "aria-label": "Page content",

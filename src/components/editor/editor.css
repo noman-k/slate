@@ -2290,29 +2290,28 @@
   }
 }
 
-/* The editing toolbar that floats by the line being edited on a phone (keyboard-toolbar.tsx). */
+/* The editing toolbar on top of a phone's keyboard (keyboard-toolbar.tsx): the bottom of
+   what's visible (--vv-top/--vv-height, lib/visual-viewport.ts), full width, as in Notion. */
 .keyboard-toolbar {
-  position: absolute;
-  z-index: 12;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--vv-top, 0px) + var(--vv-height, 100dvh) - 48px);
+  z-index: 60;
   display: flex;
   align-items: center;
-  gap: 1px;
-  height: 46px;
-  padding: 3px;
-  border-radius: 12px;
+  gap: 2px;
+  height: 48px;
+  padding: 0 8px;
+  border-top: 1px solid var(--divider);
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-popover);
   white-space: nowrap;
-  animation: appear var(--motion-fast) var(--ease);
-  transition:
-    top 120ms var(--ease),
-    left 120ms var(--ease);
 }
 .keyboard-toolbar button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  width: 44px;
   height: 40px;
   flex-shrink: 0;
   border-radius: 9px;
@@ -2338,13 +2337,17 @@
 }
 .keyboard-toolbar .keyboard-toolbar-done {
   width: auto;
-  margin-left: 2px;
+  margin-left: auto;
   padding: 0 10px;
   font-size: 15px;
   font-weight: 600;
   color: var(--accent-text);
 }
-/* While it's showing, the floating help button steps aside (it would sit under it). */
+/* While it's showing: room under the text for it, and the floating help button steps aside. */
+body:has(.keyboard-toolbar) .page-scroll {
+  padding-bottom: 48px;
+  scroll-padding-bottom: 56px;
+}
 body:has(.keyboard-toolbar) .help-button {
   display: none;
 }

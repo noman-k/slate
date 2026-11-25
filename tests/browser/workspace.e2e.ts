@@ -105,6 +105,35 @@ test("two hyphens become an em dash, Backspace undoes it, and --- still makes a 
   await page.reload();
   await expect(title).toHaveValue("Dash verification one\u2014two a--b");
 });
+test("-> <- and <-> become arrows in pages and titles, Backspace undoes them, and code keeps them", async ({
+  page,
+}) => {
+  await createPage(page, "Arrow verification");
+  const editor = page.getByLabel("Page content", { exact: true });
+  await editor.pressSequentially("in -> out <- back <-> both");
+  await expect(editor.locator("p").first()).toHaveText("in → out ← back ↔ both");
+  await editor.press("Enter");
+  await editor.pressSequentially("a->");
+  await editor.press("Backspace");
+  await editor.pressSequentially("b");
+  await expect(editor.locator("p").nth(1)).toHaveText("a->b");
+  await editor.press("Enter");
+  await editor.pressSequentially("```");
+  await editor.pressSequentially("x <- y; f = a -> b");
+  await expect(editor.locator("pre")).toContainText("x <- y; f = a -> b");
+  const title = page.getByRole("textbox", { name: "Page title", exact: true });
+  await title.click();
+  await title.press("End");
+  await title.pressSequentially(" A->B<-C<->D");
+  await expect(title).toHaveValue("Arrow verification A→B←C↔D");
+  await title.pressSequentially(" x->");
+  await title.press("Backspace");
+  await expect(title).toHaveValue("Arrow verification A→B←C↔D x->");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(title).toHaveValue("Arrow verification A→B←C↔D x->");
+  await expect(editor.locator("p").first()).toHaveText("in → out ← back ↔ both");
+});
 test("<details> in Markdown becomes a toggle, and a toggle is saved as <details>", async ({ page }) => {
   await createPage(page, "Toggle verification");
   await page.getByRole("button", { name: "Markdown", exact: true }).click();

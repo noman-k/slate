@@ -42,10 +42,11 @@ import {
 import { createRun, readRun, recordLookup, runsOf, saveRun } from "@/lib/runs";
 import { sendRequest } from "@/lib/api-request";
 import { recordTitle } from "@/lib/database";
-import { isPhoneWidth } from "./keys";
+import { isPhoneWidth, isTouchOnly } from "./keys";
 import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
 import { installSmartDash } from "@/lib/smart-dash";
+import { lockToVisualViewport } from "@/lib/visual-viewport";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
 import { Modal, Popup } from "./ui/menu";
 import { useWorkspace } from "@/lib/use-workspace";
@@ -66,6 +67,8 @@ const DocumentEditor = dynamic(() => import("./editor/DocumentEditor").then((m) 
 export function WorkspaceApp() {
   // "--" becomes "—" in titles and names, as it does in pages.
   useEffect(installSmartDash, []);
+  // On a phone the app fills what's visible above the keyboard, as Notion does.
+  useEffect(() => (isTouchOnly() ? lockToVisualViewport() : undefined), []);
   const dialogs = useWorkspaceDialogs();
   const { state, change, ready, status, error, recovery, retry, onServer } = useWorkspace();
   const [activeId, setActiveId] = useState("");

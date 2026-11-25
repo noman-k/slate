@@ -559,15 +559,17 @@ test("on a phone, a toolbar above the keyboard indents and outdents to-dos (ther
   const toolbar = page.getByRole("toolbar", { name: "Editing" });
   await expect(toolbar).toBeVisible();
   const editor = page.getByLabel("Page content", { exact: true });
-  // It floats just under the line being edited (clear of the keyboard and browser bars).
-  const line = (await editor.locator('ul[data-type="taskList"] > li').last().boundingBox())!;
-  await expect
-    .poll(async () => Math.round((await toolbar.boundingBox())!.y - (line.y + line.height)))
-    .toBeGreaterThanOrEqual(0);
-  expect((await toolbar.boundingBox())!.y - (line.y + line.height)).toBeLessThan(24);
+  // It sits across the bottom of what's visible (on top of the keyboard, as in Notion), and
+  // the line being edited stays above it. The top bar stays where it is.
+  const viewport = page.viewportSize()!;
   const bar = (await toolbar.boundingBox())!;
-  expect(bar.x).toBeGreaterThanOrEqual(0);
-  expect(bar.x + bar.width).toBeLessThanOrEqual(390);
+  expect(bar.x).toBe(0);
+  expect(bar.width).toBe(viewport.width);
+  expect(Math.round(bar.y + bar.height)).toBe(viewport.height);
+  const line = (await editor.locator('ul[data-type="taskList"] > li').last().boundingBox())!;
+  expect(line.y + line.height).toBeLessThanOrEqual(bar.y);
+  expect(await page.evaluate(() => document.documentElement.classList.contains("viewport-locked"))).toBe(true);
+  expect((await page.locator(".workspace-app").boundingBox())!.y).toBe(0);
   const nested = editor.locator('ul[data-type="taskList"] ul[data-type="taskList"] > li');
   await expect(nested).toHaveCount(0);
   // Indent nests "Milk" under "Groceries"; the cursor (and keyboard) stay in the text.

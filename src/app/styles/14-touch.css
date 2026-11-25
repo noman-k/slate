@@ -233,3 +233,21 @@ summary,
     min-height: 44px;
   }
 }
+
+/*
+ * On a phone the app is pinned to what's visible (lib/visual-viewport.ts): above the keyboard
+ * and the browser's floating bars. The page itself never scrolls or bounces; the content
+ * scrolls inside, so the top bar stays where it is while you type.
+ */
+html.viewport-locked,
+html.viewport-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.viewport-locked .workspace-app {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vv-height, 100dvh);
+}
