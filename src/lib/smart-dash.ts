@@ -1,7 +1,7 @@
 /**
  * Two hyphens become an em dash in text fields marked `data-smart-dash` (titles and names),
- * the way the page editor does it: "well--almost" → "well—almost". Backspace right after
- * brings "--" back. The change goes through the browser's own text insertion, so the field
+ * the way the page editor does it: "well--almost" → "well—almost". Arrows too: "->" → "→",
+ * "<-" → "←", and "<->" → "↔". Backspace right after brings back what was typed. The change goes through the browser's own text insertion, so the field
  * sees an ordinary input event (React's onChange runs) and ⌘Z undoes it.
  */
 
@@ -24,23 +24,25 @@ function insert(el: TextField, from: number, to: number, text: string) {
   }
 }
 
-/** Where the caret was right after each dash we made, so Backspace there can undo it. */
-const made = new WeakMap<TextField, number>();
+/**
+ * What a character typed right after another becomes: the pair's key is the character
+ * before the caret plus the one typed.
+ */
+const PAIRS: Record<string, string> = { "--": "—", "->": "→", "<-": "←", "←>": "↔" };
+
+/** Where the caret was right after each one we made, and what was typed, so Backspace can undo it. */
+const made = new WeakMap<TextField, { at: number; typed: string }>();
 
 function onBeforeInput(event: InputEvent) {
   const el = field(event.target);
   if (!el) return;
   const at = el.selectionStart ?? 0;
-  if (
-    event.inputType === "insertText" &&
-    event.data === "-" &&
-    !event.isComposing &&
-    at === el.selectionEnd &&
-    el.value[at - 1] === "-"
-  ) {
+  const typed = event.data && event.data.length === 1 ? el.value[at - 1] + event.data : "";
+  const replacement = PAIRS[typed];
+  if (event.inputType === "insertText" && replacement && !event.isComposing && at > 0 && at === el.selectionEnd) {
     event.preventDefault();
-    insert(el, at - 1, at, "—");
-    made.set(el, at);
+    insert(el, at - 1, at, replacement);
+    made.set(el, { at, typed });
     return;
   }
   made.delete(el);
@@ -50,9 +52,10 @@ function onKeyDown(event: KeyboardEvent) {
   const el = field(event.target);
   if (!el || event.key !== "Backspace" || event.metaKey || event.ctrlKey || event.altKey) return;
   const at = el.selectionStart ?? 0;
-  if (made.get(el) === at && at === el.selectionEnd && el.value[at - 1] === "—") {
+  const last = made.get(el);
+  if (last && last.at === at && at === el.selectionEnd && el.value[at - 1] === PAIRS[last.typed]) {
     event.preventDefault();
-    insert(el, at - 1, at, "--");
+    insert(el, at - 1, at, last.typed);
   }
   made.delete(el);
 }

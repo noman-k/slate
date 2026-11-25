@@ -557,13 +557,19 @@ const HighlightCode = CodeBlockLowlight.extend({
 
 /**
  * Two hyphens become an em dash as you type ("well--almost" → "well—almost"), as in Notion
- * and most writing apps. Backspace right after turns it back into "--". "---" at the start
- * of a line still makes a divider (its rule takes "—-" too); never in code.
+ * and most writing apps, and arrows become arrows: "->" → "→", "<-" → "←", "<->" → "↔".
+ * Backspace right after turns it back into what was typed. "---" at the start of a line
+ * still makes a divider (its rule takes "—-" too); never in code.
  */
 const SmartDash = Extension.create({
   name: "smartDash",
   addInputRules() {
-    return [textInputRule({ find: /--$/, replace: "\u2014" })];
+    return [
+      textInputRule({ find: /--$/, replace: "\u2014" }),
+      textInputRule({ find: /->$/, replace: "\u2192" }),
+      textInputRule({ find: /<-$/, replace: "\u2190" }),
+      textInputRule({ find: /\u2190>$/, replace: "\u2194" }),
+    ];
   },
 });
 
