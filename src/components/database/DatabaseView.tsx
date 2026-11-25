@@ -779,7 +779,6 @@ function Cell({
           href={href}
           target={property.type === "url" ? "_blank" : undefined}
           rel="noopener noreferrer"
-          title={property.type === "url" ? `Open ${href}` : String(value)}
           onClick={(e) => e.stopPropagation()}
         >
           {formatValue(value, property)}

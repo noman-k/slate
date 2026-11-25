@@ -2304,8 +2304,11 @@
   border-bottom: 2px solid var(--border-strong);
 }
 
-/* A URL, email or phone cell: the link opens, the rest of the cell (and the pencil) edits. */
+/* A URL, email or phone cell: the link opens, the rest of the cell (and the pencil) edits.
+   The pencil floats over the end of the cell when you point at it, so the link never moves
+   or re-shortens; its solid background covers the text under it. */
 .db-link-cell {
+  position: relative;
   cursor: text;
 }
 .db-link-cell .db-link-value {
@@ -2317,38 +2320,54 @@
   cursor: pointer;
 }
 .db-link-edit {
-  flex: none;
-  display: none;
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
-  margin-left: auto;
   padding: 0;
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow:
+    inset 0 0 0 1px var(--border),
+    -8px 0 8px -2px var(--bg-elevated);
   color: var(--icon);
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity var(--motion-fast) var(--ease);
 }
 .db-link-cell:focus-within .db-link-edit {
-  display: inline-flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 @media (hover: hover) {
   .db-link-cell .db-link-value:hover {
     text-decoration-color: currentColor;
   }
   .db-link-cell:hover .db-link-edit {
-    display: inline-flex;
+    opacity: 1;
+    pointer-events: auto;
   }
   .db-link-edit:hover {
     background: var(--hover-strong);
   }
 }
-/* Touch: no hover to reveal it, so the pencil is always there. */
+/* Touch: no hover to reveal it, so the pencil is always there, at the end of the line
+   (taking its own room, since it never comes and goes). */
 @media (hover: none) {
   .db-link-edit {
-    display: inline-flex;
+    position: static;
+    flex: none;
+    margin-left: auto;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    box-shadow: inset 0 0 0 1px var(--border);
   }
 }

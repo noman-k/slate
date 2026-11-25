@@ -288,28 +288,48 @@ test("a URL cell is a link that opens in a new tab, and still edits from the pen
   await page.getByRole("button", { name: "URL", exact: true }).click();
   const row = table.locator("tbody tr").first();
   await row.getByTitle("Edit Website").click();
-  await page.keyboard.type("example.com/rent");
+  await page.keyboard.type("example.com/rent/2026/statements/basement-unit/monthly-ledger-export");
   await page.keyboard.press("Enter");
   // The address is a link (https:// added), opening in a new tab.
-  const link = row.getByRole("link", { name: "example.com/rent" });
-  await expect(link).toHaveAttribute("href", "https://example.com/rent");
+  const link = row.getByRole("link");
+  await expect(link).toHaveAttribute(
+    "href",
+    "https://example.com/rent/2026/statements/basement-unit/monthly-ledger-export",
+  );
   await expect(link).toHaveAttribute("target", "_blank");
   await context.route("https://example.com/**", (route) => route.fulfill({ body: "ok" }));
   const [opened] = await Promise.all([context.waitForEvent("page"), link.click()]);
-  await expect.poll(() => opened.url()).toBe("https://example.com/rent");
+  await expect
+    .poll(() => opened.url())
+    .toBe("https://example.com/rent/2026/statements/basement-unit/monthly-ledger-export");
   await opened.close();
   await expect(row.locator("input")).toHaveCount(0);
-  // The pencil (shown when pointing at the cell) edits it…
+  // The pencil (shown when pointing at the cell) edits it. It floats over the cell, so the
+  // link doesn't move or change when it appears.
   const cell = row.locator(".db-link-cell");
+  await page.mouse.move(5, 5);
+  // Opening it left the link focused, which shows the pencil too; start from rest.
+  await link.evaluate((el) => el.blur());
+  // (The address is long enough to be shortened with "…", where a squeeze would show.)
+  expect(await link.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  const resting = (await link.boundingBox())!;
   await cell.hover();
+  await expect(row.getByRole("button", { name: "Edit Website" })).toBeVisible();
+  expect(await link.boundingBox()).toEqual(resting);
+  await expect(link).not.toHaveAttribute("title");
   await row.getByRole("button", { name: "Edit Website" }).click();
-  await expect(row.locator("input")).toHaveValue("example.com/rent");
+  await expect(row.locator("input")).toHaveValue(
+    "example.com/rent/2026/statements/basement-unit/monthly-ledger-export",
+  );
   await page.keyboard.press("Escape");
   // …and so does the empty part of the cell, beside the link.
   const box = (await cell.boundingBox())!;
   const linkBox = (await link.boundingBox())!;
-  await page.mouse.click(linkBox.x + linkBox.width + 12, box.y + box.height / 2);
-  await expect(row.locator("input")).toHaveValue("example.com/rent");
+  // (A long link fills the line, so this is the cell's padding just above it.)
+  await page.mouse.click(linkBox.x + 20, box.y + 2);
+  await expect(row.locator("input")).toHaveValue(
+    "example.com/rent/2026/statements/basement-unit/monthly-ledger-export",
+  );
   await page.keyboard.press("Escape");
   // Something that isn't a web address stays plain text.
   await cell.hover();
