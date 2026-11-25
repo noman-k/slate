@@ -318,6 +318,21 @@ test("a URL cell is a link that opens in a new tab, and still edits from the pen
   await page.keyboard.press("Enter");
   await expect(row.getByRole("link")).toHaveCount(0);
 });
+test("Export Markdown gives a table page its rows as a Markdown table", async ({ page }) => {
+  await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
+  await page.getByRole("button", { name: "Page options" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("menuitem", { name: "Export Markdown" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("Rent Ledger.md");
+  const text = await (await download.createReadStream()).toArray().then((chunks) => Buffer.concat(chunks).toString());
+  expect(text.startsWith("# Rent Ledger\n")).toBe(true);
+  expect(text).toMatch(/^\| Rent Entry \|/m);
+  expect(text).toContain("2026-04 — Basement");
+  expect(text).not.toContain(":::slate");
+  await expect(page.getByText("Exported Rent Ledger.md")).toBeVisible();
+});
 test("dragging a column wider between pixels still saves, as a whole-pixel width", async ({ page }) => {
   const handle = page.getByRole("separator", { name: /^Resize / }).first();
   const before = Number(await handle.getAttribute("aria-valuenow"));

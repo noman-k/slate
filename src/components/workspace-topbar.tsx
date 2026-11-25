@@ -20,6 +20,7 @@ import { PageIcon } from "./page-icon";
 import { PLAYBOOKS_VIEW } from "./playbooks-view";
 import { Menu, MenuItem, MenuSeparator, Popup } from "./ui/menu";
 import { download } from "./workspace-helpers";
+import { exportFileName } from "@/lib/export";
 
 export function WorkspaceTopbar({
   collapsed,
@@ -30,7 +31,7 @@ export function WorkspaceTopbar({
   status,
   onOpen,
   onAction,
-  markdownOf,
+  exportMarkdown,
   canViewSource,
   onViewSource,
   loading = false,
@@ -46,8 +47,8 @@ export function WorkspaceTopbar({
   status: SaveStatus;
   onOpen: (pageId: string) => void;
   onAction: (action: PageAction, page: Page) => void;
-  /** A page's Markdown, for Export Markdown. */
-  markdownOf: (pageId: string) => string;
+  /** A page as one Markdown file, for Export Markdown (lib/export.ts). */
+  exportMarkdown: (pageId: string) => string;
   /** A playbook's source can be viewed as Markdown. */
   canViewSource: boolean;
   onViewSource: (pageId: string) => void;
@@ -137,8 +138,9 @@ export function WorkspaceTopbar({
               <MenuSeparator />
               <MenuItem
                 onClick={() => {
-                  download(`${page.title}.md`, `# ${page.title}\n\n${page.description}\n\n${markdownOf(page.id)}`);
-                  toast.success("Markdown exported");
+                  const file = exportFileName(page.title);
+                  download(file, exportMarkdown(page.id));
+                  toast.success(`Exported ${file}`);
                 }}
               >
                 <Download />

@@ -47,6 +47,7 @@ import { IconPickerPopover } from "./icon-picker";
 import { AutosizeTextarea } from "./ui/autosize-textarea";
 import { installSmartDash } from "@/lib/smart-dash";
 import { lockToVisualViewport } from "@/lib/visual-viewport";
+import { pageMarkdown } from "@/lib/export";
 import { WorkspaceDialogs, useWorkspaceDialogs } from "./workspace-dialogs";
 import { Modal, Popup } from "./ui/menu";
 import { useWorkspace } from "@/lib/use-workspace";
@@ -1003,7 +1004,7 @@ export function WorkspaceApp() {
           status={status}
           onOpen={open}
           onAction={action}
-          markdownOf={(pageId) => state.documents.find((d) => d.page_id === pageId)?.markdown || ""}
+          exportMarkdown={(pageId) => pageMarkdown(state, pageId, window.location.origin)}
           canViewSource={!!page && page.kind === "document" && isStructured(page.id)}
           onViewSource={setSourceView}
           loading={!ready}

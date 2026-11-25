@@ -71,6 +71,7 @@ import {
   orderedViews,
   changePins,
   linkHref,
+  formatCell as formatValue,
 } from "@/lib/database";
 import { PageIcon } from "../page-icon";
 import "./database.css";
@@ -332,35 +333,6 @@ function RecordIcon({ record, state, size }: { record: DbRecord; state: Workspac
     />
   );
 }
-function formatValue(value: CellValue, property: Property) {
-  if (value === null || value === "") return "";
-  if (property.type === "currency" && Number.isFinite(Number(value)))
-    return new Intl.NumberFormat("en-CA", {
-      style: "currency",
-      currency: String(property.config.currency || "CAD"),
-      minimumFractionDigits: 2,
-    }).format(Number(value));
-  if (["created_time", "updated_time", "datetime"].includes(property.type)) {
-    const date = new Date(String(value));
-    return Number.isNaN(date.getTime())
-      ? String(value)
-      : date.toLocaleString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        });
-  }
-  if (property.type === "date") {
-    const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-    return Number.isNaN(date.getTime())
-      ? String(value)
-      : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-  return Array.isArray(value) ? value.join(", ") : String(value);
-}
-
 /** How a database opens its records, and the icon and words that say so. */
 function openModeOf(state: WorkspaceState, databaseId: string): RecordOpenMode {
   // On a phone records always open as a full page (see isPhoneWidth).
