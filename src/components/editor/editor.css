@@ -2340,3 +2340,9 @@ body:has(.keyboard-toolbar) .page-scroll {
 body:has(.keyboard-toolbar) .help-button {
   display: none;
 }
+/* The Markdown find bar's fields at 16px on touch screens, so iPhone Safari doesn't zoom in. */
+@media (hover: none) {
+  :root .markdown-source-editor .cm-search .cm-textfield {
+    font-size: 16px;
+  }
+}

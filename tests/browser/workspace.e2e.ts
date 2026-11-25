@@ -134,6 +134,34 @@ test("-> <- and <-> become arrows in pages and titles, Backspace undoes them, an
   await expect(title).toHaveValue("Arrow verification A→B←C↔D x->");
   await expect(editor.locator("p").first()).toHaveText("in → out ← back ↔ both");
 });
+test("tags written as code stay ordinary text and tables, and Markdown mode's find bar fits in", async ({ page }) => {
+  await createPage(page, "Code tags verification");
+  await page.getByRole("button", { name: "Markdown", exact: true }).click();
+  await page.locator(".cm-content").click();
+  await page.keyboard.insertText(
+    'The home page renders the **same** `<Tool>` component.\n\n| URL | Renders |\n| --- | --- |\n| `/` | `<Tool initialMode="detect">` |',
+  );
+  // ⌘F finds in the source, with the app's own fields and words.
+  await page.keyboard.press("ControlOrMeta+f");
+  const find = page.locator(".cm-search");
+  await expect(find).toBeVisible();
+  await expect(find.getByRole("button", { name: "Next", exact: true })).toBeVisible();
+  await expect(find.getByText("Whole word", { exact: true })).toBeVisible();
+  const field = find.locator(".cm-textfield").first();
+  expect(await field.evaluate((el) => getComputedStyle(el).borderRadius)).toBe("6px");
+  // The page's own background, not the browser's default field.
+  expect(
+    await field.evaluate(
+      (el) => getComputedStyle(el).backgroundColor === getComputedStyle(document.body).backgroundColor,
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Interactive", exact: true }).click();
+  const editor = page.getByLabel("Page content", { exact: true });
+  await expect(editor.getByText("Source block")).toHaveCount(0);
+  await expect(editor.locator("p code").first()).toHaveText("<Tool>");
+  await expect(editor.locator("table td code").last()).toHaveText('<Tool initialMode="detect">');
+});
 test("<details> in Markdown becomes a toggle, and a toggle is saved as <details>", async ({ page }) => {
   await createPage(page, "Toggle verification");
   await page.getByRole("button", { name: "Markdown", exact: true }).click();

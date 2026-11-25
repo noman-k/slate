@@ -1,4 +1,4 @@
-import { EditorSelection, Prec, type Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
@@ -216,8 +216,89 @@ const githubTheme = EditorView.theme({
     borderRadius: "8px",
   },
   ".cm-panels": { backgroundColor: "var(--bg-sidebar)", color: "var(--text)" },
+  ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--divider)" },
+  // Find and replace (⌘F), in the app's own fields and buttons.
+  ".cm-panel.cm-search": {
+    padding: "8px 44px 8px 12px",
+    fontFamily: "var(--font)",
+    fontSize: "13px",
+    lineHeight: "28px",
+  },
+  ".cm-search .cm-textfield": {
+    width: "220px",
+    maxWidth: "100%",
+    height: "28px",
+    margin: "2px 6px 2px 0",
+    padding: "0 8px",
+    border: "1px solid var(--border-strong)",
+    borderRadius: "6px",
+    backgroundColor: "var(--bg)",
+    color: "var(--text)",
+    fontFamily: "var(--font)",
+    fontSize: "13px",
+    verticalAlign: "middle",
+    outline: "none",
+  },
+  ".cm-search .cm-textfield:focus": {
+    borderColor: "var(--accent)",
+    boxShadow: "0 0 0 2px var(--accent-soft)",
+  },
+  ".cm-search .cm-button": {
+    height: "28px",
+    margin: "2px 4px 2px 0",
+    padding: "0 10px",
+    border: "1px solid var(--border)",
+    borderRadius: "6px",
+    backgroundColor: "var(--bg-raised)",
+    backgroundImage: "none",
+    color: "var(--text)",
+    fontFamily: "var(--font)",
+    fontSize: "13px",
+    verticalAlign: "middle",
+    cursor: "pointer",
+  },
+  ".cm-search .cm-button:hover, .cm-search .cm-button:active": {
+    backgroundColor: "var(--hover-strong)",
+    backgroundImage: "none",
+  },
+  ".cm-search label": {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    margin: "0 10px 0 4px",
+    color: "var(--text-secondary)",
+    fontSize: "13px",
+    verticalAlign: "middle",
+    cursor: "pointer",
+  },
+  ".cm-search input[type=checkbox]": { margin: "0", accentColor: "var(--accent)" },
+  ".cm-search button[name=close]": {
+    top: "8px",
+    right: "10px",
+    width: "28px",
+    height: "28px",
+    borderRadius: "6px",
+    color: "var(--text-secondary)",
+    fontSize: "18px",
+    lineHeight: "28px",
+    cursor: "pointer",
+  },
+  ".cm-search button[name=close]:hover": { backgroundColor: "var(--hover)", color: "var(--text)" },
   ".cm-searchMatch": { backgroundColor: "var(--syntax-search)" },
   "&.cm-focused": { outline: "none" },
 });
 
-export const githubMarkdownLook: Extension = [githubTheme, syntaxHighlighting(githubHighlight)];
+/** The find bar's words, in the app's voice (CodeMirror's are lower-case shorthand). */
+const searchWords = EditorState.phrases.of({
+  next: "Next",
+  previous: "Previous",
+  all: "All",
+  "match case": "Match case",
+  regexp: "Regex",
+  "by word": "Whole word",
+  replace: "Replace",
+  "replace all": "Replace all",
+  close: "Close",
+});
+
+export const githubMarkdownLook: Extension = [githubTheme, syntaxHighlighting(githubHighlight), searchWords];
