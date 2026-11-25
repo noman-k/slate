@@ -39,6 +39,18 @@ describe("lossless Markdown source representation", () => {
   it("uses a longer code fence when a code sample contains backtick fences", () => {
     expect(fencedCode("```markdown\nexample\n```", "md")).toBe("````md\n```markdown\nexample\n```\n````");
   });
+  it("treats tags written as inline code as text, not raw HTML", () => {
+    const source =
+      'The home page renders the **same** `<Tool>` component.\n\n| URL | Renders |\n| --- | --- |\n| `/` | `<Tool initialMode="detect">` + `<Education>` |\n| `/account` | ``<Account reset={false}>`` |';
+    const parts = splitMarkdown(source);
+    expect(parts.map((part) => part.kind)).toEqual(["markdown"]);
+    // Real HTML next to code is still kept as source.
+    expect(splitMarkdown("Use `<b>` like <b>this</b>").map((part) => part.kind)).toEqual(["preserved"]);
+    expect(splitMarkdown("A `<div>` example.\n\n<div>\nraw\n</div>").map((part) => part.kind)).toEqual([
+      "markdown",
+      "preserved",
+    ]);
+  });
   it("preserves nested callout and toggle document nodes", () => {
     const node = {
       type: "toggle",

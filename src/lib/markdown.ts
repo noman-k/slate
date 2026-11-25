@@ -75,6 +75,12 @@ export function decodeDirective(source: string): WorkspaceDirective | null {
 /** Block types saved as `:::slate-node` JSON lines (anything else is kept as source). */
 const RICH_NODES = ["callout", "toggle", "procedureParams", "procedureStep"];
 
+/**
+ * A line with its inline code (`<Tool>`, ``a `b` c``) blanked out: tags written as code are
+ * text, so they mustn't turn a paragraph or table into a raw HTML block.
+ */
+const withoutCodeSpans = (line: string) => line.replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g, "");
+
 /** Recognize directives only outside fenced code. Preserve unfamiliar block syntax verbatim. */
 export function splitMarkdown(source: string): MarkdownPart[] {
   const lines = source.split("\n");
@@ -175,15 +181,19 @@ export function splitMarkdown(source: string): MarkdownPart[] {
         if (lines[index].trim() === ":::") break;
       }
       result.push({ kind: "preserved", source: raw.join("\n") });
-    } else if (!fence && /(?:<\/?[a-z][\w:-]*(?:\s[^>]*|\s*)\/?\s*>|<!--)|^\s*(?:\[\^[^\]]+\]:|\$\$)/i.test(line)) {
+    } else if (
+      !fence &&
+      /(?:<\/?[a-z][\w:-]*(?:\s[^>]*|\s*)\/?\s*>|<!--)|^\s*(?:\[\^[^\]]+\]:|\$\$)/i.test(withoutCodeSpans(line))
+    ) {
       // Unknown HTML/math/footnotes stay editable in source rather than being silently stripped.
       flush();
       const raw = [line];
-      const commentStart = line.indexOf("<!--");
-      const openTag = line.match(/<([a-z][\w:-]*)(?=[\s/>])/i)?.[1];
+      const text = withoutCodeSpans(line);
+      const commentStart = text.indexOf("<!--");
+      const openTag = text.match(/<([a-z][\w:-]*)(?=[\s/>])/i)?.[1];
       const voidTag =
         openTag && /^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(openTag);
-      if (commentStart >= 0 && !line.slice(commentStart).includes("-->")) {
+      if (commentStart >= 0 && !text.slice(commentStart).includes("-->")) {
         while (index + 1 < lines.length) {
           raw.push(lines[++index]);
           if (lines[index].includes("-->")) break;
@@ -200,10 +210,10 @@ export function splitMarkdown(source: string): MarkdownPart[] {
             (depth, tag) => depth + (tag.startsWith("</") ? -1 : /\/>$/.test(tag) ? 0 : 1),
             0,
           );
-        let depth = depthChange(line);
+        let depth = depthChange(text);
         while (depth > 0 && index + 1 < lines.length) {
           raw.push(lines[++index]);
-          depth += depthChange(lines[index]);
+          depth += depthChange(withoutCodeSpans(lines[index]));
         }
       } else {
         while (index + 1 < lines.length && lines[index + 1].trim()) raw.push(lines[++index]);

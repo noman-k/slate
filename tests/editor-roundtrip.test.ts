@@ -139,4 +139,13 @@ describe("interactive editor / Markdown round-trip", () => {
       content: [{ type: "paragraph" }],
     });
   });
+  it("keeps tags written as code in a table as code, through a save", () => {
+    const source =
+      '| URL | Renders |\n| --- | --- |\n| `/` | `<Tool initialMode="detect">` + `<Education>` |\n| `/account` | `<Account reset={false}>` |';
+    const { first, markdown, second } = roundTrip(source);
+    expect(first.content?.map((node) => node.type)).toEqual(["table"]);
+    expect(markdown).toContain('`<Tool initialMode="detect">` + `<Education>`');
+    expect(markdown).toContain("`<Account reset={false}>`");
+    expect(second).toEqual(first);
+  });
 });
