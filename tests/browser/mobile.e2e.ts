@@ -49,14 +49,18 @@ test("subpages in the sidebar line up by level, with room for a finger", async (
   const sidebar = page.locator("aside.sidebar");
   // Opening a page shows its parents expanded: hub > Tenant Rent Log > Rent Ledger.
   await expect(sidebar.locator(".tree-row", { hasText: "Rent Ledger" })).toBeVisible();
-  const iconLeft = (title: string) =>
-    sidebar
-      .locator(".tree-row", { hasText: title })
-      .first()
-      .locator(".tree-page .page-icon")
-      .evaluate((el) => Math.round(el.getBoundingClientRect().left));
-  const [hub, log, ledger, tenants, notes] = await Promise.all(
-    ["Rental Property Finance Hub", "Tenant Rent Log", "Rent Ledger", "Tenants", "Workspace notes"].map(iconLeft),
+  // The drawer slides in: measure once it has stopped, all in the same moment.
+  await expect.poll(async () => (await sidebar.boundingBox())?.x).toBe(0);
+  const [hub, log, ledger, tenants, notes] = await sidebar.evaluate(
+    (aside, titles) => {
+      const rows = Array.from(aside.querySelectorAll<HTMLElement>(".tree-row"));
+      return titles.map((title) => {
+        const row = rows.find((r) => r.querySelector(".tree-page")?.textContent?.includes(title));
+        const icon = row?.querySelector(".tree-page .page-icon");
+        return icon ? Math.round(icon.getBoundingClientRect().left - aside.getBoundingClientRect().left) : NaN;
+      });
+    },
+    ["Rental Property Finance Hub", "Tenant Rent Log", "Rent Ledger", "Tenants", "Workspace notes"],
   );
   // Same level, same column, whether or not a page has subpages…
   expect(log).toBe(tenants);
