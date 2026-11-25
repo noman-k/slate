@@ -95,6 +95,9 @@
   /* Theme-specific extras */
   --on-accent: #fff;
   --row-hover: rgba(255, 255, 255, 0.025);
+  /* Tables in pages, as GitHub shows Markdown tables. */
+  --table-border: #3d444d;
+  --table-stripe: rgba(255, 255, 255, 0.035);
   --code-block-bg: rgba(255, 255, 255, 0.03);
   --active-line: rgba(255, 255, 255, 0.03);
   --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.15);
@@ -198,6 +201,8 @@
     0 0 0 1px rgba(15, 15, 15, 0.05), 0 5px 10px rgba(15, 15, 15, 0.08), 0 15px 40px rgba(15, 15, 15, 0.2);
   --backdrop: rgba(15, 15, 15, 0.35);
   --row-hover: rgba(55, 53, 47, 0.03);
+  --table-border: #d1d9e0;
+  --table-stripe: #f6f8fa;
   --code-block-bg: #f7f6f3;
   --active-line: rgba(55, 53, 47, 0.035);
   --shadow-card: 0 1px 3px rgba(15, 15, 15, 0.08);

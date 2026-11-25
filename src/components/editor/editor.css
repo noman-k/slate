@@ -374,11 +374,11 @@
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar);
 }
-/* Simple tables look like database tables: no outer box, row lines, faint
-   column dividers, a quiet header, and a soft hover on rows. Scoped to the
-   editor's own tables (.tableWrapper) so embedded databases keep their styles. */
+/* Tables look like Markdown tables on GitHub: every cell boxed in, a bold header row, and
+   every other row shaded. Scoped to the editor's own tables (.tableWrapper) so embedded
+   databases keep their styles. */
 .slate-prose .tableWrapper table {
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
   width: 100%;
   table-layout: fixed;
@@ -389,30 +389,19 @@
 .slate-prose .tableWrapper th {
   position: relative;
   min-width: 80px;
-  /* Rows come out at the database tables' 34px (the font adds ~1px to the line). */
-  height: 34px;
-  padding: 5px 8px;
+  padding: 6px 13px;
   vertical-align: top;
   text-align: left;
-  border: 0;
-  border-right: 1px solid var(--divider);
-  border-bottom: 1px solid var(--border);
-}
-.slate-prose .tableWrapper tr > :last-child {
-  border-right: 0;
-}
-.slate-prose .tableWrapper tr:first-child > * {
-  border-top: 1px solid var(--border);
+  border: 1px solid var(--table-border);
 }
 .slate-prose .tableWrapper th {
   background: transparent;
-  color: var(--text-secondary);
-  font-weight: 400;
+  color: var(--text);
+  font-weight: 600;
 }
-@media (hover: hover) {
-  .slate-prose .tableWrapper tbody tr:hover > td {
-    background: var(--row-hover);
-  }
+/* The header is the first row, so the shaded body rows are the 2nd, 4th… after it. */
+.slate-prose .tableWrapper tr:nth-child(2n + 3) > td {
+  background: var(--table-stripe);
 }
 .slate-prose .tableWrapper td p,
 .slate-prose .tableWrapper th p {
