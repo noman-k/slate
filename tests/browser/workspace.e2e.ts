@@ -278,6 +278,46 @@ test("rows can be pinned to the top of a view, from their menu or several at onc
   await expect.poll(titles).toEqual([last, ...before.filter((name) => name !== last)]);
   await expect(row(third).getByRole("img", { name: "Pinned" })).toHaveCount(0);
 });
+test("a URL cell is a link that opens in a new tab, and still edits from the pencil or the rest of the cell", async ({
+  page,
+  context,
+}) => {
+  const table = page.locator(".db-table").first();
+  await table.getByRole("button", { name: "Add property" }).click();
+  await page.getByLabel("New property name").fill("Website");
+  await page.getByRole("button", { name: "URL", exact: true }).click();
+  const row = table.locator("tbody tr").first();
+  await row.getByTitle("Edit Website").click();
+  await page.keyboard.type("example.com/rent");
+  await page.keyboard.press("Enter");
+  // The address is a link (https:// added), opening in a new tab.
+  const link = row.getByRole("link", { name: "example.com/rent" });
+  await expect(link).toHaveAttribute("href", "https://example.com/rent");
+  await expect(link).toHaveAttribute("target", "_blank");
+  await context.route("https://example.com/**", (route) => route.fulfill({ body: "ok" }));
+  const [opened] = await Promise.all([context.waitForEvent("page"), link.click()]);
+  await expect.poll(() => opened.url()).toBe("https://example.com/rent");
+  await opened.close();
+  await expect(row.locator("input")).toHaveCount(0);
+  // The pencil (shown when pointing at the cell) edits it…
+  const cell = row.locator(".db-link-cell");
+  await cell.hover();
+  await row.getByRole("button", { name: "Edit Website" }).click();
+  await expect(row.locator("input")).toHaveValue("example.com/rent");
+  await page.keyboard.press("Escape");
+  // …and so does the empty part of the cell, beside the link.
+  const box = (await cell.boundingBox())!;
+  const linkBox = (await link.boundingBox())!;
+  await page.mouse.click(linkBox.x + linkBox.width + 12, box.y + box.height / 2);
+  await expect(row.locator("input")).toHaveValue("example.com/rent");
+  await page.keyboard.press("Escape");
+  // Something that isn't a web address stays plain text.
+  await cell.hover();
+  await row.getByRole("button", { name: "Edit Website" }).click();
+  await row.locator("input").fill("javascript:alert(1)");
+  await page.keyboard.press("Enter");
+  await expect(row.getByRole("link")).toHaveCount(0);
+});
 test("dragging a column wider between pixels still saves, as a whole-pixel width", async ({ page }) => {
   const handle = page.getByRole("separator", { name: /^Resize / }).first();
   const before = Number(await handle.getAttribute("aria-valuenow"));

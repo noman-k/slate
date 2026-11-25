@@ -31,6 +31,7 @@ import {
   ListFilter,
   Mail,
   MoreHorizontal,
+  Pencil,
   Pin,
   PinOff,
   Plus,
@@ -69,6 +70,7 @@ import {
   moveView,
   orderedViews,
   changePins,
+  linkHref,
 } from "@/lib/database";
 import { PageIcon } from "../page-icon";
 import "./database.css";
@@ -794,6 +796,36 @@ function Cell({
       </div>
     );
   }
+  // Links act like links (Notion-style): the address opens (web pages in a new tab), and a
+  // click anywhere else in the cell, or the pencil, edits it.
+  const href = linkHref(property.type, value);
+  if (href)
+    return (
+      <div className="db-cell-button db-link-cell" onClick={startEdit}>
+        <a
+          className="db-link-value"
+          href={href}
+          target={property.type === "url" ? "_blank" : undefined}
+          rel="noopener noreferrer"
+          title={property.type === "url" ? `Open ${href}` : String(value)}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {formatValue(value, property)}
+        </a>
+        <button
+          type="button"
+          className="db-link-edit"
+          aria-label={`Edit ${property.name}`}
+          title={`Edit ${property.name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            startEdit();
+          }}
+        >
+          <Pencil size={13} />
+        </button>
+      </div>
+    );
   return (
     <button
       className={`db-cell-button ${["number", "currency", "formula", "rollup"].includes(property.type) ? "db-numeric" : ""} ${typeof value === "string" && value.startsWith("#") ? "db-error-value" : ""}`}

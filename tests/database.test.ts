@@ -12,6 +12,7 @@ import {
   updateCell,
   visibleRecords,
   changePins,
+  linkHref,
 } from "../src/lib/database";
 import type { DatabaseView, Property, WorkspaceState } from "../src/lib/types";
 import { createSeedState, SEED_IDS } from "./fixtures/seed";
@@ -336,5 +337,30 @@ describe("pinned rows", () => {
     expect(changePins(["a", "b"], ["c"], true, "b")).toEqual(["a", "c", "b"]);
     expect(changePins(["a", "b", "c"], ["c"], true, "a")).toEqual(["c", "a", "b"]);
     expect(changePins(["a", "b", "c"], ["b"], false)).toEqual(["a", "c"]);
+  });
+});
+
+describe("link cells", () => {
+  it("open web addresses, adding https:// to a bare one", () => {
+    expect(linkHref("url", "https://yellow-river.azurestaticapps.net/")).toBe(
+      "https://yellow-river.azurestaticapps.net/",
+    );
+    expect(linkHref("url", "example.com/docs?x=1")).toBe("https://example.com/docs?x=1");
+    expect(linkHref("url", "http://localhost:3000")).toBe("http://localhost:3000/");
+    expect(linkHref("url", "  slate.noman.io  ")).toBe("https://slate.noman.io/");
+  });
+  it("never open other schemes, or text that isn't an address", () => {
+    expect(linkHref("url", "javascript:alert(1)")).toBeNull();
+    expect(linkHref("url", "data:text/html,hi")).toBeNull();
+    expect(linkHref("url", "not a link")).toBeNull();
+    expect(linkHref("url", "")).toBeNull();
+    expect(linkHref("url", null)).toBeNull();
+    expect(linkHref("text", "https://example.com")).toBeNull();
+  });
+  it("send emails to the mail app and phone numbers to the phone", () => {
+    expect(linkHref("email", "ops@example.com")).toBe("mailto:ops@example.com");
+    expect(linkHref("email", "not an email")).toBeNull();
+    expect(linkHref("phone", "+1 (416) 555-0100")).toBe("tel:+14165550100");
+    expect(linkHref("phone", "call me")).toBeNull();
   });
 });

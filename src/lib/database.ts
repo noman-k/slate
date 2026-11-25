@@ -682,3 +682,34 @@ export function moveView(state: WorkspaceState, ids: string[], viewId: string, t
     views: state.views.map((view) => (position.has(view.id) ? { ...view, position: position.get(view.id)! } : view)),
   };
 }
+
+/**
+ * Where a URL, email or phone value goes when clicked, or null when it isn't safely a link.
+ * Only web addresses open (a bare "example.com" gets https://); `javascript:` and other
+ * schemes never do. Emails open the mail app, phone numbers the phone app.
+ */
+export function linkHref(type: Property["type"], value: unknown): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || text.length > 2000) return null;
+  if (type === "phone") {
+    // Spaces, dashes, dots and brackets are how people write numbers; the link has digits only.
+    if (!/^\+?[\d\s().-]+$/.test(text)) return null;
+    const digits = text.replace(/[^\d+]/g, "");
+    return /^\+?\d{3,}$/.test(digits) ? `tel:${digits}` : null;
+  }
+  if (/\s/.test(text)) return null;
+  if (type === "email") return /^[^@]+@[^@]+\.[^@]+$/.test(text) ? `mailto:${text}` : null;
+  if (type !== "url") return null;
+  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(text)
+    ? text
+    : /^(?:[\w-]+\.)+[a-z]{2,}(?::\d+)?(?:[/?#]\S*)?$/i.test(text)
+      ? `https://${text}`
+      : null;
+  if (!withScheme) return null;
+  try {
+    const url = new URL(withScheme);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
