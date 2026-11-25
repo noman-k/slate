@@ -1568,7 +1568,8 @@ export function DatabaseView({
       target.parentElement?.style.setProperty("width", `${width}px`);
     };
     const up = (e: PointerEvent) => {
-      const width = Math.max(100, Math.min(700, initial + e.clientX - start));
+      // Whole pixels: a zoomed browser reports the pointer between them.
+      const width = Math.round(Math.max(100, Math.min(700, initial + e.clientX - start)));
       onChange((current) => ({
         ...current,
         properties: current.properties.map((p) => (p.id === property.id ? { ...p, width } : p)),

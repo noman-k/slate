@@ -184,6 +184,27 @@ test("a page with headings gets an outline down the right edge that follows alon
   await page.mouse.wheel(0, -100000);
   await expect(lines.nth(0)).toHaveClass(/is-active/);
 });
+test("dragging a column wider between pixels still saves, as a whole-pixel width", async ({ page }) => {
+  const handle = page.getByRole("separator", { name: /^Resize / }).first();
+  const before = Number(await handle.getAttribute("aria-valuenow"));
+  const box = (await handle.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  // A zoomed browser reports the pointer between pixels like this.
+  await page.mouse.move(x + 20.37, y, { steps: 4 });
+  await page.mouse.move(x + 40.61, y, { steps: 4 });
+  await page.mouse.up();
+  await expect(handle).toHaveAttribute("aria-valuenow", String(before + 41));
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText(/could not be synced/)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("separator", { name: /^Resize / }).first()).toHaveAttribute(
+    "aria-valuenow",
+    String(before + 41),
+  );
+});
 test("a long record name wraps in the side panel, and several tags in a cell keep their names whole", async ({
   page,
 }) => {

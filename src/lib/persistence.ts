@@ -26,6 +26,24 @@ export async function loadRemoteState(): Promise<WorkspaceState | null> {
 /** The workspace was saved elsewhere since this tab loaded it (see mergeStates). */
 export class SyncConflictError extends Error {}
 
+/**
+ * The state as the database will take it. A column's width is a whole number of pixels
+ * there (48 to 3000), but dragging can land between pixels in a zoomed browser; one stray
+ * 231.98 would fail every save, so widths are rounded here, whatever set them.
+ */
+export function forStorage(state: WorkspaceState): WorkspaceState {
+  const fits = (width: number) => Number.isInteger(width) && width >= 48 && width <= 3000;
+  if (state.properties.every((property) => fits(property.width))) return state;
+  return {
+    ...state,
+    properties: state.properties.map((property) =>
+      fits(property.width)
+        ? property
+        : { ...property, width: Math.min(3000, Math.max(48, Math.round(Number(property.width) || 180))) },
+    ),
+  };
+}
+
 /** Saves all related mutations in one transaction and rejects a stale tab's changes. */
 export async function saveRemoteState(
   state: WorkspaceState,
@@ -43,7 +61,7 @@ export async function saveRemoteState(
   } = await supabase.auth.getUser();
   if (!user || user.id !== savingUserId) throw new Error("Sign in to the original account to sync this draft.");
   const { data, error } = await supabase.rpc("save_workspace_state", {
-    p_state: state,
+    p_state: forStorage(state),
     p_expected_revision: revision,
   });
   if (error) {
