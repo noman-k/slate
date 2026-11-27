@@ -338,6 +338,64 @@ test("a URL cell is a link that opens in a new tab, and still edits from the pen
   await page.keyboard.press("Enter");
   await expect(row.getByRole("link")).toHaveCount(0);
 });
+test("long text edits in a larger box over the cell, shows in full on the record, and a view can wrap cells", async ({
+  page,
+}) => {
+  const table = page.locator(".db-table").first();
+  await table.getByRole("button", { name: "Add property" }).click();
+  await page.getByLabel("New property name").fill("Notes");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  const row = table.locator("tbody tr").first();
+  const rowHeight = (await row.boundingBox())!.height;
+  // In the table: a larger box opens over the cell; Shift+Enter is a new line, Enter saves.
+  await row.getByTitle("Edit Notes").click();
+  const box = page.locator(".db-text-popout textarea");
+  await expect(box).toBeFocused();
+  expect((await page.locator(".db-text-popout").boundingBox())!.width).toBeGreaterThanOrEqual(360);
+  const first = "Meds given: 8pm valproic acid oral suspension 250mg/5mL; 9:15pm trazodone 100mg and clonidine 0.1mg.";
+  await page.keyboard.type(first);
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("Slept by 9:45pm.");
+  await page.keyboard.press("Enter");
+  await expect(box).toHaveCount(0);
+  const cell = row.getByTitle("Edit Notes");
+  await expect(cell).toContainText("Meds given");
+  // The row stays one line.
+  expect((await row.boundingBox())!.height).toBe(rowHeight);
+  // Esc leaves it as it was.
+  await cell.click();
+  await page.keyboard.type(" extra");
+  await page.keyboard.press("Escape");
+  await expect(box).toHaveCount(0);
+  await expect(cell).not.toContainText("extra");
+  // Wrap cells: long text shows in full, and the view remembers it.
+  await page.getByRole("button", { name: "View settings" }).click();
+  const wrap = page.getByRole("switch", { name: /Wrap cells/ });
+  await expect(wrap).toHaveAttribute("aria-checked", "false");
+  await wrap.click();
+  await expect(wrap).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => (await row.boundingBox())!.height).toBeGreaterThan(rowHeight * 1.5);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect
+    .poll(async () => (await table.locator("tbody tr").first().boundingBox())!.height)
+    .toBeGreaterThan(rowHeight * 1.5);
+  // On the record: the whole note, line break and all, edited where it is.
+  await table
+    .locator("tbody tr")
+    .first()
+    .getByRole("button", { name: /^Open / })
+    .click();
+  const notes = page.locator(".db-record-property", { hasText: "Notes" }).locator(".db-text-cell");
+  await expect(notes).toHaveText(`${first}\nSlept by 9:45pm.`, { useInnerText: true });
+  await notes.click();
+  const inline = page.locator(".db-text-inline textarea");
+  await expect(inline).toBeFocused();
+  await page.keyboard.type(" Woke at 7:30am.");
+  await page.keyboard.press("Enter");
+  await expect(notes).toContainText("Woke at 7:30am.");
+});
 test("Export Markdown gives a table page its rows as a Markdown table", async ({ page }) => {
   await expect(page.getByLabel("Page title", { exact: true })).toHaveValue("Rent Ledger");
   await page.getByRole("button", { name: "Page options" }).click();

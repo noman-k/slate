@@ -123,6 +123,8 @@ export interface DatabaseView {
   position?: number | null;
   /** Rows pinned to the top of this view, in the order they show. */
   pinned?: string[];
+  /** A table shows long text in full, row heights following it, rather than one line each. */
+  wrap?: boolean;
 }
 export interface WorkspaceState {
   workspaces: Workspace[];

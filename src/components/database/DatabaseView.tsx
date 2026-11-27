@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { isPhoneWidth, isTouchOnly, usePhoneWidth } from "../keys";
 import { createColumnHelper, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -534,6 +534,63 @@ function RelationCell({
   );
 }
 
+/**
+ * A text box that grows with what's typed (up to a point, then scrolls), for long text.
+ * Enter saves and Shift+Enter starts a new line, like Notion; Esc puts it back as it was.
+ */
+function GrowingText({
+  label,
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  onBlur,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onBlur?: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  // Ready to type at the end of what's there.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      className="db-text-editor"
+      aria-label={label}
+      data-smart-dash=""
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          onSave();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        }
+      }}
+    />
+  );
+}
+
 function Cell({
   record,
   property,
@@ -560,6 +617,9 @@ function Cell({
   expanded?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  /** The cell's height when editing began: a text cell's pop-out editor sits right over it. */
+  const [cellHeight, setCellHeight] = useState(0);
+  const cellRef = useRef<HTMLButtonElement>(null);
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const value = cellValue(record, property, state);
@@ -569,6 +629,7 @@ function Cell({
   };
   const startEdit = () => {
     if (computed) return;
+    setCellHeight(cellRef.current?.getBoundingClientRect().height ?? 0);
     setDraft(
       property.type === "date"
         ? String(value ?? "").slice(0, 10)
@@ -710,6 +771,44 @@ function Cell({
       </Menu>
     );
   }
+  // Long text: on a record page it's edited where it is; elsewhere (a table, list or board,
+  // where the cell is one short line) in a larger box that opens over the cell.
+  if (editing && property.type === "text") {
+    const editor = (
+      <GrowingText
+        label={`Edit ${property.name}`}
+        value={draft}
+        onChange={setDraft}
+        onSave={commit}
+        onCancel={() => setEditing(false)}
+        onBlur={expanded ? commit : undefined}
+      />
+    );
+    if (expanded) return <div className="db-text-inline">{editor}</div>;
+    return (
+      <Popover.Root open onOpenChange={(open) => !open && commit()}>
+        <Popover.Anchor asChild>
+          <div className="db-cell-button db-text-cell">{String(value ?? "")}</div>
+        </Popover.Anchor>
+        <Popover.Portal>
+          <Popover.Content
+            className="db-text-popout"
+            side="bottom"
+            align="start"
+            sideOffset={-cellHeight}
+            collisionPadding={8}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => {
+              e.preventDefault();
+              setEditing(false);
+            }}
+          >
+            {editor}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    );
+  }
   if (editing)
     return (
       <input
@@ -799,7 +898,8 @@ function Cell({
     );
   return (
     <button
-      className={`db-cell-button ${["number", "currency", "formula", "rollup"].includes(property.type) ? "db-numeric" : ""} ${typeof value === "string" && value.startsWith("#") ? "db-error-value" : ""}`}
+      ref={cellRef}
+      className={`db-cell-button ${property.type === "text" ? "db-text-cell" : ""} ${["number", "currency", "formula", "rollup"].includes(property.type) ? "db-numeric" : ""} ${typeof value === "string" && value.startsWith("#") ? "db-error-value" : ""}`}
       onClick={startEdit}
       disabled={computed}
       title={computed ? formatValue(value, property) : `Edit ${property.name}`}
@@ -1655,17 +1755,19 @@ export function DatabaseView({
     root: rootRef,
     onDelete: trashRecords,
   });
+  // Long tables only draw the rows in view; wrapped rows have heights of their own, so a
+  // wrapping table draws them all.
+  const virtual = rows.length > 100 && !view.wrap;
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 39,
     overscan: 12,
-    enabled: rows.length > 100,
+    enabled: virtual,
   });
-  const virtualRows =
-    rows.length > 100
-      ? virtualizer.getVirtualItems()
-      : rows.map((_, index) => ({ index, start: index * 39, size: 39 }));
+  const virtualRows = virtual
+    ? virtualizer.getVirtualItems()
+    : rows.map((_, index) => ({ index, start: index * 39, size: 39 }));
   const groupProperty =
     view.group_by === ""
       ? undefined
@@ -1964,6 +2066,21 @@ export function DatabaseView({
                 <option value="board">Board</option>
               </select>
             </label>
+            {view.type === "table" && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!view.wrap}
+                className="db-menu-switch"
+                onClick={() => updateView({ wrap: !view.wrap })}
+              >
+                <span>
+                  Wrap cells
+                  <small>Show long text in full, not on one line</small>
+                </span>
+                <span className="db-switch" aria-hidden />
+              </button>
+            )}
             {view.type === "board" && (
               <label className="db-menu-label">
                 Group by
@@ -2134,8 +2251,8 @@ export function DatabaseView({
         setOpen={setOpenRules}
       />
       {view.type === "table" && (
-        <div ref={scrollRef} className={`db-table-scroll ${rows.length > 100 ? "db-virtual-scroll" : ""}`}>
-          <table className="db-table" style={{ width: table.getTotalSize() + 45 }}>
+        <div ref={scrollRef} className={`db-table-scroll ${virtual ? "db-virtual-scroll" : ""}`}>
+          <table className={`db-table ${view.wrap ? "db-wrap" : ""}`} style={{ width: table.getTotalSize() + 45 }}>
             <thead>
               {table.getHeaderGroups().map((group) => (
                 <tr key={group.id}>
@@ -2239,7 +2356,7 @@ export function DatabaseView({
               ))}
             </thead>
             <tbody>
-              {rows.length > 100 && virtualRows[0]?.start > 0 && (
+              {virtual && virtualRows[0]?.start > 0 && (
                 <tr>
                   <td colSpan={visible.length + 1} style={{ height: virtualRows[0].start }} />
                 </tr>
@@ -2314,7 +2431,7 @@ export function DatabaseView({
                   </tr>
                 );
               })}
-              {rows.length > 100 && virtualRows.length > 0 && (
+              {virtual && virtualRows.length > 0 && (
                 <tr>
                   <td
                     colSpan={visible.length + 1}
